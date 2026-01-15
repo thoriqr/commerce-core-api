@@ -1,9 +1,5 @@
 import { ERROR_CODE, ErrorCode } from "../constants/error-code";
-
-export type FieldError = {
-  field: string;
-  message: string;
-};
+import { FieldError } from "../types/api-response.ts";
 
 export type AppErrorOptions = {
   code: ErrorCode;

@@ -6,6 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
 
   DATABASE_URL: z.string().min(1),
+  CLIENT_ORIGINS: z.string().min(1),
 
   REDIS_HOST: z.string().min(1),
   REDIS_PORT: z.coerce.number().default(6379)

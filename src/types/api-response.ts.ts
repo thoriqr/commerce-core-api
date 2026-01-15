@@ -16,7 +16,8 @@ export type ErrorResponse = {
 
 export type SuccessResponse<T, M = unknown> = {
   success: true;
-  data: T;
+  message?: string;
+  data?: T;
   meta?: M;
 };
 
