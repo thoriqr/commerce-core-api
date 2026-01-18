@@ -1,9 +1,10 @@
 import { Knex } from "knex";
-import { CreateProductSchema } from "./product.schema";
+import { CreateProductSchema, VariantDimsSchema, VariantSchema } from "./product.schema";
 import { AppError } from "../../../errors/app-error";
-import { ProductDetailRow, VariantDetailRow, VariantOptionRow } from "./product.types";
+import { IdMap, ProductDetailRow, VariantDimensionRow, VariantDimensionValueRow, VariantOptionValueRow, VariantRow } from "./product.types";
 import { mapProductDetail } from "./product.mapper";
 import { db } from "../../../infra/db/knex";
+import { displayName, displayValue, normalizeName, normalizeValue } from "./product.normalizer";
 
 export class ProductRepo {
   create = async (trx: Knex.Transaction, input: CreateProductSchema, isVariant: boolean) => {
@@ -23,37 +24,147 @@ export class ProductRepo {
     }
 
     const productId = row.id;
+    const variantDims = input.variantDimension;
 
-    for (const v of variants) {
-      const { rows: variantRows } = await trx.raw<{ rows: { id: number }[] }>(
+    // SINGLE PRODUCT
+    if (variants.length === 1) {
+      await this.insertVariants(trx, productId, variants);
+    }
+
+    // MULTI VARIANT
+    const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDims);
+    const valueIdMap = await this.insertVariantDimensionValues(trx, variantDims, dimensionIdMap);
+    const variantIdMap = await this.insertVariants(trx, productId, variants);
+    await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
+  };
+
+  private insertVariantDimensions = async (trx: Knex.Transaction, productId: number, variantDims: VariantDimsSchema) => {
+    const map = new Map<string, number>();
+
+    for (const dim of variantDims) {
+      const { rows } = await trx.raw<{ rows: { id: number }[] }>(
         `
-        INSERT INTO product_variants (product_id, price, stock, weight, sku, is_primary)
-        VALUES (:product_id, :price, :stock, :weight, :sku, :is_primary)
+        INSERT INTO product_variant_dimensions (product_id, name, normalized_name, display_name)
+        VALUES (:product_id, :name, :normalized_name, :display_name)
         RETURNING id
       `,
-        { product_id: productId, price: v.price, stock: v.stock, weight: v.weight, sku: v.sku ?? null, is_primary: v.isPrimary }
+        { product_id: productId, name: dim.name, normalized_name: normalizeName(dim.name), display_name: displayName(dim.name) }
       );
 
-      const variantRow = variantRows[0];
-      if (!variantRow) {
-        throw new Error("Failed to insert product variant");
+      if (!rows[0]) {
+        throw new Error("Failed to insert product_variant_dimensions");
       }
 
-      const variantId = variantRow.id;
-      if (v.options?.length) {
-        for (const opt of v.options) {
-          await trx.raw(
-            `
-            INSERT INTO product_variant_options (product_variant_id, name, value)
-            VALUES (:variant_id, :name, :value)
-          `,
-            {
-              variant_id: variantId,
-              name: opt.name,
-              value: opt.value
-            }
-          );
+      map.set(String(dim.id), rows[0].id);
+    }
+
+    return map;
+  };
+
+  private insertVariantDimensionValues = async (trx: Knex.Transaction, variantDims: VariantDimsSchema, dimensionIdMap: IdMap) => {
+    const map = new Map<string, number>();
+
+    for (const dim of variantDims) {
+      const dbDimensionId = dimensionIdMap.get(String(dim.id));
+
+      if (!dbDimensionId) {
+        throw AppError.internal(`Unknown variant dimension id: ${dim.id}`);
+      }
+
+      for (const opt of dim.options) {
+        const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+          `
+          INSERT INTO product_variant_dimension_values
+            (dimension_id, value, normalized_value, display_value)
+          VALUES
+            (:dimension_id, :value, :normalized_value, :display_value)
+          RETURNING id
+        `,
+          {
+            dimension_id: dbDimensionId,
+            value: opt.value,
+            normalized_value: normalizeValue(opt.value),
+            display_value: displayValue(opt.value)
+          }
+        );
+
+        if (!rows[0]) {
+          throw AppError.badRequest("Failed to insert product_variant_dimension_values");
         }
+
+        // FE optionId → DB valueId
+        map.set(String(opt.id), rows[0].id);
+      }
+    }
+
+    return map;
+  };
+
+  private insertVariants = async (trx: Knex.Transaction, productId: number, variants: VariantSchema) => {
+    const map = new Map<string, number>();
+
+    for (const variant of variants) {
+      const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+        `
+        INSERT INTO product_variants
+          (product_id, price, stock, weight, sku, is_primary)
+        VALUES
+          (:product_id, :price, :stock, :weight, :sku, :is_primary)
+        RETURNING id
+      `,
+        {
+          product_id: productId,
+          price: variant.price,
+          stock: variant.stock,
+          weight: variant.weight,
+          sku: variant.sku ?? null,
+          is_primary: variant.isPrimary
+        }
+      );
+
+      if (!rows[0]) {
+        throw AppError.badRequest("Failed to insert product_variants");
+      }
+
+      map.set(String(variant.id), rows[0].id);
+    }
+
+    return map;
+  };
+
+  private insertVariantOptionValues = async (
+    trx: Knex.Transaction,
+    variants: VariantSchema,
+    variantIdMap: IdMap,
+    dimensionIdMap: IdMap,
+    valueIdMap: IdMap
+  ) => {
+    for (const variant of variants) {
+      const dbVariantId = variantIdMap.get(String(variant.id));
+      if (!dbVariantId) {
+        throw AppError.internal(`Unknown variant id: ${variant.id}`);
+      }
+
+      for (const opt of variant.options) {
+        const dbDimensionId = dimensionIdMap.get(String(opt.dimensionId));
+
+        if (!dbDimensionId) {
+          throw AppError.internal(`Unknown variant dimension id: ${opt.dimensionId}`);
+        }
+
+        const dbValueId = valueIdMap.get(String(opt.optionId));
+
+        if (!dbValueId) {
+          throw AppError.internal(`Unknown variant option id: ${opt.optionId}`);
+        }
+
+        await trx.raw(
+          `
+          INSERT INTO product_variant_option_values (variant_id, dimension_id, value_id)
+          VALUES (:variant_id, :dimension_id, :value_id)
+        `,
+          { variant_id: dbVariantId, dimension_id: dbDimensionId, value_id: dbValueId }
+        );
       }
     }
   };
@@ -65,7 +176,7 @@ export class ProductRepo {
       FROM products
       WHERE id = :id
     `,
-      { id: id }
+      { id }
     );
 
     const product = productRows[0];
@@ -73,31 +184,46 @@ export class ProductRepo {
       throw AppError.notFound("Product not found");
     }
 
-    const { rows: variantRows } = await db.raw<{ rows: VariantDetailRow[] }>(
+    const { rows: variantRows } = await db.raw<{ rows: VariantRow[] }>(
       `
       SELECT id, product_id, price, stock, weight, sku, is_primary
       FROM product_variants
       WHERE product_id = :id
-      ORDER BY is_primary, id ASC
     `,
       { id }
     );
 
-    if (variantRows.length === 0) {
-      throw AppError.internal("Invariant broken: product has no variants");
-    }
-
     const variantIds = variantRows.map((v) => v.id);
 
-    const { rows: optionRows } = await db.raw<{ rows: VariantOptionRow[] }>(
+    const { rows: dimensionRows } = await db.raw<{ rows: VariantDimensionRow[] }>(
       `
-      SELECT id, product_variant_id, name, value
-      FROM product_variant_options
-      WHERE product_variant_id = ANY(:variant_ids)
+      SELECT id, product_id, name, normalized_name, display_name
+      FROM product_variant_dimensions
+      WHERE product_id = :id
     `,
-      { variant_ids: variantIds }
+      { id }
     );
 
-    return mapProductDetail(product, variantRows, optionRows);
+    const dimensionIds = dimensionRows.map((d) => d.id);
+
+    const { rows: dimensionValueRows } = await db.raw<{ rows: VariantDimensionValueRow[] }>(
+      `
+      SELECT id, dimension_id, value, normalized_value, display_value
+      FROM product_variant_dimension_values
+      WHERE dimension_id = ANY(:dimensionIds)
+    `,
+      { dimensionIds }
+    );
+
+    const { rows: optionValueRows } = await db.raw<{ rows: VariantOptionValueRow[] }>(
+      `
+      SELECT id, variant_id, dimension_id, value_id
+      FROM product_variant_option_values
+      WHERE variant_id = ANY(:variantIds)
+    `,
+      { variantIds }
+    );
+
+    return mapProductDetail(product, variantRows, dimensionRows, dimensionValueRows, optionValueRows);
   };
 }

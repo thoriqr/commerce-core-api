@@ -1,16 +1,15 @@
 import { ProductStatus } from "./product.types";
 
 export interface ProductVariantDTO {
-  variantId: number;
+  id: string;
   price: number;
   stock: number;
   weight: number;
   sku: string | null;
   isPrimary: boolean;
   options: {
-    optionId: number;
-    name: string;
-    value: string;
+    dimensionId: string;
+    optionId: string;
   }[];
 }
 
@@ -21,5 +20,13 @@ export interface ProductDetailDTO {
   description: string;
   isVariant: boolean;
   status: ProductStatus;
+  variantDimension: {
+    id: string;
+    name: string;
+    options: {
+      id: string;
+      value: string;
+    }[];
+  }[];
   variants: ProductVariantDTO[];
 }

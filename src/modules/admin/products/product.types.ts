@@ -22,7 +22,7 @@ export type ProductDetailRow = {
   status: ProductStatus;
 };
 
-export type VariantDetailRow = {
+export type VariantRow = {
   id: number;
   product_id: number;
   price: number;
@@ -32,9 +32,27 @@ export type VariantDetailRow = {
   is_primary: boolean;
 };
 
-export type VariantOptionRow = {
+export type VariantDimensionRow = {
   id: number;
-  product_variant_id: number;
+  product_id: number;
   name: string;
-  value: string;
+  normalized_name: string;
+  display_name: string;
 };
+
+export type VariantDimensionValueRow = {
+  id: number;
+  dimension_id: number;
+  value: string;
+  normalized_value: string;
+  display_value: string;
+};
+
+export type VariantOptionValueRow = {
+  id: number;
+  variant_id: number;
+  dimension_id: number;
+  value_id: number;
+};
+
+export type IdMap = Map<string, number>;

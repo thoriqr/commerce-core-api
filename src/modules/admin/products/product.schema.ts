@@ -10,7 +10,7 @@ export const VARIANT_LIMITS = {
   MAX_TOTAL_VARIANTS: 100
 } as const;
 
-const idSchema = z.union([z.coerce.number().positive(), z.string().min(1)]);
+const idSchema = z.string().min(1);
 
 const variantDimension = z
   .array(
@@ -20,7 +20,7 @@ const variantDimension = z
       options: z
         .array(
           z.object({
-            id: z.string(),
+            id: idSchema,
             value: z.string().trim().min(1)
           })
         )
@@ -64,6 +64,13 @@ export const createProduct = z
     const variants = data.variants;
     const dimIds = dims.map((d) => d.id);
 
+    if (variants.length === 1 && dims.length > 0) {
+      ctx.addIssue({
+        path: ["variantDimensions"],
+        message: "variantDimensions are not allowed when only one variant exists",
+        code: "custom"
+      });
+    }
     // VARIANT PRODUCT MUST HAVE DIMENSIONS
     if (variants.length > 1 && dims.length === 0) {
       ctx.addIssue({
@@ -85,7 +92,7 @@ export const createProduct = z
 
     // DUPLICATE DIM ID VARIANTS
     variants.forEach((variant, vIdx) => {
-      const dimIdMap = new Map<string | number, number[]>();
+      const dimIdMap = new Map<string, number[]>();
 
       variant.options.forEach((opt, optIdx) => {
         const key = opt.dimensionId;
@@ -161,3 +168,5 @@ export const productIdParams = z.object({
 });
 
 export type CreateProductSchema = z.infer<typeof createProduct>;
+export type VariantSchema = z.infer<typeof variants>;
+export type VariantDimsSchema = z.infer<typeof variantDimension>;
