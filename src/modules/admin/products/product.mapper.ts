@@ -1,5 +1,5 @@
-import { ProductDetailDTO, ProductVariantDTO } from "./product.dto";
-import { ProductDetailRow, VariantDimensionRow, VariantDimensionValueRow, VariantOptionValueRow, VariantRow } from "./product.types";
+import { ProductDetailDTO, ProductListDTO, ProductVariantDTO } from "./product.dto";
+import { ProductDetailRow, ProductListRow, VariantDimensionRow, VariantDimensionValueRow, VariantOptionValueRow, VariantRow } from "./product.types";
 
 export function mapProductDetail(
   productRow: ProductDetailRow,
@@ -12,7 +12,6 @@ export function mapProductDetail(
     return {
       productId: String(productRow.id),
       name: productRow.name,
-      slug: productRow.slug,
       description: productRow.description,
       isVariant: productRow.is_variant,
       status: productRow.status,
@@ -66,7 +65,6 @@ export function mapProductDetail(
   return {
     productId: String(productRow.id),
     name: productRow.name,
-    slug: productRow.slug,
     description: productRow.description,
     isVariant: productRow.is_variant,
     status: productRow.status,
@@ -81,4 +79,20 @@ export function mapProductDetail(
       options: optValMap.get(String(v.id)) ?? []
     }))
   };
+}
+
+export function mapProductList(rows: ProductListRow[]): ProductListDTO[] {
+  return rows.map((row) => ({
+    productId: row.id,
+    name: row.name,
+    slug: row.slug,
+    minPrice: row.min_price,
+    maxPrice: row.max_price,
+    totalStock: row.total_stock,
+    sku: row.representative_sku ?? "-",
+    status: row.status,
+    isVariant: row.is_variant,
+    variantCount: row.variant_count,
+    createdAt: row.created_at
+  }));
 }

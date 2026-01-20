@@ -16,7 +16,6 @@ export type ProductRow = {
 export type ProductDetailRow = {
   id: number;
   name: string;
-  slug: string;
   description: string;
   is_variant: boolean;
   status: ProductStatus;
@@ -53,6 +52,21 @@ export type VariantOptionValueRow = {
   variant_id: number;
   dimension_id: number;
   value_id: number;
+};
+
+// GET ALL
+export type ProductListRow = {
+  id: number;
+  name: string;
+  slug: string;
+  is_variant: boolean;
+  status: ProductStatus;
+  total_stock: number;
+  variant_count: number;
+  min_price: number;
+  max_price: number;
+  representative_sku: string | null;
+  created_at: Date;
 };
 
 export type IdMap = Map<string, number>;

@@ -4,13 +4,14 @@ import { AppError } from "../../../errors/app-error";
 import {
   IdMap,
   ProductDetailRow,
+  ProductListRow,
   ProductRow,
   VariantDimensionRow,
   VariantDimensionValueRow,
   VariantOptionValueRow,
   VariantRow
 } from "./product.types";
-import { mapProductDetail } from "./product.mapper";
+import { mapProductDetail, mapProductList } from "./product.mapper";
 import { db } from "../../../infra/db/knex";
 import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
 
@@ -40,6 +41,7 @@ export class ProductRepo {
         p.slug,
         p.is_variant,
         p.status,
+        p.created_at,
         COALESCE(SUM(pv.stock), 0) AS total_stock,
         COUNT(pv.id) AS variant_count,
         MIN(pv.price) AS min_price,
@@ -57,9 +59,9 @@ export class ProductRepo {
       LIMIT ? OFFSET ?
     `;
 
-    const { rows } = await db.raw(sql, bindings);
+    const { rows } = await db.raw<{ rows: ProductListRow[] }>(sql, bindings);
 
-    return rows;
+    return mapProductList(rows);
   };
 
   getCount = async (qParams: ProductQueryParamsSchema) => {
@@ -86,29 +88,10 @@ export class ProductRepo {
     return row.total;
   };
 
-  getBaseById = async (id: number, trx?: Knex.Transaction) => {
-    const executor = trx ?? db;
-
-    const { rows } = await executor.raw<{ rows: ProductRow[] }>(
-      `
-      SELECT * FROM products
-      WHERE id = :id 
-    `,
-      { id }
-    );
-
-    const product = rows[0];
-    if (!product) {
-      throw AppError.notFound("Product not found");
-    }
-
-    return product;
-  };
-
   getDetailById = async (id: number) => {
     const { rows: productRows } = await db.raw<{ rows: ProductDetailRow[] }>(
       `
-      SELECT id, name, slug, description, is_variant, status
+      SELECT id, name, description, is_variant, status
       FROM products
       WHERE id = :id
     `,
@@ -228,6 +211,25 @@ export class ProductRepo {
     const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
     const variantIdMap = await this.insertVariants(trx, productId, variants);
     await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
+  };
+
+  findBaseById = async (id: number, trx?: Knex.Transaction) => {
+    const executor = trx ?? db;
+
+    const { rows } = await executor.raw<{ rows: ProductRow[] }>(
+      `
+      SELECT * FROM products
+      WHERE id = :id 
+    `,
+      { id }
+    );
+
+    const product = rows[0];
+    if (!product) {
+      throw AppError.notFound("Product not found");
+    }
+
+    return product;
   };
 
   private buildProductFilter(qParams: ProductQueryParamsSchema) {

@@ -1,5 +1,10 @@
 import knex from "knex";
 import { env } from "../../config/env";
+import pg from "pg";
+
+pg.types.setTypeParser(pg.types.builtins.INT8, (value: string) => {
+  return parseInt(value);
+});
 
 export const db = knex({
   client: "pg",

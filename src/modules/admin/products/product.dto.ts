@@ -16,7 +16,6 @@ export interface ProductVariantDTO {
 export interface ProductDetailDTO {
   productId: string;
   name: string;
-  slug: string;
   description: string;
   isVariant: boolean;
   status: ProductStatus;
@@ -29,4 +28,18 @@ export interface ProductDetailDTO {
     }[];
   }[];
   variants: ProductVariantDTO[];
+}
+
+export interface ProductListDTO {
+  productId: number;
+  name: string;
+  slug: string;
+  isVariant: boolean;
+  status: ProductStatus;
+  totalStock: number;
+  variantCount: number;
+  minPrice: number;
+  maxPrice: number;
+  sku: string;
+  createdAt: Date;
 }

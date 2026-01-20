@@ -49,7 +49,7 @@ export class ProductService {
 
     return this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
-        const product = await this.repo.getBaseById(id, trx);
+        const product = await this.repo.findBaseById(id, trx);
 
         const finalSlug = input.name === product.name ? product.slug : await generateUniqueSlug(trx, input.name);
 

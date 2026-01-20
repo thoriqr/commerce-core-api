@@ -51,7 +51,7 @@ const variants = z
 
 export const productUpsertSchema = z
   .object({
-    name: z.coerce.string(),
+    name: z.coerce.string().min(1, { error: "Product name min 2 chars" }),
     description: z.coerce.string(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
     isVariant: z.boolean().optional(),
