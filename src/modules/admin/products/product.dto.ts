@@ -5,7 +5,7 @@ export interface ProductVariantDTO {
   price: number;
   stock: number;
   weight: number;
-  sku: string | null;
+  sku: string;
   isPrimary: boolean;
   options: {
     dimensionId: string;
@@ -14,7 +14,7 @@ export interface ProductVariantDTO {
 }
 
 export interface ProductDetailDTO {
-  productId: number;
+  productId: string;
   name: string;
   slug: string;
   description: string;

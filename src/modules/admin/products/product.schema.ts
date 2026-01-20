@@ -36,7 +36,7 @@ const variants = z
       price: z.coerce.number().int().positive(),
       stock: z.coerce.number().int().positive(),
       weight: z.coerce.number().positive(),
-      sku: z.string().optional(),
+      sku: z.string(),
       isPrimary: z.boolean(),
       options: z.array(
         z.object({
@@ -49,10 +49,9 @@ const variants = z
   .min(1)
   .max(VARIANT_LIMITS.MAX_TOTAL_VARIANTS);
 
-export const createProduct = z
+export const productUpsertSchema = z
   .object({
     name: z.coerce.string(),
-    slug: z.coerce.string(),
     description: z.coerce.string(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
     isVariant: z.boolean().optional(),
@@ -167,6 +166,20 @@ export const productIdParams = z.object({
   productId: z.coerce.number()
 });
 
-export type CreateProductSchema = z.infer<typeof createProduct>;
+export const productQueryParams = z.object({
+  q: z.string().trim().min(1).optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  isVariant: z.coerce.boolean().optional(),
+  stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),
+  priceMin: z.coerce.number().min(0).optional(),
+  priceMax: z.coerce.number().min(0).optional(),
+  sortBy: z.enum(["created_at", "name", "price", "stock"]).default("created_at"),
+  sortDir: z.enum(["asc", "desc"]).default("desc")
+});
+
+export type ProductUpsertSchema = z.infer<typeof productUpsertSchema>;
+export type ProductQueryParamsSchema = z.infer<typeof productQueryParams>;
 export type VariantSchema = z.infer<typeof variants>;
 export type VariantDimsSchema = z.infer<typeof variantDimension>;

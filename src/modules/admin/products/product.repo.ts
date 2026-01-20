@@ -1,14 +1,171 @@
 import { Knex } from "knex";
-import { CreateProductSchema, VariantDimsSchema, VariantSchema } from "./product.schema";
+import { ProductQueryParamsSchema, ProductUpsertSchema, VariantDimsSchema, VariantSchema } from "./product.schema";
 import { AppError } from "../../../errors/app-error";
-import { IdMap, ProductDetailRow, VariantDimensionRow, VariantDimensionValueRow, VariantOptionValueRow, VariantRow } from "./product.types";
+import {
+  IdMap,
+  ProductDetailRow,
+  ProductRow,
+  VariantDimensionRow,
+  VariantDimensionValueRow,
+  VariantOptionValueRow,
+  VariantRow
+} from "./product.types";
 import { mapProductDetail } from "./product.mapper";
 import { db } from "../../../infra/db/knex";
-import { displayName, displayValue, normalizeName, normalizeValue } from "./product.normalizer";
+import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
 
 export class ProductRepo {
-  create = async (trx: Knex.Transaction, input: CreateProductSchema, isVariant: boolean) => {
-    const { name, slug, description, status, variants } = input;
+  getAll = async (qParams: ProductQueryParamsSchema) => {
+    const { page, limit, sortBy, sortDir } = qParams;
+
+    const { where, having, bindings } = this.buildProductFilter(qParams);
+
+    const SORT_MAP: Record<string, string> = {
+      created_at: "p.created_at",
+      name: "p.name",
+      price: "min_price",
+      stock: "total_stock"
+    };
+
+    const sortColumn = SORT_MAP[sortBy] ?? SORT_MAP.created_at;
+    const sortDirection = sortDir === "asc" ? "ASC" : "DESC";
+
+    const offset = (page - 1) * limit;
+    bindings.push(limit, offset);
+
+    const sql = `
+      SELECT
+        p.id, 
+        p.name,
+        p.slug,
+        p.is_variant,
+        p.status,
+        COALESCE(SUM(pv.stock), 0) AS total_stock,
+        COUNT(pv.id) AS variant_count,
+        MIN(pv.price) AS min_price,
+        MAX(pv.price) AS max_price,
+        COALESCE(
+          MAX(CASE WHEN pv.is_primary THEN pv.sku END),
+          MIN(pv.sku)
+        ) AS representative_sku
+      FROM products p
+      JOIN product_variants pv ON pv.product_id = p.id
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      GROUP BY p.id
+      ${having.length ? `HAVING ${having.join(" AND ")}` : ""}
+      ORDER BY ${sortColumn} ${sortDirection}
+      LIMIT ? OFFSET ?
+    `;
+
+    const { rows } = await db.raw(sql, bindings);
+
+    return rows;
+  };
+
+  getCount = async (qParams: ProductQueryParamsSchema) => {
+    const { where, having, bindings } = this.buildProductFilter(qParams);
+
+    const sql = `
+      SELECT COUNT(*)::int AS total FROM (
+        SELECT p.id
+        FROM products p
+        JOIN product_variants pv ON pv.product_id = p.id
+        ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+        GROUP BY p.id
+        ${having.length ? `HAVING ${having.join(" AND ")}` : ""}
+      ) t
+    `;
+
+    const { rows } = await db.raw<{ rows: { total: number }[] }>(sql, bindings);
+
+    const row = rows[0];
+    if (!row) {
+      throw AppError.internal("Cannot get total products");
+    }
+
+    return row.total;
+  };
+
+  getBaseById = async (id: number, trx?: Knex.Transaction) => {
+    const executor = trx ?? db;
+
+    const { rows } = await executor.raw<{ rows: ProductRow[] }>(
+      `
+      SELECT * FROM products
+      WHERE id = :id 
+    `,
+      { id }
+    );
+
+    const product = rows[0];
+    if (!product) {
+      throw AppError.notFound("Product not found");
+    }
+
+    return product;
+  };
+
+  getDetailById = async (id: number) => {
+    const { rows: productRows } = await db.raw<{ rows: ProductDetailRow[] }>(
+      `
+      SELECT id, name, slug, description, is_variant, status
+      FROM products
+      WHERE id = :id
+    `,
+      { id }
+    );
+
+    const product = productRows[0];
+    if (!product) {
+      throw AppError.notFound("Product not found");
+    }
+
+    const { rows: variantRows } = await db.raw<{ rows: VariantRow[] }>(
+      `
+      SELECT id, product_id, price, stock, weight, sku, is_primary
+      FROM product_variants
+      WHERE product_id = :id
+    `,
+      { id }
+    );
+
+    const variantIds = variantRows.map((v) => v.id);
+
+    const { rows: dimensionRows } = await db.raw<{ rows: VariantDimensionRow[] }>(
+      `
+      SELECT id, product_id, name, normalized_name, display_name
+      FROM product_variant_dimensions
+      WHERE product_id = :id
+    `,
+      { id }
+    );
+
+    const dimensionIds = dimensionRows.map((d) => d.id);
+
+    const { rows: dimensionValueRows } = await db.raw<{ rows: VariantDimensionValueRow[] }>(
+      `
+      SELECT id, dimension_id, value, normalized_value, display_value
+      FROM product_variant_dimension_values
+      WHERE dimension_id = ANY(:dimensionIds)
+    `,
+      { dimensionIds }
+    );
+
+    const { rows: optionValueRows } = await db.raw<{ rows: VariantOptionValueRow[] }>(
+      `
+      SELECT id, variant_id, dimension_id, value_id
+      FROM product_variant_option_values
+      WHERE variant_id = ANY(:variantIds)
+    `,
+      { variantIds }
+    );
+
+    return mapProductDetail(product, variantRows, dimensionRows, dimensionValueRows, optionValueRows);
+  };
+
+  create = async (trx: Knex.Transaction, input: ProductUpsertSchema, isVariant: boolean, slug: string) => {
+    const { name, description, status, variants, variantDimension } = input;
+
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       INSERT INTO products (name, slug, description, is_variant, status)
@@ -24,19 +181,110 @@ export class ProductRepo {
     }
 
     const productId = row.id;
-    const variantDims = input.variantDimension;
 
     // SINGLE PRODUCT
     if (variants.length === 1) {
       await this.insertVariants(trx, productId, variants);
+      return;
     }
 
     // MULTI VARIANT
-    const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDims);
-    const valueIdMap = await this.insertVariantDimensionValues(trx, variantDims, dimensionIdMap);
+    const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDimension);
+    const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
     const variantIdMap = await this.insertVariants(trx, productId, variants);
     await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
   };
+
+  update = async (trx: Knex.Transaction, id: number, input: ProductUpsertSchema, isVariant: boolean, slug: string) => {
+    const { name, description, status, variants, variantDimension } = input;
+
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+      UPDATE products
+        SET name = :name, description = :description, status = :status, is_variant = :is_variant, slug = :slug, updated_at = now()
+      WHERE id = :id
+      RETURNING id
+    `,
+      { name, description, status, is_variant: isVariant, slug, id }
+    );
+
+    const row = rows[0];
+    if (!row) {
+      throw new Error("Update failed: product not found");
+    }
+
+    const productId = row.id;
+    await trx.raw(`DELETE FROM product_variants WHERE product_id = :productId`, { productId });
+    await trx.raw(`DELETE FROM product_variant_dimensions WHERE product_id = :productId`, { productId });
+
+    // SINGLE PRODUCT
+    if (variants.length === 1) {
+      await this.insertVariants(trx, productId, variants);
+      return;
+    }
+
+    // MULTI VARIANT
+    const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDimension);
+    const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
+    const variantIdMap = await this.insertVariants(trx, productId, variants);
+    await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
+  };
+
+  private buildProductFilter(qParams: ProductQueryParamsSchema) {
+    const { q, isVariant, status, stock, priceMin, priceMax } = qParams;
+
+    const where: string[] = [];
+    const having: string[] = [];
+    const bindings: any[] = [];
+
+    // WHERE
+    if (status) {
+      where.push(`p.status = ?`);
+      bindings.push(status);
+    }
+
+    if (typeof isVariant === "boolean") {
+      where.push(`p.is_variant = ?`);
+      bindings.push(isVariant);
+    }
+
+    if (q) {
+      where.push(`
+      (
+        p.name ILIKE ?
+        OR p.slug ILIKE ?
+        OR pv.sku ILIKE ?
+      )
+    `);
+      bindings.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    }
+
+    // HAVING
+    if (stock === "IN_STOCK") {
+      having.push(`SUM(pv.stock) > 0`);
+    }
+
+    if (stock === "OUT_OF_STOCK") {
+      having.push(`SUM(pv.stock) = 0`);
+    }
+
+    if (stock === "LOW_STOCK") {
+      having.push(`SUM(pv.stock) < ?`);
+      bindings.push(5);
+    }
+
+    if (priceMin != null) {
+      having.push(`MIN(pv.price) >= ?`);
+      bindings.push(priceMin);
+    }
+
+    if (priceMax != null) {
+      having.push(`MAX(pv.price) <= ?`);
+      bindings.push(priceMax);
+    }
+
+    return { where, having, bindings };
+  }
 
   private insertVariantDimensions = async (trx: Knex.Transaction, productId: number, variantDims: VariantDimsSchema) => {
     const map = new Map<string, number>();
@@ -117,7 +365,7 @@ export class ProductRepo {
           price: variant.price,
           stock: variant.stock,
           weight: variant.weight,
-          sku: variant.sku ?? null,
+          sku: normalizeSku(variant.sku),
           is_primary: variant.isPrimary
         }
       );
@@ -167,63 +415,5 @@ export class ProductRepo {
         );
       }
     }
-  };
-
-  getById = async (id: number) => {
-    const { rows: productRows } = await db.raw<{ rows: ProductDetailRow[] }>(
-      `
-      SELECT id, name, slug, description, is_variant, status
-      FROM products
-      WHERE id = :id
-    `,
-      { id }
-    );
-
-    const product = productRows[0];
-    if (!product) {
-      throw AppError.notFound("Product not found");
-    }
-
-    const { rows: variantRows } = await db.raw<{ rows: VariantRow[] }>(
-      `
-      SELECT id, product_id, price, stock, weight, sku, is_primary
-      FROM product_variants
-      WHERE product_id = :id
-    `,
-      { id }
-    );
-
-    const variantIds = variantRows.map((v) => v.id);
-
-    const { rows: dimensionRows } = await db.raw<{ rows: VariantDimensionRow[] }>(
-      `
-      SELECT id, product_id, name, normalized_name, display_name
-      FROM product_variant_dimensions
-      WHERE product_id = :id
-    `,
-      { id }
-    );
-
-    const dimensionIds = dimensionRows.map((d) => d.id);
-
-    const { rows: dimensionValueRows } = await db.raw<{ rows: VariantDimensionValueRow[] }>(
-      `
-      SELECT id, dimension_id, value, normalized_value, display_value
-      FROM product_variant_dimension_values
-      WHERE dimension_id = ANY(:dimensionIds)
-    `,
-      { dimensionIds }
-    );
-
-    const { rows: optionValueRows } = await db.raw<{ rows: VariantOptionValueRow[] }>(
-      `
-      SELECT id, variant_id, dimension_id, value_id
-      FROM product_variant_option_values
-      WHERE variant_id = ANY(:variantIds)
-    `,
-      { variantIds }
-    );
-
-    return mapProductDetail(product, variantRows, dimensionRows, dimensionValueRows, optionValueRows);
   };
 }

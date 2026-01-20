@@ -14,6 +14,8 @@ const service = new ProductService(tm, repo);
 const controller = new ProductController(service);
 
 router.post("/", controller.create);
+router.get("/", controller.getAll);
 router.get("/:productId", controller.getById);
+router.put("/:productId", controller.update);
 
 export default router;
