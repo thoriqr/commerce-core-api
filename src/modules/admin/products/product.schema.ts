@@ -12,42 +12,85 @@ export const VARIANT_LIMITS = {
 
 const idSchema = z.string().min(1);
 
-const variantDimension = z
-  .array(
-    z.object({
-      id: idSchema,
-      name: z.string().trim().min(1),
-      options: z
-        .array(
-          z.object({
-            id: idSchema,
-            value: z.string().trim().min(1)
-          })
-        )
-        .max(VARIANT_LIMITS.MAX_OPTIONS_PER_DIMENSION)
-    })
-  )
-  .max(VARIANT_LIMITS.MAX_DIMENSIONS);
+const imageSchema = z
+  .object({
+    id: z.string().optional(), // product_variant_images.id
+    originalFileName: z.string().optional(),
+    remove: z.boolean().optional()
+  })
+  .superRefine((img, ctx) => {
+    if (img.remove) {
+      if (img.id || img.originalFileName) {
+        ctx.addIssue({
+          code: "custom",
+          message: "remove=true must not include id or originalFileName"
+        });
+      }
+      return;
+    }
 
-const variants = z
-  .array(
-    z.object({
-      id: idSchema,
-      price: z.coerce.number().int().positive(),
-      stock: z.coerce.number().int().positive(),
-      weight: z.coerce.number().positive(),
-      sku: z.string(),
-      isPrimary: z.boolean(),
-      options: z.array(
+    if (!img.id && img.originalFileName) return; // create
+    if (img.id && !img.originalFileName) return; // reuse
+    if (img.id && img.originalFileName) return; // replace
+
+    ctx.addIssue({
+      code: "custom",
+      message: "Invalid image payload. Use one of: {id}, {originalFileName}, {id + originalFileName}, or {remove:true}"
+    });
+  });
+
+const variantDimensionSchema = z
+  .object({
+    id: idSchema,
+    name: z.string().trim().min(1),
+    options: z
+      .array(
         z.object({
-          dimensionId: idSchema,
-          optionId: idSchema
+          id: idSchema,
+          value: z.string().trim().min(1),
+          image: imageSchema.optional()
         })
       )
+      .max(VARIANT_LIMITS.MAX_OPTIONS_PER_DIMENSION)
+  })
+  .superRefine((dim, ctx) => {
+    const optMap = new Map<string, number[]>();
+
+    dim.options.forEach((opt, optIdx) => {
+      const key = opt.value.toLowerCase();
+
+      const arr = optMap.get(key) ?? [];
+      arr.push(optIdx);
+      optMap.set(key, arr);
+    });
+
+    for (const [, indices] of optMap) {
+      if (indices.length > 1) {
+        indices.forEach((i) => {
+          ctx.addIssue({
+            path: ["options", i, "value"],
+            message: "Option value must be unique within this dimension",
+            code: "custom"
+          });
+        });
+      }
+    }
+  });
+
+const variantSchema = z.object({
+  id: idSchema,
+  price: z.coerce.number().int().positive(),
+  stock: z.coerce.number().int().positive(),
+  weight: z.coerce.number().positive(),
+  sku: z.string(),
+  isPrimary: z.boolean(),
+  options: z.array(
+    z.object({
+      dimensionId: idSchema,
+      optionId: idSchema
     })
   )
-  .min(1)
-  .max(VARIANT_LIMITS.MAX_TOTAL_VARIANTS);
+});
 
 export const productUpsertSchema = z
   .object({
@@ -55,8 +98,8 @@ export const productUpsertSchema = z
     description: z.coerce.string(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
     isVariant: z.boolean().optional(),
-    variants,
-    variantDimension
+    variants: z.array(variantSchema).min(1).max(VARIANT_LIMITS.MAX_TOTAL_VARIANTS),
+    variantDimension: z.array(variantDimensionSchema).max(VARIANT_LIMITS.MAX_DIMENSIONS)
   })
   .superRefine((data, ctx) => {
     const dims = data.variantDimension;
@@ -134,32 +177,6 @@ export const productUpsertSchema = z
         });
       }
     }
-
-    // DUPLICATE OPTION VALUE PER DIMENSION
-
-    dims.forEach((dim, dimIdx) => {
-      const optMap = new Map<string, number[]>();
-
-      dim.options.forEach((opt, optIdx) => {
-        const key = opt.value.toLowerCase();
-
-        const arr = optMap.get(key) ?? [];
-        arr.push(optIdx);
-        optMap.set(key, arr);
-      });
-
-      for (const [, indices] of optMap) {
-        if (indices.length > 1) {
-          indices.forEach((i) => {
-            ctx.addIssue({
-              path: ["variantDimension", dimIdx, "options", i, "value"],
-              message: "Option value must be unique within this dimension",
-              code: "custom"
-            });
-          });
-        }
-      }
-    });
   });
 
 export const productIdParams = z.object({
@@ -181,5 +198,5 @@ export const productQueryParams = z.object({
 
 export type ProductUpsertSchema = z.infer<typeof productUpsertSchema>;
 export type ProductQueryParamsSchema = z.infer<typeof productQueryParams>;
-export type VariantSchema = z.infer<typeof variants>;
-export type VariantDimsSchema = z.infer<typeof variantDimension>;
+export type VariantSchema = z.infer<typeof variantSchema>;
+export type VariantDimensionSchema = z.infer<typeof variantDimensionSchema>;

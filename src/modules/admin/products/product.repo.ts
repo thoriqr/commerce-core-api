@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import { ProductQueryParamsSchema, ProductUpsertSchema, VariantDimsSchema, VariantSchema } from "./product.schema";
+import { ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
 import { AppError } from "../../../errors/app-error";
 import {
   IdMap,
@@ -288,7 +288,7 @@ export class ProductRepo {
     return { where, having, bindings };
   }
 
-  private insertVariantDimensions = async (trx: Knex.Transaction, productId: number, variantDims: VariantDimsSchema) => {
+  private insertVariantDimensions = async (trx: Knex.Transaction, productId: number, variantDims: VariantDimensionSchema[]) => {
     const map = new Map<string, number>();
 
     for (const dim of variantDims) {
@@ -311,7 +311,7 @@ export class ProductRepo {
     return map;
   };
 
-  private insertVariantDimensionValues = async (trx: Knex.Transaction, variantDims: VariantDimsSchema, dimensionIdMap: IdMap) => {
+  private insertVariantDimensionValues = async (trx: Knex.Transaction, variantDims: VariantDimensionSchema[], dimensionIdMap: IdMap) => {
     const map = new Map<string, number>();
 
     for (const dim of variantDims) {
@@ -350,7 +350,7 @@ export class ProductRepo {
     return map;
   };
 
-  private insertVariants = async (trx: Knex.Transaction, productId: number, variants: VariantSchema) => {
+  private insertVariants = async (trx: Knex.Transaction, productId: number, variants: VariantSchema[]) => {
     const map = new Map<string, number>();
 
     for (const variant of variants) {
@@ -384,7 +384,7 @@ export class ProductRepo {
 
   private insertVariantOptionValues = async (
     trx: Knex.Transaction,
-    variants: VariantSchema,
+    variants: VariantSchema[],
     variantIdMap: IdMap,
     dimensionIdMap: IdMap,
     valueIdMap: IdMap

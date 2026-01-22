@@ -1,4 +1,3 @@
-import { Knex } from "knex";
 import { TransactionManager } from "../../../infra/db/transaction-manager";
 import { ProductRepo } from "./product.repo";
 import { ProductQueryParamsSchema, ProductUpsertSchema, VariantSchema } from "./product.schema";
@@ -58,7 +57,7 @@ export class ProductService {
     );
   };
 
-  private validateVariantRules(variants: VariantSchema) {
+  private validateVariantRules(variants: VariantSchema[]) {
     const finalIsVariant = variants.length > 1;
     const primaries = variants.filter((v) => v.isPrimary);
 
