@@ -25,6 +25,12 @@ export interface ProductDetailDTO {
     options: {
       id: string;
       value: string;
+      image:
+        | {
+            id: string;
+            imageKey: string;
+          }
+        | undefined;
     }[];
   }[];
   variants: ProductVariantDTO[];

@@ -39,7 +39,13 @@ export class ProductController {
     const bodyPayload = JSON.parse(req.body.payload);
     const payload = productUpsertSchema.parse(bodyPayload);
 
-    await this.service.update(params.productId, payload);
+    await this.service.update(params.productId, payload, variantImgs);
     sendSuccess(res, 200, { message: "Product updated" });
+  };
+
+  remove = async (req: Request, res: Response) => {
+    const params = productIdParams.parse(req.params);
+    await this.service.remove(params.productId);
+    sendSuccess(res, 200, { message: "Product removed" });
   };
 }

@@ -1,12 +1,21 @@
 import { ProductDetailDTO, ProductListDTO, ProductVariantDTO } from "./product.dto";
-import { ProductDetailRow, ProductListRow, VariantDimensionRow, VariantDimensionValueRow, VariantOptionValueRow, VariantRow } from "./product.types";
+import {
+  ProductDetailRow,
+  ProductListRow,
+  VariantDimensionRow,
+  VariantDimensionValueRow,
+  VariantImageRow,
+  VariantOptionValueRow,
+  VariantRow
+} from "./product.types";
 
 export function mapProductDetail(
   productRow: ProductDetailRow,
   variantRows: VariantRow[],
   dimensionRows: VariantDimensionRow[],
   dimensionValueRows: VariantDimensionValueRow[],
-  optionValueRows: VariantOptionValueRow[]
+  optionValueRows: VariantOptionValueRow[],
+  variantImageRows: VariantImageRow[]
 ): ProductDetailDTO {
   if (variantRows.length === 1) {
     return {
@@ -28,23 +37,42 @@ export function mapProductDetail(
     };
   }
 
-  const valueByDimension = dimensionValueRows.reduce<Record<number, { id: string; value: string }[]>>((acc, value) => {
+  const valueByDimension = dimensionValueRows.reduce<Record<number, { id: string; value: string; normalized_value: string }[]>>((acc, value) => {
     if (!acc[value.dimension_id]) {
       acc[value.dimension_id] = [];
     }
 
     acc[value.dimension_id]?.push({
       id: String(value.id),
-      value: value.value
+      value: value.value,
+      normalized_value: value.normalized_value
     });
 
     return acc;
   }, {});
 
+  const variantImageMap = new Map<string, { id: string; imageKey: string }>();
+  variantImageRows.forEach((row) => {
+    const key = `${row.dimension_key}:${row.value_key}`;
+    variantImageMap.set(key, {
+      id: String(row.id),
+      imageKey: row.image_key
+    });
+  });
+
   const variantDimension = dimensionRows.map((d) => ({
     id: String(d.id),
     name: d.name,
-    options: valueByDimension[d.id] ?? []
+    options: (valueByDimension[d.id] ?? []).map((opt) => {
+      const key = `${d.normalized_name}:${opt.normalized_value}`;
+      const image = variantImageMap.get(key);
+
+      return {
+        id: String(opt.id),
+        value: opt.value,
+        image: image ? { id: image.id, imageKey: image.imageKey } : undefined
+      };
+    })
   }));
 
   const optValMap = new Map<string, Array<{ dimensionId: string; optionId: string }>>();

@@ -69,9 +69,16 @@ export type ProductListRow = {
   created_at: Date;
 };
 
+export type VariantImageRow = {
+  id: number;
+  dimension_key: string;
+  value_key: string;
+  image_key: string;
+};
+
 export type IdMap = Map<string, number>;
 
-export type VariantImagesMap = Map<
+export type VariantImageFilesMap = Map<
   string,
   {
     imageKey: string;

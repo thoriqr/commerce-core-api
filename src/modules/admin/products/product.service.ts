@@ -1,14 +1,15 @@
 import { TransactionManager } from "../../../infra/db/transaction-manager";
 import { ProductRepo } from "./product.repo";
-import { ProductQueryParamsSchema, ProductUpsertSchema, VariantSchema } from "./product.schema";
+import { ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
 import { AppError } from "../../../errors/app-error";
 import { generateUniqueSlug } from "./product.slug";
 import sharp from "sharp";
 import { validateAndMapVariantImages } from "./product.image.validator";
-import { ALLOWED_IMG_FORMAT, ALLOWED_TYPES } from "./product.constants";
-import { VariantImagesMap } from "./product.types";
+import { ALLOWED_IMG_FORMAT } from "./product.constants";
+import { VariantImageFilesMap } from "./product.types";
 import { v4 as uuidv4 } from "uuid";
-import { uploadFile } from "../../../libs/s3-client";
+import { deleteFile, uploadFile } from "../../../libs/s3-client";
+import { logger } from "../../../libs/logger";
 
 export class ProductService {
   constructor(
@@ -40,23 +41,92 @@ export class ProductService {
   create = async (input: ProductUpsertSchema, variantImgs: Express.Multer.File[]) => {
     const finalIsVariant = this.validateVariantRules(input.variants);
 
-    const optionImageMap = validateAndMapVariantImages(input.variantDimension, variantImgs);
-    const variantImagesMap: VariantImagesMap = new Map();
+    let variantImageFilesMap: VariantImageFilesMap = new Map();
+
+    try {
+      variantImageFilesMap = await this.prepareVariantImages(input.variantDimension, variantImgs);
+    } catch (err) {
+      logger.error(err);
+      throw AppError.serviceUnavailable("Failed to process variant images");
+    }
+
+    return this.withSlugRetry(() =>
+      this.tm.transaction(async (trx) => {
+        const slug = await generateUniqueSlug(trx, input.name);
+
+        await this.repo.create(trx, input, finalIsVariant, slug, variantImageFilesMap);
+      })
+    );
+  };
+
+  update = async (id: number, input: ProductUpsertSchema, variantImgs: Express.Multer.File[]) => {
+    const finalIsVariant = this.validateVariantRules(input.variants);
+
+    let variantImageFilesMap: VariantImageFilesMap = new Map();
+
+    try {
+      variantImageFilesMap = await this.prepareVariantImages(input.variantDimension, variantImgs);
+    } catch (err) {
+      logger.error(err);
+      throw AppError.serviceUnavailable("Failed to process variant images");
+    }
+
+    return this.withSlugRetry(() =>
+      this.tm.transaction(async (trx) => {
+        const product = await this.repo.findBaseById(id, trx);
+
+        const finalSlug = input.name === product.name ? product.slug : await generateUniqueSlug(trx, input.name);
+
+        await this.repo.update(trx, id, input, finalIsVariant, finalSlug, variantImageFilesMap);
+      })
+    );
+  };
+
+  remove = async (id: number) => {
+    // 1. DB transaction
+    const { imageIds, imageKeys } = await this.tm.transaction(async (trx) => {
+      return this.repo.remove(trx, id);
+    });
+
+    // 2. infra cleanup (best effort, OUTSIDE transaction)
+    for (const key of imageKeys) {
+      try {
+        await deleteFile(key);
+      } catch (err) {
+        logger.error("Failed to delete product image from storage", { productId: id, imageKey: key, error: err });
+      }
+    }
+
+    // delete images_metadata (best effort)
+    try {
+      await this.repo.removeImagesMetadata(imageIds);
+    } catch (err) {
+      logger.error("Failed to delete images metadata", { productId: id, imageIds, error: err });
+    }
+  };
+
+  private prepareVariantImages = async (variantDimensions: VariantDimensionSchema[], variantImgs: Express.Multer.File[]) => {
+    // 1. structural validation + optionId → file
+    const optionImageMap = validateAndMapVariantImages(variantDimensions, variantImgs);
+
+    if (optionImageMap.size === 0) {
+      return new Map();
+    }
+
+    const result: VariantImageFilesMap = new Map();
 
     for (const [optionId, file] of optionImageMap) {
+      // 2. sharp validation + resize
       const processed = await this.processImage(file);
 
+      // 3. generate key
       const imageKey = `product_variants/${uuidv4()}.webp`;
 
-      // 1. upload dulu
-      try {
-        await uploadFile(processed.buffer, imageKey, processed.mimeType);
-      } catch (err) {
-        throw AppError.serviceUnavailable(`Failed to upload image: ${file.originalname}, ${err}`);
-      }
+      // 4. upload (fail fast)
+      await uploadFile(processed.buffer, imageKey, processed.mimeType);
 
-      // 2. baru simpan info ke map
-      variantImagesMap.set(optionId, {
+      // 5. collect final metadata
+      result.set(optionId, {
         imageKey,
         originalFileName: file.originalname,
         mimeType: processed.mimeType,
@@ -66,27 +136,7 @@ export class ProductService {
       });
     }
 
-    return this.withSlugRetry(() =>
-      this.tm.transaction(async (trx) => {
-        const slug = await generateUniqueSlug(trx, input.name);
-
-        await this.repo.create(trx, input, finalIsVariant, slug, variantImagesMap);
-      })
-    );
-  };
-
-  update = async (id: number, input: ProductUpsertSchema) => {
-    const finalIsVariant = this.validateVariantRules(input.variants);
-
-    return this.withSlugRetry(() =>
-      this.tm.transaction(async (trx) => {
-        const product = await this.repo.findBaseById(id, trx);
-
-        const finalSlug = input.name === product.name ? product.slug : await generateUniqueSlug(trx, input.name);
-
-        await this.repo.update(trx, id, input, finalIsVariant, finalSlug);
-      })
-    );
+    return result;
   };
 
   private processImage = async (file: Express.Multer.File) => {

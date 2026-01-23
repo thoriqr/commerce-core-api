@@ -47,4 +47,6 @@ router.put(
   controller.update
 );
 
+router.delete("/:productId", controller.remove);
+
 export default router;
