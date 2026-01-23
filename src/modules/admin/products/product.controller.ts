@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { sendSuccess } from "../../../utils/send-success";
 import { productIdParams, productQueryParams, productUpsertSchema } from "./product.schema";
 import { ProductService } from "./product.service";
+import { UPLOAD_FILE } from "./product.constants";
 
 export class ProductController {
   constructor(private service: ProductService) {}
@@ -19,14 +20,25 @@ export class ProductController {
   };
 
   create = async (req: Request, res: Response) => {
-    const payload = productUpsertSchema.parse(req.body);
-    await this.service.create(payload);
+    const filesMap = req.files as Record<string, Express.Multer.File[] | undefined>;
+    const productImgs = filesMap[UPLOAD_FILE.PRODUCT_FIELD] ?? [];
+    const variantImgs = filesMap[UPLOAD_FILE.VARIANT_FIELD] ?? [];
+
+    const bodyPayload = JSON.parse(req.body.payload);
+    const payload = productUpsertSchema.parse(bodyPayload);
+    await this.service.create(payload, variantImgs);
     sendSuccess(res, 201, { message: "Product created" });
   };
 
   update = async (req: Request, res: Response) => {
+    const filesMap = req.files as Record<string, Express.Multer.File[] | undefined>;
+    const productImgs = filesMap[UPLOAD_FILE.PRODUCT_FIELD] ?? [];
+    const variantImgs = filesMap[UPLOAD_FILE.VARIANT_FIELD] ?? [];
+
     const params = productIdParams.parse(req.params);
-    const payload = productUpsertSchema.parse(req.body);
+    const bodyPayload = JSON.parse(req.body.payload);
+    const payload = productUpsertSchema.parse(bodyPayload);
+
     await this.service.update(params.productId, payload);
     sendSuccess(res, 200, { message: "Product updated" });
   };

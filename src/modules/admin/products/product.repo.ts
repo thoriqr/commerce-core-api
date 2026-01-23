@@ -8,6 +8,7 @@ import {
   ProductRow,
   VariantDimensionRow,
   VariantDimensionValueRow,
+  VariantImagesMap,
   VariantOptionValueRow,
   VariantRow
 } from "./product.types";
@@ -146,7 +147,7 @@ export class ProductRepo {
     return mapProductDetail(product, variantRows, dimensionRows, dimensionValueRows, optionValueRows);
   };
 
-  create = async (trx: Knex.Transaction, input: ProductUpsertSchema, isVariant: boolean, slug: string) => {
+  create = async (trx: Knex.Transaction, input: ProductUpsertSchema, isVariant: boolean, slug: string, variantImagesMap: VariantImagesMap) => {
     const { name, description, status, variants, variantDimension } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
@@ -165,6 +166,11 @@ export class ProductRepo {
 
     const productId = row.id;
 
+    // guard for single product
+    if (variantImagesMap.size > 0 && variants.length === 1) {
+      throw AppError.internal("Variant images provided for single variant product");
+    }
+
     // SINGLE PRODUCT
     if (variants.length === 1) {
       await this.insertVariants(trx, productId, variants);
@@ -174,7 +180,11 @@ export class ProductRepo {
     // MULTI VARIANT
     const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDimension);
     const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
+
+    await this.insertVariantImages(trx, productId, variantDimension, variantImagesMap);
+
     const variantIdMap = await this.insertVariants(trx, productId, variants);
+
     await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
   };
 
@@ -230,6 +240,85 @@ export class ProductRepo {
     }
 
     return product;
+  };
+
+  private insertVariantImages = async (
+    trx: Knex.Transaction,
+    productId: number,
+    variantDimensions: VariantDimensionSchema[],
+    variantImagesMap: VariantImagesMap
+  ) => {
+    for (const dim of variantDimensions) {
+      for (const opt of dim.options) {
+        const img = variantImagesMap.get(opt.id);
+        if (!img) continue;
+
+        // 1. insert images_metadata
+        const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+          `
+          INSERT INTO images_metadata
+            (image_key, original_file_name, mime_type, file_size, width, height, original_available)
+          VALUES (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+          RETURNING id
+        `,
+          {
+            image_key: img.imageKey,
+            original_file_name: img?.originalFileName,
+            mime_type: img?.mimeType,
+            file_size: img?.size,
+            width: img?.width,
+            height: img?.height
+          }
+        );
+
+        const row = rows[0];
+
+        if (!row) {
+          throw AppError.badRequest("Failed to insert images metadata");
+        }
+
+        const imgMetadataId = row.id;
+
+        // 2. insert product_variant_images
+        const { rows: imgRows } = await trx.raw<{ rows: { id: number }[] }>(
+          `
+          INSERT INTO product_variant_images
+            (product_id, image_id, is_orphan)
+          VALUES
+            (:product_id, :image_id, false)
+          RETURNING id
+        `,
+          {
+            product_id: productId,
+            image_id: imgMetadataId
+          }
+        );
+
+        const imgRow = imgRows[0];
+
+        if (!imgRow) {
+          throw AppError.badRequest("Failed to insert variant images");
+        }
+
+        const variantImageId = imgRow.id;
+
+        // 3. insert signature
+
+        await trx.raw(
+          `
+          INSERT INTO product_variant_image_signatures
+            (variant_image_id, dimension_key, value_key)
+          VALUES
+             (:variant_image_id, :dimension_key, :value_key)
+        `,
+          {
+            variant_image_id: variantImageId,
+            dimension_key: normalizeName(dim.name),
+            value_key: normalizeValue(opt.value)
+          }
+        );
+      }
+    }
   };
 
   private buildProductFilter(qParams: ProductQueryParamsSchema) {

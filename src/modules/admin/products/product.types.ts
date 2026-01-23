@@ -70,3 +70,15 @@ export type ProductListRow = {
 };
 
 export type IdMap = Map<string, number>;
+
+export type VariantImagesMap = Map<
+  string,
+  {
+    imageKey: string;
+    originalFileName: string;
+    mimeType: string;
+    size: number;
+    width: number;
+    height: number;
+  }
+>;

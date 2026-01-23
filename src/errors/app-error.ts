@@ -68,4 +68,11 @@ export class AppError extends Error {
       statusCode: 500
     });
   }
+
+  static serviceUnavailable(message = "Service Unavailable") {
+    return new AppError(message, {
+      code: ERROR_CODE.SERVICE_UNAVAILABLE,
+      statusCode: 503
+    });
+  }
 }

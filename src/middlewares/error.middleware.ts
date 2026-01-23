@@ -4,6 +4,7 @@ import { logger } from "../libs/logger";
 import { AppError } from "../errors/app-error";
 import { PG_ERROR_CODE } from "../constants/pg-error-code";
 import { FieldError } from "../types/api-response.ts";
+import multer from "multer";
 
 function mapZodError(error: ZodError): FieldError[] {
   return error.issues.map((issue) => ({
@@ -33,6 +34,10 @@ export function errorMiddleware(err: any, req: Request, res: Response, _next: Ne
     code = err.code;
     message = err.message;
     errors = err.errors;
+  } else if (err instanceof multer.MulterError) {
+    statusCode = 400;
+    code = "UPLOAD_ERROR";
+    message = err.message;
   } else if (err?.code === PG_ERROR_CODE.UNIQUE_VIOLATION) {
     // POSTGRES / KNEX ERROR
     statusCode = 409;

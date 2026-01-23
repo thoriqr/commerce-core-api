@@ -12,32 +12,10 @@ export const VARIANT_LIMITS = {
 
 const idSchema = z.string().min(1);
 
-const imageSchema = z
-  .object({
-    id: z.string().optional(), // product_variant_images.id
-    originalFileName: z.string().optional(),
-    remove: z.boolean().optional()
-  })
-  .superRefine((img, ctx) => {
-    if (img.remove) {
-      if (img.id || img.originalFileName) {
-        ctx.addIssue({
-          code: "custom",
-          message: "remove=true must not include id or originalFileName"
-        });
-      }
-      return;
-    }
-
-    if (!img.id && img.originalFileName) return; // create
-    if (img.id && !img.originalFileName) return; // reuse
-    if (img.id && img.originalFileName) return; // replace
-
-    ctx.addIssue({
-      code: "custom",
-      message: "Invalid image payload. Use one of: {id}, {originalFileName}, {id + originalFileName}, or {remove:true}"
-    });
-  });
+const imageSchema = z.object({
+  id: z.string().optional(), // product_variant_images.id
+  originalFileName: z.string().optional()
+});
 
 const variantDimensionSchema = z
   .object({

@@ -3,6 +3,12 @@ import { ProductRepo } from "./product.repo";
 import { ProductQueryParamsSchema, ProductUpsertSchema, VariantSchema } from "./product.schema";
 import { AppError } from "../../../errors/app-error";
 import { generateUniqueSlug } from "./product.slug";
+import sharp from "sharp";
+import { validateAndMapVariantImages } from "./product.image.validator";
+import { ALLOWED_IMG_FORMAT, ALLOWED_TYPES } from "./product.constants";
+import { VariantImagesMap } from "./product.types";
+import { v4 as uuidv4 } from "uuid";
+import { uploadFile } from "../../../libs/s3-client";
 
 export class ProductService {
   constructor(
@@ -31,14 +37,40 @@ export class ProductService {
     return await this.repo.getDetailById(id);
   };
 
-  create = async (input: ProductUpsertSchema) => {
+  create = async (input: ProductUpsertSchema, variantImgs: Express.Multer.File[]) => {
     const finalIsVariant = this.validateVariantRules(input.variants);
+
+    const optionImageMap = validateAndMapVariantImages(input.variantDimension, variantImgs);
+    const variantImagesMap: VariantImagesMap = new Map();
+
+    for (const [optionId, file] of optionImageMap) {
+      const processed = await this.processImage(file);
+
+      const imageKey = `product_variants/${uuidv4()}.webp`;
+
+      // 1. upload dulu
+      try {
+        await uploadFile(processed.buffer, imageKey, processed.mimeType);
+      } catch (err) {
+        throw AppError.serviceUnavailable(`Failed to upload image: ${file.originalname}, ${err}`);
+      }
+
+      // 2. baru simpan info ke map
+      variantImagesMap.set(optionId, {
+        imageKey,
+        originalFileName: file.originalname,
+        mimeType: processed.mimeType,
+        size: processed.size,
+        width: processed.width,
+        height: processed.height
+      });
+    }
 
     return this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
         const slug = await generateUniqueSlug(trx, input.name);
 
-        await this.repo.create(trx, input, finalIsVariant, slug);
+        await this.repo.create(trx, input, finalIsVariant, slug, variantImagesMap);
       })
     );
   };
@@ -55,6 +87,46 @@ export class ProductService {
         await this.repo.update(trx, id, input, finalIsVariant, finalSlug);
       })
     );
+  };
+
+  private processImage = async (file: Express.Multer.File) => {
+    let image: sharp.Sharp;
+    let meta: sharp.Metadata;
+
+    try {
+      image = sharp(file.buffer);
+      meta = await image.metadata(); // REAL IMAGE
+
+      if (!meta.format || !ALLOWED_IMG_FORMAT.includes(meta.format as any)) {
+        throw AppError.badRequest("Unsupported image format");
+      }
+    } catch {
+      throw AppError.badRequest("Invalid or corrupted image file");
+    }
+
+    const resized = image.resize({
+      width: 1200,
+      height: 1200,
+      fit: "inside",
+      withoutEnlargement: true
+    });
+
+    const buffer = await resized.toFormat("webp", { quality: 85 }).toBuffer();
+
+    // ambil metadata SETELAH resize (final dimension)
+    const finalMeta = await sharp(buffer).metadata();
+
+    if (!finalMeta.width || !finalMeta.height) {
+      throw AppError.badRequest("Failed to read resized image metadata");
+    }
+
+    return {
+      buffer,
+      mimeType: "image/webp",
+      size: buffer.length,
+      width: finalMeta.width,
+      height: finalMeta.height
+    };
   };
 
   private validateVariantRules(variants: VariantSchema[]) {
