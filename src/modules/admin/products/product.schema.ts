@@ -1,14 +1,5 @@
 import z from "zod";
-
-export const VARIANT_LIMITS = {
-  MAX_DIMENSIONS: 2,
-
-  // per dimension
-  MAX_OPTIONS_PER_DIMENSION: 10,
-
-  // global safeguard
-  MAX_TOTAL_VARIANTS: 100
-} as const;
+import { PRODUCT_IMG_LIMIT, VARIANT_LIMITS } from "./product.constants";
 
 const idSchema = z.string().min(1);
 
@@ -16,6 +7,8 @@ const imageSchema = z.object({
   id: z.string().optional(), // product_variant_images.id
   originalFileName: z.string().optional()
 });
+
+const productImageSchema = imageSchema.extend({ sortOrder: z.coerce.number().int().nonnegative() });
 
 const variantDimensionSchema = z
   .object({
@@ -76,6 +69,10 @@ export const productUpsertSchema = z
     description: z.coerce.string(),
     status: z.enum(["ACTIVE", "INACTIVE"]),
     isVariant: z.boolean().optional(),
+    images: z
+      .array(productImageSchema, { error: "Images is required" })
+      .min(1, { error: "At least one image" })
+      .max(PRODUCT_IMG_LIMIT, { error: `Image limit is ${PRODUCT_IMG_LIMIT}` }),
     variants: z.array(variantSchema).min(1).max(VARIANT_LIMITS.MAX_TOTAL_VARIANTS),
     variantDimension: z.array(variantDimensionSchema).max(VARIANT_LIMITS.MAX_DIMENSIONS)
   })
@@ -83,6 +80,17 @@ export const productUpsertSchema = z
     const dims = data.variantDimension;
     const variants = data.variants;
     const dimIds = dims.map((d) => d.id);
+
+    const sortOrders = data.images.map((img) => img.sortOrder);
+    const uniqueSortOrders = new Set(sortOrders);
+
+    if (uniqueSortOrders.size !== sortOrders.length) {
+      ctx.addIssue({
+        path: ["images"],
+        message: "Image sortOrder must be unique",
+        code: "custom"
+      });
+    }
 
     if (variants.length === 1 && dims.length > 0) {
       ctx.addIssue({
@@ -175,6 +183,7 @@ export const productQueryParams = z.object({
 });
 
 export type ProductUpsertSchema = z.infer<typeof productUpsertSchema>;
+export type ProductImageSchema = z.infer<typeof productImageSchema>;
 export type ProductQueryParamsSchema = z.infer<typeof productQueryParams>;
 export type VariantSchema = z.infer<typeof variantSchema>;
 export type VariantDimensionSchema = z.infer<typeof variantDimensionSchema>;

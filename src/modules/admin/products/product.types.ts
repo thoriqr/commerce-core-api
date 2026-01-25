@@ -79,7 +79,19 @@ export type VariantImageRow = {
 export type IdMap = Map<string, number>;
 
 export type VariantImageFilesMap = Map<
-  string,
+  string, // optionId
+  {
+    imageKey: string;
+    originalFileName: string;
+    mimeType: string;
+    size: number;
+    width: number;
+    height: number;
+  }
+>;
+
+export type ProductImageFilesMap = Map<
+  number, // sortOrder
   {
     imageKey: string;
     originalFileName: string;

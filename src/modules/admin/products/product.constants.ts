@@ -6,3 +6,15 @@ export const UPLOAD_FILE = {
   MAX_PRODUCT_IMG: 5,
   MAX_VARIANT_IMG: 10
 };
+
+export const VARIANT_LIMITS = {
+  MAX_DIMENSIONS: 2,
+
+  // per dimension
+  MAX_OPTIONS_PER_DIMENSION: 10,
+
+  // global safeguard
+  MAX_TOTAL_VARIANTS: 100
+} as const;
+
+export const PRODUCT_IMG_LIMIT = 5;

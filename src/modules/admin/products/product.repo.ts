@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import { ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
+import { ProductImageSchema, ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
 import { AppError } from "../../../errors/app-error";
 import {
   IdMap,
@@ -11,12 +11,14 @@ import {
   VariantImageRow,
   VariantImageFilesMap,
   VariantOptionValueRow,
-  VariantRow
+  VariantRow,
+  ProductImageFilesMap
 } from "./product.types";
 import { mapProductDetail, mapProductList } from "./product.mapper";
 import { db } from "../../../infra/db/knex";
 import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
 import { logger } from "../../../libs/logger";
+import { PRODUCT_IMG_LIMIT } from "./product.constants";
 
 export class ProductRepo {
   getAll = async (qParams: ProductQueryParamsSchema) => {
@@ -172,9 +174,10 @@ export class ProductRepo {
     input: ProductUpsertSchema,
     isVariant: boolean,
     slug: string,
+    productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
   ) => {
-    const { name, description, status, variants, variantDimension } = input;
+    const { name, description, status, images, variants, variantDimension } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
@@ -193,10 +196,12 @@ export class ProductRepo {
 
     const productId = row.id;
 
+    await this.insertProductImages(trx, productId, images, productImageFilesMap);
+
     // SINGLE PRODUCT
     // guard for single product
     if (variantImageFilesMap.size > 0 && variants.length === 1) {
-      throw AppError.internal("Variant images provided for multi variant product");
+      throw AppError.internal("Variant images are only allowed for multi-variant products");
     }
 
     if (variants.length === 1) {
@@ -221,9 +226,10 @@ export class ProductRepo {
     input: ProductUpsertSchema,
     isVariant: boolean,
     slug: string,
+    productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
   ) => {
-    const { name, description, status, variants, variantDimension } = input;
+    const { name, description, status, images, variants, variantDimension } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
@@ -241,13 +247,16 @@ export class ProductRepo {
     }
 
     const productId = row.id;
+
+    await this.updateProductImages(trx, productId, images, productImageFilesMap);
+
     await trx.raw(`DELETE FROM product_variants WHERE product_id = :productId`, { productId });
     await trx.raw(`DELETE FROM product_variant_dimensions WHERE product_id = :productId`, { productId });
 
     // SINGLE PRODUCT
     // guard for single product
     if (variantImageFilesMap.size > 0 && variants.length === 1) {
-      throw AppError.internal("Variant images provided for multi variant product");
+      throw AppError.internal("Variant images are only allowed for multi-variant products");
     }
 
     if (variants.length === 1) {
@@ -256,7 +265,6 @@ export class ProductRepo {
     }
 
     // MULTI VARIANT
-
     // CASE 1 update signature image lama
     const usedImageIds = await this.updateVariantImageSignatures(trx, productId, variantDimension);
 
@@ -270,12 +278,21 @@ export class ProductRepo {
   };
 
   remove = async (trx: Knex.Transaction, id: number) => {
-    const { rows: metaRows } = await trx.raw<{ rows: { id: number; image_key: string }[] }>(
+    const { rows: metaRows } = await trx.raw<{
+      rows: { id: number; image_key: string }[];
+    }>(
       `
-      SELECT im.id, im.image_key
-      FROM product_variant_images pvi
-      JOIN images_metadata im ON im.id = pvi.image_id
-      WHERE pvi.product_id = :id
+    SELECT im.id, im.image_key
+    FROM images_metadata im
+    JOIN product_images pi ON pi.image_id = im.id
+    WHERE pi.product_id = :id
+
+    UNION
+
+    SELECT im.id, im.image_key
+    FROM images_metadata im
+    JOIN product_variant_images pvi ON pvi.image_id = im.id
+    WHERE pvi.product_id = :id
     `,
       { id }
     );
@@ -285,8 +302,9 @@ export class ProductRepo {
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
-      DELETE FROM products WHERE id = :id
-      RETURNING id
+    DELETE FROM products
+    WHERE id = :id
+    RETURNING id
     `,
       { id }
     );
@@ -322,16 +340,210 @@ export class ProductRepo {
 
     await db.raw(
       `
-      DELETE FROM images_metadata im
-      WHERE im.id = ANY(:ids)
-        AND NOT EXISTS (
-          SELECT 1
-          FROM product_variant_images pvi
-          WHERE pvi.image_id = im.id
-    )
-  `,
+    DELETE FROM images_metadata im
+    WHERE im.id = ANY(:ids)
+      AND NOT EXISTS (
+        SELECT 1
+        FROM product_variant_images pvi
+        WHERE pvi.image_id = im.id
+      )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM product_images pi
+        WHERE pi.image_id = im.id
+      )
+    `,
       { ids }
     );
+  };
+
+  private getExistingProductImages = async (trx: Knex.Transaction, productId: number): Promise<{ id: number; image_id: number }[]> => {
+    const { rows } = await trx.raw<{
+      rows: { id: number; image_id: number }[];
+    }>(
+      `
+    SELECT id, image_id
+    FROM product_images
+    WHERE product_id = :productId
+      AND is_orphan = false
+    `,
+      { productId }
+    );
+
+    return rows;
+  };
+
+  private insertProductImages = async (
+    trx: Knex.Transaction,
+    productId: number,
+    images: ProductImageSchema[],
+    productImageFilesMap: ProductImageFilesMap
+  ) => {
+    for (const pImg of images) {
+      const img = productImageFilesMap.get(pImg.sortOrder);
+
+      if (!img) {
+        throw AppError.badRequest("Invalid product image reference");
+      }
+
+      // 1. insert images_metadata
+      const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+        `
+          INSERT INTO images_metadata
+            (image_key, original_file_name, mime_type, file_size, width, height, original_available)
+          VALUES (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+          RETURNING id
+        `,
+        {
+          image_key: img.imageKey,
+          original_file_name: img?.originalFileName,
+          mime_type: img?.mimeType,
+          file_size: img?.size,
+          width: img?.width,
+          height: img?.height
+        }
+      );
+
+      const row = rows[0];
+
+      if (!row) {
+        logger.error("Insert images_metadata returned no rows");
+        throw AppError.internal();
+      }
+
+      const imgMetadataId = row.id;
+
+      await trx.raw(
+        `
+        INSERT product_images (product_id, image_id, sort_order, is_orphan) 
+        VALUES (:product_id, :image_id, :sort_order, false)
+      `,
+        { product_id: productId, image_id: imgMetadataId, sort_order: pImg.sortOrder }
+      );
+    }
+  };
+
+  private updateProductImages = async (
+    trx: Knex.Transaction,
+    productId: number,
+    images: ProductImageSchema[],
+    productImageFilesMap: ProductImageFilesMap
+  ) => {
+    const existingImages = await this.getExistingProductImages(trx, productId);
+    const existingImageMap = new Map<number, number>(); // product_image_id → image_id
+
+    existingImages.forEach((img) => {
+      existingImageMap.set(img.id, img.image_id);
+    });
+
+    const usedProductImageIds = new Set<number>();
+    let activeCount = 0;
+
+    // === LOOP PAYLOAD ===
+    for (const img of images) {
+      // ===== CASE 1: REUSE =====
+      if (img.id && !img.originalFileName) {
+        const productImageId = Number(img.id);
+
+        if (!existingImageMap.has(productImageId)) {
+          throw AppError.badRequest("Invalid product image reference");
+        }
+
+        // update sort order
+        await trx.raw(
+          `
+        UPDATE product_images
+        SET sort_order = :sortOrder, updated_at = now()
+        WHERE id = :id
+        `,
+          { id: productImageId, sortOrder: img.sortOrder }
+        );
+
+        usedProductImageIds.add(productImageId);
+        activeCount++;
+        continue;
+      }
+
+      // ===== CASE 2: REPLACE / ADD =====
+      if (img.originalFileName) {
+        const file = productImageFilesMap.get(img.sortOrder);
+        if (!file) {
+          throw AppError.badRequest("Missing uploaded product image");
+        }
+
+        // insert images_metadata
+        const { rows: metaRows } = await trx.raw<{ rows: { id: number }[] }>(
+          `
+        INSERT INTO images_metadata
+          (image_key, original_file_name, mime_type, file_size, width, height, original_available)
+        VALUES
+          (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+        RETURNING id
+        `,
+          {
+            image_key: file.imageKey,
+            original_file_name: file.originalFileName,
+            mime_type: file.mimeType,
+            file_size: file.size,
+            width: file.width,
+            height: file.height
+          }
+        );
+
+        const imageMetadataId = metaRows[0]?.id;
+        if (!imageMetadataId) {
+          throw AppError.internal();
+        }
+
+        // insert product_images
+        const { rows: pImgRows } = await trx.raw<{ rows: { id: number }[] }>(
+          `
+        INSERT INTO product_images
+          (product_id, image_id, sort_order, is_orphan)
+        VALUES
+          (:product_id, :image_id, :sort_order, false)
+        RETURNING id
+        `,
+          {
+            product_id: productId,
+            image_id: imageMetadataId,
+            sort_order: img.sortOrder
+          }
+        );
+
+        const newProductImageId = pImgRows[0]?.id;
+        if (!newProductImageId) {
+          logger.error("Insert product_images returned no rows");
+          throw AppError.internal();
+        }
+
+        usedProductImageIds.add(newProductImageId);
+        activeCount++;
+      }
+    }
+
+    // === ORPHAN OLD IMAGES ===
+    for (const [productImageId] of existingImageMap) {
+      if (!usedProductImageIds.has(productImageId)) {
+        await trx.raw(
+          `
+        UPDATE product_images
+        SET is_orphan = true, updated_at = now()
+        WHERE id = :id
+        `,
+          { id: productImageId }
+        );
+      }
+    }
+
+    // === FINAL VALIDATION ===
+    if (activeCount < 1) {
+      throw AppError.badRequest("Product must have at least one image");
+    }
+
+    if (activeCount > PRODUCT_IMG_LIMIT) {
+      throw AppError.badRequest(`Product images exceed maximum limit (${PRODUCT_IMG_LIMIT})`);
+    }
   };
 
   private insertVariantImages = async (

@@ -26,7 +26,7 @@ export class ProductController {
 
     const bodyPayload = JSON.parse(req.body.payload);
     const payload = productUpsertSchema.parse(bodyPayload);
-    await this.service.create(payload, variantImgs);
+    await this.service.create(payload, productImgs, variantImgs);
     sendSuccess(res, 201, { message: "Product created" });
   };
 
@@ -39,7 +39,7 @@ export class ProductController {
     const bodyPayload = JSON.parse(req.body.payload);
     const payload = productUpsertSchema.parse(bodyPayload);
 
-    await this.service.update(params.productId, payload, variantImgs);
+    await this.service.update(params.productId, payload, productImgs, variantImgs);
     sendSuccess(res, 200, { message: "Product updated" });
   };
 
