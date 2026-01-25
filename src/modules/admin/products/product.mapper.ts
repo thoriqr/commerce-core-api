@@ -1,5 +1,6 @@
-import { ProductDetailDTO, ProductListDTO, ProductVariantDTO } from "./product.dto";
+import { ProductDetailDTO, ProductListDTO } from "./product.dto";
 import {
+  ImageRow,
   ProductDetailRow,
   ProductListRow,
   VariantDimensionRow,
@@ -11,17 +12,25 @@ import {
 
 export function mapProductDetail(
   productRow: ProductDetailRow,
+  imageRows: ImageRow[],
   variantRows: VariantRow[],
   dimensionRows: VariantDimensionRow[],
   dimensionValueRows: VariantDimensionValueRow[],
   optionValueRows: VariantOptionValueRow[],
   variantImageRows: VariantImageRow[]
 ): ProductDetailDTO {
+  const images = imageRows.map((r) => ({
+    id: String(r.id),
+    imageKey: r.image_key,
+    sortOrder: r.sort_order
+  }));
+
   if (variantRows.length === 1) {
     return {
       productId: String(productRow.id),
       name: productRow.name,
       description: productRow.description,
+      images,
       isVariant: productRow.is_variant,
       status: productRow.status,
       variantDimension: [],
@@ -97,6 +106,7 @@ export function mapProductDetail(
     isVariant: productRow.is_variant,
     status: productRow.status,
     variantDimension,
+    images,
     variants: variantRows.map((v) => ({
       id: String(v.id),
       price: v.price,
@@ -114,6 +124,7 @@ export function mapProductList(rows: ProductListRow[]): ProductListDTO[] {
     productId: row.id,
     name: row.name,
     slug: row.slug,
+    thumbnailImage: row.thumbnail_image,
     minPrice: row.min_price,
     maxPrice: row.max_price,
     totalStock: row.total_stock,

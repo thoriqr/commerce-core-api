@@ -1,10 +1,10 @@
-import { ZodError } from "zod";
-import { Request, Response, NextFunction } from "express";
-import { logger } from "../libs/logger";
-import { AppError } from "../errors/app-error";
-import { PG_ERROR_CODE } from "../constants/pg-error-code";
-import { FieldError } from "../types/api-response.ts";
 import multer from "multer";
+import { logger } from "@/libs/logger";
+import { AppError } from "@/errors/app-error";
+import { ZodError } from "zod";
+import { FieldError } from "@/types/api-response.ts";
+import { PG_ERROR_CODE } from "@/constants/pg-error-code";
+import { Request, Response, NextFunction } from "express";
 
 function mapZodError(error: ZodError): FieldError[] {
   return error.issues.map((issue) => ({

@@ -1,4 +1,4 @@
-import { AppError } from "../../../errors/app-error";
+import { AppError } from "@/errors/app-error";
 import { ProductImageSchema, VariantDimensionSchema } from "./product.schema";
 
 export function validateAndMapProductImages(images: ProductImageSchema[], files: Express.Multer.File[]): Map<number, Express.Multer.File> {

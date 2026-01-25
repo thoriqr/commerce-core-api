@@ -1,12 +1,12 @@
+import { db } from "@/infra/db/knex";
 import { Router } from "express";
-import { KnexTransactionManager } from "../../../infra/db/transaction-manager";
-import { ProductController } from "./product.controller";
+import { withMulter } from "@/middlewares/multer.middleware";
+import { UPLOAD_FILE } from "./product.constants";
 import { ProductRepo } from "./product.repo";
 import { ProductService } from "./product.service";
-import { db } from "../../../infra/db/knex";
-import { withMulter } from "../../../middlewares/multer.middleware";
+import { ProductController } from "./product.controller";
 import { productImageUpload } from "./product.upload";
-import { UPLOAD_FILE } from "./product.constants";
+import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 
 const router = Router();
 

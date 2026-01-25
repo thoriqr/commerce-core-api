@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { sendSuccess } from "../../../utils/send-success";
-import { productIdParams, productQueryParams, productUpsertSchema } from "./product.schema";
 import { ProductService } from "./product.service";
 import { UPLOAD_FILE } from "./product.constants";
+import { sendSuccess } from "@/utils/send-success";
+import { productIdParams, productQueryParams, productUpsertSchema } from "./product.schema";
 
 export class ProductController {
   constructor(private service: ProductService) {}

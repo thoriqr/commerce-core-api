@@ -1,15 +1,15 @@
-import { TransactionManager } from "../../../infra/db/transaction-manager";
-import { ProductRepo } from "./product.repo";
-import { ProductImageSchema, ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
-import { AppError } from "../../../errors/app-error";
-import { generateUniqueSlug } from "./product.slug";
 import sharp from "sharp";
-import { validateAndMapProductImages, validateAndMapVariantImages } from "./product.image.validator";
-import { ALLOWED_IMG_FORMAT } from "./product.constants";
-import { ProductImageFilesMap, VariantImageFilesMap } from "./product.types";
 import { v4 as uuidv4 } from "uuid";
-import { deleteFile, uploadFile } from "../../../libs/s3-client";
-import { logger } from "../../../libs/logger";
+import { logger } from "@/libs/logger";
+import { AppError } from "@/errors/app-error";
+import { deleteFile, uploadFile } from "@/libs/s3-client";
+import { generateUniqueSlug } from "./product.slug";
+import { ProductRepo } from "./product.repo";
+import { ALLOWED_IMG_FORMAT } from "./product.constants";
+import { TransactionManager } from "@/infra/db/transaction-manager";
+import { ProductImageFilesMap, VariantImageFilesMap } from "./product.types";
+import { validateAndMapProductImages, validateAndMapVariantImages } from "./product.image.validator";
+import { ProductImageSchema, ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
 
 export class ProductService {
   constructor(

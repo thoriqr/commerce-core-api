@@ -19,6 +19,7 @@ export interface ProductDetailDTO {
   description: string;
   isVariant: boolean;
   status: ProductStatus;
+  images: { id: string; imageKey: string; sortOrder: number }[];
   variantDimension: {
     id: string;
     name: string;
@@ -40,6 +41,7 @@ export interface ProductListDTO {
   productId: number;
   name: string;
   slug: string;
+  thumbnailImage: string;
   isVariant: boolean;
   status: ProductStatus;
   totalStock: number;

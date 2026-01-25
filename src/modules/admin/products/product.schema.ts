@@ -169,18 +169,28 @@ export const productIdParams = z.object({
   productId: z.coerce.number()
 });
 
-export const productQueryParams = z.object({
-  q: z.string().trim().min(1).optional(),
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
-  isVariant: z.coerce.boolean().optional(),
-  stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),
-  priceMin: z.coerce.number().min(0).optional(),
-  priceMax: z.coerce.number().min(0).optional(),
-  sortBy: z.enum(["created_at", "name", "price", "stock"]).default("created_at"),
-  sortDir: z.enum(["asc", "desc"]).default("desc")
-});
+export const productQueryParams = z
+  .object({
+    q: z.string().trim().min(1).optional(),
+    page: z.coerce.number().min(1).default(1),
+    limit: z.coerce.number().min(1).max(100).default(20),
+    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+    isVariant: z.coerce.boolean().optional(),
+    stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),
+    priceMin: z.coerce.number().min(0).optional(),
+    priceMax: z.coerce.number().min(0).optional(),
+    sortBy: z.enum(["created_at", "name", "price", "stock"]).default("created_at"),
+    sortDir: z.enum(["asc", "desc"]).default("desc")
+  })
+  .superRefine((data, ctx) => {
+    if (data.priceMin !== undefined && data.priceMax !== undefined && data.priceMin > data.priceMax) {
+      ctx.addIssue({
+        path: ["priceMin"],
+        code: "custom",
+        message: "priceMin cannot be greater than priceMax"
+      });
+    }
+  });
 
 export type ProductUpsertSchema = z.infer<typeof productUpsertSchema>;
 export type ProductImageSchema = z.infer<typeof productImageSchema>;

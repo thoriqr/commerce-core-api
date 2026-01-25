@@ -1,6 +1,10 @@
+import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
+import { logger } from "@/libs/logger";
+import { AppError } from "@/errors/app-error";
+import { PRODUCT_IMG_LIMIT } from "./product.constants";
+import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
 import { ProductImageSchema, ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
-import { AppError } from "../../../errors/app-error";
 import {
   IdMap,
   ProductDetailRow,
@@ -15,10 +19,6 @@ import {
   ProductImageFilesMap
 } from "./product.types";
 import { mapProductDetail, mapProductList } from "./product.mapper";
-import { db } from "../../../infra/db/knex";
-import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
-import { logger } from "../../../libs/logger";
-import { PRODUCT_IMG_LIMIT } from "./product.constants";
 
 export class ProductRepo {
   getAll = async (qParams: ProductQueryParamsSchema) => {
@@ -44,6 +44,7 @@ export class ProductRepo {
         p.id, 
         p.name,
         p.slug,
+        img.image_key AS thumbnail_image,
         p.is_variant,
         p.status,
         p.created_at,
@@ -57,8 +58,22 @@ export class ProductRepo {
         ) AS representative_sku
       FROM products p
       JOIN product_variants pv ON pv.product_id = p.id
+
+      -- get one product_images
+      LEFT JOIN LATERAL(
+        SELECT im.image_key
+        FROM product_images pi
+        JOIN images_metadata im ON im.id = pi.image_id
+        WHERE pi.product_id = p.id
+          AND pi.is_orphan = false
+        ORDER BY pi.sort_order ASC, pi.id ASC
+        LIMIT 1
+      ) img ON true
+
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-      GROUP BY p.id
+      GROUP BY
+        p.id,
+        img.image_key
       ${having.length ? `HAVING ${having.join(" AND ")}` : ""}
       ORDER BY ${sortColumn} ${sortDirection}
       LIMIT ? OFFSET ?
@@ -107,6 +122,17 @@ export class ProductRepo {
     if (!product) {
       throw AppError.notFound("Product not found");
     }
+
+    const { rows: imgRows } = await db.raw(
+      `
+      SELECT pi.id, pi.sort_order, im.image_key
+      FROM product_images pi
+      JOIN images_metadata im ON im.id = pi.image_id
+      WHERE pi.product_id = :id
+        AND pi.is_orphan = false
+    `,
+      { id }
+    );
 
     const { rows: variantRows } = await db.raw<{ rows: VariantRow[] }>(
       `
@@ -166,7 +192,7 @@ export class ProductRepo {
       { id }
     );
 
-    return mapProductDetail(product, variantRows, dimensionRows, dimensionValueRows, optionValueRows, variantImageRows);
+    return mapProductDetail(product, imgRows, variantRows, dimensionRows, dimensionValueRows, optionValueRows, variantImageRows);
   };
 
   create = async (
@@ -415,7 +441,7 @@ export class ProductRepo {
 
       await trx.raw(
         `
-        INSERT product_images (product_id, image_id, sort_order, is_orphan) 
+        INSERT INTO product_images (product_id, image_id, sort_order, is_orphan) 
         VALUES (:product_id, :image_id, :sort_order, false)
       `,
         { product_id: productId, image_id: imgMetadataId, sort_order: pImg.sortOrder }
@@ -438,6 +464,19 @@ export class ProductRepo {
 
     const usedProductImageIds = new Set<number>();
     let activeCount = 0;
+
+    // temporary offset to avoid UNIQUE (product_id, sort_order) conflict during reorder
+    // max images = 5, so +100 is safe
+
+    await trx.raw(
+      `
+        UPDATE product_images
+        SET sort_order = sort_order + 100
+        WHERE product_id = :productId
+        AND is_orphan = false
+      `,
+      { productId }
+    );
 
     // === LOOP PAYLOAD ===
     for (const img of images) {
@@ -962,6 +1001,13 @@ export class ProductRepo {
 
   private buildProductFilter(qParams: ProductQueryParamsSchema) {
     const { q, isVariant, status, stock, priceMin, priceMax } = qParams;
+
+    let minPrice = qParams.priceMin;
+    let maxPrice = qParams.priceMax;
+
+    if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+      [minPrice, maxPrice] = [maxPrice, minPrice];
+    }
 
     const where: string[] = [];
     const having: string[] = [];
