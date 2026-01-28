@@ -11,15 +11,15 @@ export const toBaseSlug = (name: string) =>
 export const generateUniqueSlug = async (trx: Knex.Transaction, name: string): Promise<string> => {
   const baseSlug = toBaseSlug(name);
   let slug = baseSlug;
-  let counter = 1;
+  let counter = 2;
 
   while (true) {
     const { rows } = await trx.raw<{ rows: { id: string }[] }>(
       `
-      SELECT id
-      FROM products
-      WHERE slug = :slug
-      LIMIT 1
+        SELECT id
+        FROM products
+        WHERE slug = :slug
+        LIMIT 1
       `,
       { slug }
     );
@@ -28,7 +28,7 @@ export const generateUniqueSlug = async (trx: Knex.Transaction, name: string): P
       return slug;
     }
 
-    counter += 1;
     slug = `${baseSlug}-${counter}`;
+    counter += 1;
   }
 };

@@ -173,7 +173,7 @@ export const productQueryParams = z
   .object({
     q: z.string().trim().min(1).optional(),
     page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
+    limit: z.coerce.number().min(1).max(100).default(10),
     status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
     isVariant: z.coerce.boolean().optional(),
     stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),

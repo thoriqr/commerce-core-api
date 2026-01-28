@@ -2,15 +2,13 @@ import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
   await knex.raw(`
-    ALTER TABLE categories
-    ADD CONSTRAINT uq_categories_slug
-    UNIQUE (slug)
+    CREATE UNIQUE INDEX uq_categories_parent_slug
+    ON categories (parent_id, slug)
   `);
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.raw(`
-    ALTER TABLE categories
-    DROP CONSTRAINT uq_categories_slug
+    DROP INDEX IF EXISTS uq_categories_parent_slug
   `);
 }

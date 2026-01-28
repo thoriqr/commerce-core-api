@@ -103,7 +103,7 @@ export class ProductService {
     }
   };
 
-  private prepareProductImages = async (images: ProductImageSchema[], files: Express.Multer.File[]): Promise<ProductImageFilesMap> => {
+  private async prepareProductImages(images: ProductImageSchema[], files: Express.Multer.File[]): Promise<ProductImageFilesMap> {
     const imageMap = validateAndMapProductImages(images, files);
 
     const result: ProductImageFilesMap = new Map();
@@ -130,9 +130,9 @@ export class ProductService {
     }
 
     return result;
-  };
+  }
 
-  private prepareVariantImages = async (variantDimensions: VariantDimensionSchema[], variantImgs: Express.Multer.File[]) => {
+  private async prepareVariantImages(variantDimensions: VariantDimensionSchema[], variantImgs: Express.Multer.File[]) {
     // 1. structural validation + optionId → file
     const optionImageMap = validateAndMapVariantImages(variantDimensions, variantImgs);
 
@@ -168,9 +168,9 @@ export class ProductService {
     }
 
     return result;
-  };
+  }
 
-  private processImage = async (file: Express.Multer.File) => {
+  private async processImage(file: Express.Multer.File) {
     let image: sharp.Sharp;
     let meta: sharp.Metadata;
 
@@ -208,7 +208,7 @@ export class ProductService {
       width: finalMeta.width,
       height: finalMeta.height
     };
-  };
+  }
 
   private validateVariantRules(variants: VariantSchema[]) {
     const finalIsVariant = variants.length > 1;

@@ -21,7 +21,7 @@ import {
 import { mapProductDetail, mapProductList } from "./product.mapper";
 
 export class ProductRepo {
-  getAll = async (qParams: ProductQueryParamsSchema) => {
+  async getAll(qParams: ProductQueryParamsSchema) {
     const { page, limit, sortBy, sortDir } = qParams;
 
     const { where, having, bindings } = this.buildProductFilter(qParams);
@@ -82,9 +82,9 @@ export class ProductRepo {
     const { rows } = await db.raw<{ rows: ProductListRow[] }>(sql, bindings);
 
     return mapProductList(rows);
-  };
+  }
 
-  getCount = async (qParams: ProductQueryParamsSchema) => {
+  async getCount(qParams: ProductQueryParamsSchema) {
     const { where, having, bindings } = this.buildProductFilter(qParams);
 
     const sql = `
@@ -106,9 +106,9 @@ export class ProductRepo {
     }
 
     return row.total;
-  };
+  }
 
-  getDetailById = async (id: number) => {
+  async getDetailById(id: number) {
     const { rows: productRows } = await db.raw<{ rows: ProductDetailRow[] }>(
       `
       SELECT id, name, description, is_variant, status
@@ -193,16 +193,16 @@ export class ProductRepo {
     );
 
     return mapProductDetail(product, imgRows, variantRows, dimensionRows, dimensionValueRows, optionValueRows, variantImageRows);
-  };
+  }
 
-  create = async (
+  async create(
     trx: Knex.Transaction,
     input: ProductUpsertSchema,
     isVariant: boolean,
     slug: string,
     productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
-  ) => {
+  ) {
     const { name, description, status, images, variants, variantDimension } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
@@ -244,9 +244,9 @@ export class ProductRepo {
     const variantIdMap = await this.insertVariants(trx, productId, variants);
 
     await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
-  };
+  }
 
-  update = async (
+  async update(
     trx: Knex.Transaction,
     id: number,
     input: ProductUpsertSchema,
@@ -254,7 +254,7 @@ export class ProductRepo {
     slug: string,
     productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
-  ) => {
+  ) {
     const { name, description, status, images, variants, variantDimension } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
@@ -301,9 +301,9 @@ export class ProductRepo {
     const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
     const variantIdMap = await this.insertVariants(trx, productId, variants);
     await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
-  };
+  }
 
-  remove = async (trx: Knex.Transaction, id: number) => {
+  async remove(trx: Knex.Transaction, id: number) {
     const { rows: metaRows } = await trx.raw<{
       rows: { id: number; image_key: string }[];
     }>(
@@ -340,9 +340,9 @@ export class ProductRepo {
     }
 
     return { imageIds, imageKeys };
-  };
+  }
 
-  findBaseById = async (id: number, trx?: Knex.Transaction) => {
+  async findBaseById(id: number, trx?: Knex.Transaction) {
     const executor = trx ?? db;
 
     const { rows } = await executor.raw<{ rows: ProductRow[] }>(
@@ -359,9 +359,9 @@ export class ProductRepo {
     }
 
     return product;
-  };
+  }
 
-  removeImagesMetadata = async (ids: number[]) => {
+  async removeImagesMetadata(ids: number[]) {
     if (ids.length === 0) return;
 
     await db.raw(
@@ -381,9 +381,9 @@ export class ProductRepo {
     `,
       { ids }
     );
-  };
+  }
 
-  private getExistingProductImages = async (trx: Knex.Transaction, productId: number): Promise<{ id: number; image_id: number }[]> => {
+  private async getExistingProductImages(trx: Knex.Transaction, productId: number): Promise<{ id: number; image_id: number }[]> {
     const { rows } = await trx.raw<{
       rows: { id: number; image_id: number }[];
     }>(
@@ -397,14 +397,14 @@ export class ProductRepo {
     );
 
     return rows;
-  };
+  }
 
-  private insertProductImages = async (
+  private async insertProductImages(
     trx: Knex.Transaction,
     productId: number,
     images: ProductImageSchema[],
     productImageFilesMap: ProductImageFilesMap
-  ) => {
+  ) {
     for (const pImg of images) {
       const img = productImageFilesMap.get(pImg.sortOrder);
 
@@ -447,14 +447,14 @@ export class ProductRepo {
         { product_id: productId, image_id: imgMetadataId, sort_order: pImg.sortOrder }
       );
     }
-  };
+  }
 
-  private updateProductImages = async (
+  private async updateProductImages(
     trx: Knex.Transaction,
     productId: number,
     images: ProductImageSchema[],
     productImageFilesMap: ProductImageFilesMap
-  ) => {
+  ) {
     const existingImages = await this.getExistingProductImages(trx, productId);
     const existingImageMap = new Map<number, number>(); // product_image_id → image_id
 
@@ -583,14 +583,14 @@ export class ProductRepo {
     if (activeCount > PRODUCT_IMG_LIMIT) {
       throw AppError.badRequest(`Product images exceed maximum limit (${PRODUCT_IMG_LIMIT})`);
     }
-  };
+  }
 
-  private insertVariantImages = async (
+  private async insertVariantImages(
     trx: Knex.Transaction,
     productId: number,
     variantDimensions: VariantDimensionSchema[],
     variantImageFilesMap: VariantImageFilesMap
-  ) => {
+  ) {
     for (const dim of variantDimensions) {
       for (const opt of dim.options) {
         const img = variantImageFilesMap.get(opt.id);
@@ -664,7 +664,7 @@ export class ProductRepo {
         );
       }
     }
-  };
+  }
 
   private async updateVariantImageSignatures(
     trx: Knex.Transaction,
@@ -865,7 +865,7 @@ export class ProductRepo {
     }
   }
 
-  private insertVariantDimensions = async (trx: Knex.Transaction, productId: number, variantDims: VariantDimensionSchema[]) => {
+  private async insertVariantDimensions(trx: Knex.Transaction, productId: number, variantDims: VariantDimensionSchema[]) {
     const map = new Map<string, number>();
 
     for (const dim of variantDims) {
@@ -887,9 +887,9 @@ export class ProductRepo {
     }
 
     return map;
-  };
+  }
 
-  private insertVariantDimensionValues = async (trx: Knex.Transaction, variantDims: VariantDimensionSchema[], dimensionIdMap: IdMap) => {
+  private async insertVariantDimensionValues(trx: Knex.Transaction, variantDims: VariantDimensionSchema[], dimensionIdMap: IdMap) {
     const map = new Map<string, number>();
 
     for (const dim of variantDims) {
@@ -927,9 +927,9 @@ export class ProductRepo {
     }
 
     return map;
-  };
+  }
 
-  private insertVariants = async (trx: Knex.Transaction, productId: number, variants: VariantSchema[]) => {
+  private async insertVariants(trx: Knex.Transaction, productId: number, variants: VariantSchema[]) {
     const map = new Map<string, number>();
 
     for (const variant of variants) {
@@ -960,15 +960,15 @@ export class ProductRepo {
     }
 
     return map;
-  };
+  }
 
-  private insertVariantOptionValues = async (
+  private async insertVariantOptionValues(
     trx: Knex.Transaction,
     variants: VariantSchema[],
     variantIdMap: IdMap,
     dimensionIdMap: IdMap,
     valueIdMap: IdMap
-  ) => {
+  ) {
     for (const variant of variants) {
       const dbVariantId = variantIdMap.get(String(variant.id));
       if (!dbVariantId) {
@@ -997,16 +997,16 @@ export class ProductRepo {
         );
       }
     }
-  };
+  }
 
   private buildProductFilter(qParams: ProductQueryParamsSchema) {
-    const { q, isVariant, status, stock, priceMin, priceMax } = qParams;
+    const { q, isVariant, status, stock } = qParams;
 
-    let minPrice = qParams.priceMin;
-    let maxPrice = qParams.priceMax;
+    let priceMin = qParams.priceMin;
+    let priceMax = qParams.priceMax;
 
-    if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
-      [minPrice, maxPrice] = [maxPrice, minPrice];
+    if (priceMin !== undefined && priceMax !== undefined && priceMin > priceMax) {
+      [priceMin, priceMax] = [priceMax, priceMin];
     }
 
     const where: string[] = [];
