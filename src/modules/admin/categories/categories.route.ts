@@ -14,5 +14,8 @@ const service = new CategoryService(tm, repo);
 const controller = new CategoryController(service);
 
 router.post("/", controller.create);
+router.get("/", controller.getAllParent);
+router.get("/:categoryId", controller.getById);
+router.get("/:parentId/tree", controller.getParentTree);
 
 export default router;

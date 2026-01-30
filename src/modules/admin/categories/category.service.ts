@@ -9,6 +9,21 @@ export class CategoryService {
     private repo: CategoryRepo
   ) {}
 
+  getById = async (id: number) => {
+    const data = await this.repo.getById(id);
+    return data;
+  };
+
+  getAllParent = async () => {
+    const data = await this.repo.getAllParent();
+    return data;
+  };
+
+  getParentTree = async (parentId: number) => {
+    const data = await this.repo.getParentTree(parentId);
+    return data;
+  };
+
   create = async (input: CategoryUpsertSchema) => {
     return this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {

@@ -29,7 +29,7 @@ export const generateUniqueCategorySlug = async (trx: Knex.Transaction, input: G
         FROM categories
         WHERE parent_id IS NOT DISTINCT FROM :parentId
           AND slug = :slug
-          AND (:excludeId IS NULL OR id <> :excludeId)
+          AND (:excludeId::bigint IS NULL OR id <> :excludeId::bigint)
         LIMIT 1
       `,
       {

@@ -7,4 +7,12 @@ export const categoryUpsertSchema = z.object({
   description: z.string().min(1).optional()
 });
 
+export const categoryParentIdParams = z.object({
+  parentId: z.coerce.number()
+});
+
+export const categoryIdParams = z.object({
+  categoryId: z.coerce.number()
+});
+
 export type CategoryUpsertSchema = z.infer<typeof categoryUpsertSchema>;
