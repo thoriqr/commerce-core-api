@@ -67,6 +67,8 @@ export class CategoryRepo {
   }
 
   async create(trx: Knex.Transaction, input: CategoryUpsertSchema, slug: string) {
+    await this.assertMaxDepth(trx, input.parentId);
+
     const sortOrder = await this.getNextSortOrder(trx, input.parentId);
 
     const { name, description, parentId } = input;
@@ -88,7 +90,13 @@ export class CategoryRepo {
     );
   }
 
-  async update() {}
+  async update(trx: Knex.Transaction, input: CategoryUpsertSchema, slug: string) {
+    await this.assertMaxDepth(trx, input.parentId);
+
+    const sortOrder = await this.getNextSortOrder(trx, input.parentId);
+
+    const { name, description, parentId } = input;
+  }
 
   async remove() {}
 
@@ -104,5 +112,35 @@ export class CategoryRepo {
 
     // kalau belum ada sibling → rows[0].max = null
     return (rows[0]?.max ?? -1) + 1;
+  }
+
+  async assertMaxDepth(trx: Knex.Transaction, parentId: number | null) {
+    if (parentId === null) return; // root
+
+    const { rows } = await trx.raw<{ rows: { depth: number }[] }>(
+      `
+    WITH RECURSIVE parent_chain AS (
+      SELECT id, parent_id, 0 AS depth
+      FROM categories
+      WHERE id = :parentId
+
+      UNION ALL
+
+      SELECT c.id, c.parent_id, pc.depth + 1
+      FROM categories c
+      JOIN parent_chain pc
+        ON c.id = pc.parent_id
+    )
+    SELECT MAX(depth) AS depth FROM parent_chain
+    `,
+      { parentId }
+    );
+
+    const parentDepth = rows[0]?.depth ?? 0;
+
+    // parentDepth = 2 grandchild
+    if (parentDepth >= 2) {
+      throw AppError.badRequest("Maximum category depth reached");
+    }
   }
 }
