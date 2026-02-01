@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import { CategoryUpsertSchema } from "./category.schema";
+import { CategoryReorderSchema, CategoryUpsertSchema } from "./category.schema";
 import { db } from "@/infra/db/knex";
 import { CategoryDetailRow, CategoryParentRow, CategoryRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
@@ -90,15 +90,61 @@ export class CategoryRepo {
     );
   }
 
-  async update(trx: Knex.Transaction, input: CategoryUpsertSchema, slug: string) {
-    await this.assertMaxDepth(trx, input.parentId);
+  async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpsertSchema, slug: string) {
+    const { name, description } = input;
 
-    const sortOrder = await this.getNextSortOrder(trx, input.parentId);
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+      UPDATE categories
+        SET name = :name, description = :description, slug = :slug
+      WHERE id = :categoryId
+      RETURNING id
+    `,
+      { name, description: description ?? null, slug, categoryId }
+    );
 
-    const { name, description, parentId } = input;
+    if (!rows.length) {
+      throw AppError.notFound("Category not found");
+    }
   }
 
-  async remove() {}
+  async reorderCategory(trx: Knex.Transaction, parentId: number, input: CategoryReorderSchema) {
+    const ids = input.map((i) => i.id);
+
+    const cases = input.map((i) => `WHEN ${i.id} THEN ${i.sortOrder}`).join(" ");
+
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+      UPDATE categories
+        SET sort_order = CASE id
+        ${cases}
+      END
+      WHERE parent_id IS NOT DISTINCT FROM :parentId
+        AND id = ANY(:ids)
+      RETURNING id
+      `,
+      { parentId, ids }
+    );
+
+    if (!rows.length) {
+      throw AppError.notFound("Category not found or invalid parent");
+    }
+  }
+
+  async remove(categoryId: number) {
+    const { rows } = await db.raw<{ rows: { id: number }[] }>(
+      `
+      DELETE FROM categories
+      WHERE id = :categoryId
+      RETURNING id  
+    `,
+      { categoryId }
+    );
+
+    if (!rows.length) {
+      throw AppError.notFound("Category not found");
+    }
+  }
 
   private async getNextSortOrder(trx: Knex.Transaction, parentId: number | null): Promise<number> {
     const { rows } = await trx.raw<{ rows: { max: number | null }[] }>(

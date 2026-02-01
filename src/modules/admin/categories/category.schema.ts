@@ -7,6 +7,15 @@ export const categoryUpsertSchema = z.object({
   description: z.string().min(1).optional()
 });
 
+export const categoryReorderSchema = z
+  .array(
+    z.object({
+      id: z.number().positive(),
+      sortOrder: z.number().positive()
+    })
+  )
+  .min(1);
+
 export const categoryParentIdParams = z.object({
   parentId: z.coerce.number()
 });
@@ -16,3 +25,4 @@ export const categoryIdParams = z.object({
 });
 
 export type CategoryUpsertSchema = z.infer<typeof categoryUpsertSchema>;
+export type CategoryReorderSchema = z.infer<typeof categoryReorderSchema>;

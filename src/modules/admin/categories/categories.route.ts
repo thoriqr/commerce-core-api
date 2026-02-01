@@ -17,5 +17,8 @@ router.post("/", controller.create);
 router.get("/", controller.getAllParent);
 router.get("/:categoryId", controller.getById);
 router.get("/:parentId/tree", controller.getParentTree);
+router.put("/:parentId/reorder", controller.reorderCategory);
+router.put("/:categoryId", controller.update);
+router.delete("/:categoryId", controller.remove);
 
 export default router;

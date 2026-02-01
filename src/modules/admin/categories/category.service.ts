@@ -1,7 +1,7 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CategoryRepo } from "./category.repo";
 import { generateUniqueCategorySlug } from "./category.slug";
-import { CategoryUpsertSchema } from "./category.schema";
+import { CategoryReorderSchema, CategoryUpsertSchema } from "./category.schema";
 
 export class CategoryService {
   constructor(
@@ -32,6 +32,29 @@ export class CategoryService {
         await this.repo.create(trx, input, slug);
       })
     );
+  };
+
+  update = async (categoryId: number, input: CategoryUpsertSchema) => {
+    return this.withSlugRetry(() =>
+      this.tm.transaction(async (trx) => {
+        const slug = await generateUniqueCategorySlug(trx, {
+          name: input.name,
+          slugFromClient: input.slug ?? null,
+          parentId: null,
+          excludeId: categoryId
+        });
+
+        await this.repo.update(trx, categoryId, input, slug);
+      })
+    );
+  };
+
+  reorderCategory = async (parentId: number, input: CategoryReorderSchema) => {
+    await this.tm.transaction((trx) => this.repo.reorderCategory(trx, parentId, input));
+  };
+
+  remove = async (categoryId: number) => {
+    return this.repo.remove(categoryId);
   };
 
   private async withSlugRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
