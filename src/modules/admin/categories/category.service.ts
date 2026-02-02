@@ -37,10 +37,12 @@ export class CategoryService {
   update = async (categoryId: number, input: CategoryUpsertSchema) => {
     return this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
+        const existing = await this.repo.findBaseId(categoryId, trx);
+
         const slug = await generateUniqueCategorySlug(trx, {
           name: input.name,
           slugFromClient: input.slug ?? null,
-          parentId: null,
+          parentId: existing.parent_id,
           excludeId: categoryId
         });
 

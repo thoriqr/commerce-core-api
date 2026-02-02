@@ -146,6 +146,26 @@ export class CategoryRepo {
     }
   }
 
+  async findBaseId(id: number, trx?: Knex.Transaction) {
+    const executor = trx ?? db;
+
+    const { rows } = await executor.raw<{ rows: { id: number; parent_id: number | null }[] }>(
+      `
+      SELECT id, parent_id FROM categories
+      WHERE id = :id
+    `,
+      { id }
+    );
+
+    const row = rows[0];
+
+    if (!row) {
+      throw AppError.notFound("Category not found");
+    }
+
+    return row;
+  }
+
   private async getNextSortOrder(trx: Knex.Transaction, parentId: number | null): Promise<number> {
     const { rows } = await trx.raw<{ rows: { max: number | null }[] }>(
       `
