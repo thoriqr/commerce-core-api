@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { ProductService } from "./product.service";
 import { UPLOAD_FILE } from "./product.constants";
 import { sendSuccess } from "@/utils/send-success";
-import { productIdParams, productQueryParams, productUpsertSchema } from "./product.schema";
+import { productIdParams, productQueryParams, productUpsertSchema, updateProductStatusSchema } from "./product.schema";
 
 export class ProductController {
   constructor(private service: ProductService) {}
@@ -16,6 +16,11 @@ export class ProductController {
   getById = async (req: Request, res: Response) => {
     const params = productIdParams.parse(req.params);
     const data = await this.service.getById(params.productId);
+    sendSuccess(res, 200, { data });
+  };
+
+  getCategoryOptions = async (req: Request, res: Response) => {
+    const data = await this.service.getCategoryOptions();
     sendSuccess(res, 200, { data });
   };
 
@@ -41,6 +46,13 @@ export class ProductController {
 
     await this.service.update(params.productId, payload, productImgs, variantImgs);
     sendSuccess(res, 200, { message: "Product updated" });
+  };
+
+  updateStatus = async (req: Request, res: Response) => {
+    const payload = updateProductStatusSchema.parse(req.body);
+
+    await this.service.updateStatus(payload);
+    sendSuccess(res, 200, { message: "Products status updated" });
   };
 
   remove = async (req: Request, res: Response) => {

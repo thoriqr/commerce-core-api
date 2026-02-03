@@ -1,5 +1,5 @@
-import { CategoryDetailDTO, CategoryParentDTO, CategoryParentTreeDTO } from "./category.dto";
-import { CategoryDetailRow, CategoryParentRow, CategoryRow } from "./category.types";
+import { CategoryDetailDTO, CategoryFlatDTO, CategoryParentDTO, CategoryParentTreeDTO } from "./category.dto";
+import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
 
 export function mapCategoryParents(rows: CategoryParentRow[]): CategoryParentDTO[] {
   return rows.map((r) => ({
@@ -7,7 +7,8 @@ export function mapCategoryParents(rows: CategoryParentRow[]): CategoryParentDTO
     parentId: r.parent_id,
     name: r.name,
     slug: r.slug,
-    sortOrder: r.sort_order
+    sortOrder: r.sort_order,
+    isActive: r.is_active
   }));
 }
 
@@ -21,6 +22,8 @@ export function mapCategoryParentTree(rows: CategoryRow[]): CategoryParentTreeDT
       parentId: r.parent_id,
       name: r.name,
       slug: r.slug,
+      isActive: r.is_active,
+      sortOrder: r.sort_order,
       children: []
     });
   }
@@ -47,6 +50,14 @@ export function mapCategoryDetail(row: CategoryDetailRow): CategoryDetailDTO {
     name: row.name,
     slug: row.slug,
     description: row.description,
-    sortOrder: row.sort_order
+    sortOrder: row.sort_order,
+    isActive: row.is_active
   };
+}
+
+export function mapCategoryFlat(rows: CategoryFlatRow[]): CategoryFlatDTO[] {
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: r.path
+  }));
 }

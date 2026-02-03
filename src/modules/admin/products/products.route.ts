@@ -7,17 +7,20 @@ import { productImageUpload } from "./product.upload";
 import { ProductController } from "./product.controller";
 import { withMulter } from "@/middlewares/multer.middleware";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
+import { CategoryRepo } from "../categories/category.repo";
 
 const router = Router();
 
 const tm = new KnexTransactionManager(db);
 
-const repo = new ProductRepo();
-const service = new ProductService(tm, repo);
+const productRepo = new ProductRepo();
+const categoryRepo = new CategoryRepo();
+const service = new ProductService(tm, productRepo, categoryRepo);
 const controller = new ProductController(service);
 
 router.get("/", controller.getAll);
 router.get("/:productId", controller.getById);
+router.get("/options/category", controller.getCategoryOptions);
 
 router.post(
   "/",
@@ -46,6 +49,8 @@ router.put(
   ),
   controller.update
 );
+
+router.patch("/actions/status", controller.updateStatus);
 
 router.delete("/:productId", controller.remove);
 

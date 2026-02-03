@@ -8,13 +8,29 @@ export const UPLOAD_FILE = {
 };
 
 export const VARIANT_LIMITS = {
+  // schema
   MAX_DIMENSIONS: 2,
-
-  // per dimension
   MAX_OPTIONS_PER_DIMENSION: 10,
+  MAX_TOTAL_VARIANTS: 100,
 
-  // global safeguard
-  MAX_TOTAL_VARIANTS: 100
+  DIMENSION_NAME_MIN: 2,
+  DIMENSION_NAME_MAX: 30,
+  OPTION_VALUE_MIN: 1,
+  OPTION_VALUE_MAX: 50
 } as const;
 
-export const PRODUCT_IMG_LIMIT = 5;
+export const PRODUCT_LIMITS = {
+  // schema
+  NAME_MIN: 5,
+  NAME_MAX: 100,
+  DESCRIPTION_MIN: 20,
+  DESCRIPTION_MAX: 2000,
+  PRICE_MIN: 1_000,
+  PRICE_MAX: 1_000_000_000,
+  STOCK_MIN: 1,
+  STOCK_MAX: 1_000_000,
+  WEIGHT_MIN: 1,
+  WEIGHT_MAX: 100_000,
+  MAX_SKU: 32,
+  IMAGE_LIMIT: 5
+} as const;

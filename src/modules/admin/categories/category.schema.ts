@@ -1,10 +1,15 @@
 import z from "zod";
 
+const MAX_NAME = 100;
+const MAX_SLUG = 255;
+const MAX_DESCRIPTION = 1000;
+
 export const categoryUpsertSchema = z.object({
   parentId: z.number().positive().nullable(),
-  name: z.string().min(1),
-  slug: z.string().min(1).optional(),
-  description: z.string().min(1).optional()
+  name: z.string().min(1).max(MAX_NAME),
+  slug: z.string().min(1).max(MAX_SLUG).optional(),
+  description: z.string().min(1).max(MAX_DESCRIPTION).optional(),
+  isActive: z.boolean().default(true)
 });
 
 export const categoryReorderSchema = z

@@ -9,18 +9,27 @@ import { ALLOWED_IMG_FORMAT } from "./product.constants";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { ProductImageFilesMap, VariantImageFilesMap } from "./product.types";
 import { validateAndMapProductImages, validateAndMapVariantImages } from "./product.image.validator";
-import { ProductImageSchema, ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
+import {
+  ProductImageSchema,
+  ProductQueryParamsSchema,
+  ProductUpsertSchema,
+  UpdateProductStatusSchema,
+  VariantDimensionSchema,
+  VariantSchema
+} from "./product.schema";
+import { CategoryRepo } from "../categories/category.repo";
 
 export class ProductService {
   constructor(
     private tm: TransactionManager,
-    private repo: ProductRepo
+    private readonly productRepo: ProductRepo,
+    private readonly categoryRepo: CategoryRepo
   ) {}
 
   getall = async (qParams: ProductQueryParamsSchema) => {
     const { page, limit } = qParams;
 
-    const [items, total] = await Promise.all([this.repo.getAll(qParams), this.repo.getCount(qParams)]);
+    const [items, total] = await Promise.all([this.productRepo.getAll(qParams), this.productRepo.getCount(qParams)]);
     return {
       data: items,
       meta: {
@@ -35,7 +44,11 @@ export class ProductService {
   };
 
   getById = async (id: number) => {
-    return await this.repo.getDetailById(id);
+    return await this.productRepo.getDetailById(id);
+  };
+
+  getCategoryOptions = async () => {
+    return await this.categoryRepo.getFlatForProduct();
   };
 
   create = async (input: ProductUpsertSchema, productImgs: Express.Multer.File[], variantImgs: Express.Multer.File[]) => {
@@ -55,7 +68,7 @@ export class ProductService {
       this.tm.transaction(async (trx) => {
         const slug = await generateUniqueSlug(trx, input.name);
 
-        await this.repo.create(trx, input, finalIsVariant, slug, productImageFilesMap, variantImageFilesMap);
+        await this.productRepo.create(trx, input, finalIsVariant, slug, productImageFilesMap, variantImageFilesMap);
       })
     );
   };
@@ -71,19 +84,23 @@ export class ProductService {
 
     return this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
-        const product = await this.repo.findBaseById(id, trx);
+        const product = await this.productRepo.findBaseById(id, trx);
 
         const finalSlug = input.name === product.name ? product.slug : await generateUniqueSlug(trx, input.name);
 
-        await this.repo.update(trx, id, input, finalIsVariant, finalSlug, productImageFilesMap, variantImageFilesMap);
+        await this.productRepo.update(trx, id, input, finalIsVariant, finalSlug, productImageFilesMap, variantImageFilesMap);
       })
     );
+  };
+
+  updateStatus = async (input: UpdateProductStatusSchema) => {
+    return await this.productRepo.updateStatus(input);
   };
 
   remove = async (id: number) => {
     // 1. DB transaction
     const { imageIds, imageKeys } = await this.tm.transaction(async (trx) => {
-      return this.repo.remove(trx, id);
+      return this.productRepo.remove(trx, id);
     });
 
     // 2. infra cleanup (best effort, OUTSIDE transaction)
@@ -97,7 +114,7 @@ export class ProductService {
 
     // delete images_metadata (best effort)
     try {
-      await this.repo.removeImagesMetadata(imageIds);
+      await this.productRepo.removeImagesMetadata(imageIds);
     } catch (err) {
       logger.error("Failed to delete images metadata", { productId: id, imageIds, error: err });
     }

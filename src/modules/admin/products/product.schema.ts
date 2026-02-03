@@ -1,5 +1,5 @@
 import z from "zod";
-import { PRODUCT_IMG_LIMIT, VARIANT_LIMITS } from "./product.constants";
+import { PRODUCT_LIMITS, VARIANT_LIMITS } from "./product.constants";
 
 const idSchema = z.string().min(1);
 
@@ -13,12 +13,12 @@ const productImageSchema = imageSchema.extend({ sortOrder: z.coerce.number().int
 const variantDimensionSchema = z
   .object({
     id: idSchema,
-    name: z.string().trim().min(1),
+    name: z.string().trim().min(VARIANT_LIMITS.DIMENSION_NAME_MIN).max(VARIANT_LIMITS.DIMENSION_NAME_MAX),
     options: z
       .array(
         z.object({
           id: idSchema,
-          value: z.string().trim().min(1),
+          value: z.string().trim().min(VARIANT_LIMITS.OPTION_VALUE_MIN).max(VARIANT_LIMITS.OPTION_VALUE_MAX),
           image: imageSchema.optional()
         })
       )
@@ -50,10 +50,10 @@ const variantDimensionSchema = z
 
 const variantSchema = z.object({
   id: idSchema,
-  price: z.coerce.number().int().positive(),
-  stock: z.coerce.number().int().positive(),
-  weight: z.coerce.number().positive(),
-  sku: z.string(),
+  price: z.coerce.number().int().positive().min(PRODUCT_LIMITS.PRICE_MIN).max(PRODUCT_LIMITS.PRICE_MAX),
+  stock: z.coerce.number().int().positive().min(PRODUCT_LIMITS.STOCK_MIN).max(PRODUCT_LIMITS.STOCK_MAX),
+  weight: z.coerce.number().positive().min(PRODUCT_LIMITS.WEIGHT_MIN).max(PRODUCT_LIMITS.WEIGHT_MAX),
+  sku: z.string().max(PRODUCT_LIMITS.MAX_SKU),
   isPrimary: z.boolean(),
   options: z.array(
     z.object({
@@ -65,14 +65,12 @@ const variantSchema = z.object({
 
 export const productUpsertSchema = z
   .object({
-    name: z.coerce.string().min(1, { error: "Product name min 2 chars" }),
-    description: z.coerce.string(),
+    name: z.coerce.string().min(PRODUCT_LIMITS.NAME_MIN).max(PRODUCT_LIMITS.NAME_MAX),
+    description: z.coerce.string().min(PRODUCT_LIMITS.DESCRIPTION_MIN).max(PRODUCT_LIMITS.DESCRIPTION_MAX),
     status: z.enum(["ACTIVE", "INACTIVE"]),
+    categoryId: z.coerce.number().int().positive(),
     isVariant: z.boolean().optional(),
-    images: z
-      .array(productImageSchema, { error: "Images is required" })
-      .min(1, { error: "At least one image" })
-      .max(PRODUCT_IMG_LIMIT, { error: `Image limit is ${PRODUCT_IMG_LIMIT}` }),
+    images: z.array(productImageSchema, { error: "Images is required" }).min(1).max(PRODUCT_LIMITS.IMAGE_LIMIT),
     variants: z.array(variantSchema).min(1).max(VARIANT_LIMITS.MAX_TOTAL_VARIANTS),
     variantDimension: z.array(variantDimensionSchema).max(VARIANT_LIMITS.MAX_DIMENSIONS)
   })
@@ -192,8 +190,14 @@ export const productQueryParams = z
     }
   });
 
+export const updateProductStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+  productIds: z.array(z.number()).min(1)
+});
+
 export type ProductUpsertSchema = z.infer<typeof productUpsertSchema>;
 export type ProductImageSchema = z.infer<typeof productImageSchema>;
 export type ProductQueryParamsSchema = z.infer<typeof productQueryParams>;
 export type VariantSchema = z.infer<typeof variantSchema>;
 export type VariantDimensionSchema = z.infer<typeof variantDimensionSchema>;
+export type UpdateProductStatusSchema = z.infer<typeof updateProductStatusSchema>;

@@ -19,6 +19,7 @@ export type ProductDetailRow = {
   description: string;
   is_variant: boolean;
   status: ProductStatus;
+  category_id: number | null;
 };
 
 export type ImageRow = { id: number; image_key: string; sort_order: number };
@@ -64,6 +65,7 @@ export type ProductListRow = {
   thumbnail_image: string;
   is_variant: boolean;
   status: ProductStatus;
+  category_name: string | null;
   total_stock: number;
   variant_count: number;
   min_price: number;

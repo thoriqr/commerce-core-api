@@ -33,6 +33,7 @@ export function mapProductDetail(
       images,
       isVariant: productRow.is_variant,
       status: productRow.status,
+      categoryId: productRow.category_id ? String(productRow.category_id) : null,
       variantDimension: [],
       variants: variantRows.map((v) => ({
         id: String(v.id),
@@ -105,6 +106,7 @@ export function mapProductDetail(
     description: productRow.description,
     isVariant: productRow.is_variant,
     status: productRow.status,
+    categoryId: productRow.category_id ? String(productRow.category_id) : null,
     variantDimension,
     images,
     variants: variantRows.map((v) => ({
@@ -130,6 +132,7 @@ export function mapProductList(rows: ProductListRow[]): ProductListDTO[] {
     totalStock: row.total_stock,
     sku: row.representative_sku ?? "-",
     status: row.status,
+    categoryName: row.category_name ?? "-",
     isVariant: row.is_variant,
     variantCount: row.variant_count,
     createdAt: row.created_at

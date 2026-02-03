@@ -4,6 +4,7 @@ export interface CategoryParentDTO {
   name: string;
   slug: string;
   sortOrder: number;
+  isActive: boolean;
 }
 
 export interface CategoryParentTreeDTO {
@@ -11,6 +12,8 @@ export interface CategoryParentTreeDTO {
   parentId: number | null;
   name: string;
   slug: string;
+  isActive: boolean;
+  sortOrder: number;
   children: CategoryParentTreeDTO[];
 }
 
@@ -21,4 +24,10 @@ export interface CategoryDetailDTO {
   description: string | null;
   slug: string;
   sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CategoryFlatDTO {
+  value: string;
+  label: string;
 }

@@ -1,15 +1,15 @@
 import { Knex } from "knex";
 import { CategoryReorderSchema, CategoryUpsertSchema } from "./category.schema";
 import { db } from "@/infra/db/knex";
-import { CategoryDetailRow, CategoryParentRow, CategoryRow } from "./category.types";
+import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
-import { mapCategoryDetail, mapCategoryParents, mapCategoryParentTree } from "./category.mapper";
+import { mapCategoryDetail, mapCategoryFlat, mapCategoryParents, mapCategoryParentTree } from "./category.mapper";
 
 export class CategoryRepo {
   async getById(id: number) {
     const { rows } = await db.raw<{ rows: CategoryDetailRow[] }>(
       `
-      SELECT id, parent_id, name, slug, description, sort_order FROM categories WHERE id =:id
+      SELECT id, parent_id, name, slug, description, sort_order, is_active FROM categories WHERE id =:id
     `,
       { id }
     );
@@ -25,7 +25,7 @@ export class CategoryRepo {
 
   async getAllParent() {
     const { rows } = await db.raw<{ rows: CategoryParentRow[] }>(`
-      SELECT id, parent_id, name, slug, sort_order
+      SELECT id, parent_id, name, slug, sort_order, is_active
       FROM categories WHERE parent_id IS NULL
       ORDER BY sort_order ASC, id ASC 
     `);
@@ -38,17 +38,17 @@ export class CategoryRepo {
       `
       WITH RECURSIVE category_tree AS(
         -- anchor: self
-        SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order
+        SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order, c.is_active
         FROM categories c WHERE c.id = :parent_id
 
         UNION ALL
         -- recursive: children
-        SELECT c2.id, c2.parent_id, c2.name, c2.slug, c2.sort_order
+        SELECT c2.id, c2.parent_id, c2.name, c2.slug, c2.sort_order, c2.is_active
         FROM categories c2
         JOIN category_tree ct
           ON c2.parent_id = ct.id
       )
-      SELECT ct.id, ct.parent_id, ct.name, ct.slug, ct.sort_order
+      SELECT ct.id, ct.parent_id, ct.name, ct.slug, ct.sort_order, ct.is_active
       FROM category_tree ct
       ORDER BY
         ct.parent_id NULLS FIRST,
@@ -66,41 +66,85 @@ export class CategoryRepo {
     return tree;
   }
 
+  async getFlatForProduct() {
+    const { rows } = await db.raw<{ rows: CategoryFlatRow[] }>(`
+      WITH RECURSIVE category_tree AS (
+        SELECT
+        id,
+        name,
+        parent_id,
+        is_active,
+        ARRAY[sort_order] AS sort_path,
+        name::text AS path,
+        1 AS depth
+      FROM categories
+      WHERE parent_id IS NULL
+        AND is_active = true
+
+      UNION ALL
+
+        SELECT
+        c.id,
+        c.name,
+        c.parent_id,
+        c.is_active,
+        ct.sort_path || c.sort_order,
+        ct.path || ' / ' || c.name,
+        ct.depth + 1
+      FROM categories c
+      JOIN category_tree ct
+        ON c.parent_id = ct.id
+        AND c.is_active = true
+      )
+
+      SELECT
+      id,
+      path,
+      depth
+    FROM category_tree
+    WHERE depth <= 3
+    ORDER BY sort_path;
+    `);
+
+    return mapCategoryFlat(rows);
+  }
+
   async create(trx: Knex.Transaction, input: CategoryUpsertSchema, slug: string) {
     await this.assertMaxDepth(trx, input.parentId);
 
     const sortOrder = await this.getNextSortOrder(trx, input.parentId);
 
-    const { name, description, parentId } = input;
+    const { name, description, parentId, isActive } = input;
 
     await trx.raw(
       `
       INSERT INTO categories
-        (name, slug, description, parent_id, sort_order)
+        (name, slug, description, parent_id, sort_order, is_active)
       VALUES
-        (:name, :slug, :description, :parentId, :sortOrder)
+        (:name, :slug, :description, :parentId, :sortOrder, :isActive)
     `,
       {
         name,
         slug,
         description: description ?? null,
         parentId,
-        sortOrder
+        sortOrder,
+        isActive
       }
     );
   }
 
   async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpsertSchema, slug: string) {
-    const { name, description } = input;
+    const { name, description, isActive } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       UPDATE categories
-        SET name = :name, description = :description, slug = :slug
+        SET name = :name, description = :description, slug = :slug, is_active = :isActive
       WHERE id = :categoryId
       RETURNING id
     `,
-      { name, description: description ?? null, slug, categoryId }
+      { name, description: description ?? null, slug, isActive, categoryId }
     );
 
     if (!rows.length) {

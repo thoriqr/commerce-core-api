@@ -4,6 +4,7 @@ export type CategoryParentRow = {
   name: string;
   slug: string;
   sort_order: number;
+  is_active: boolean;
 };
 
 export type CategoryRow = {
@@ -12,6 +13,7 @@ export type CategoryRow = {
   name: string;
   slug: string;
   sort_order: number;
+  is_active: boolean;
 };
 
 export type CategoryDetailRow = {
@@ -21,4 +23,11 @@ export type CategoryDetailRow = {
   description: string | null;
   slug: string;
   sort_order: number;
+  is_active: boolean;
+};
+
+export type CategoryFlatRow = {
+  id: number;
+  path: string; // `Menswear / Men Clothes / Men Jackets`
+  depth: number;
 };

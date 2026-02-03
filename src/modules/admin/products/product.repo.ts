@@ -2,9 +2,15 @@ import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
-import { PRODUCT_IMG_LIMIT } from "./product.constants";
 import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
-import { ProductImageSchema, ProductQueryParamsSchema, ProductUpsertSchema, VariantDimensionSchema, VariantSchema } from "./product.schema";
+import {
+  ProductImageSchema,
+  ProductQueryParamsSchema,
+  ProductUpsertSchema,
+  UpdateProductStatusSchema,
+  VariantDimensionSchema,
+  VariantSchema
+} from "./product.schema";
 import {
   IdMap,
   ProductDetailRow,
@@ -19,6 +25,7 @@ import {
   ProductImageFilesMap
 } from "./product.types";
 import { mapProductDetail, mapProductList } from "./product.mapper";
+import { PRODUCT_LIMITS } from "./product.constants";
 
 export class ProductRepo {
   async getAll(qParams: ProductQueryParamsSchema) {
@@ -47,6 +54,7 @@ export class ProductRepo {
         img.image_key AS thumbnail_image,
         p.is_variant,
         p.status,
+        c.name AS category_name,
         p.created_at,
         COALESCE(SUM(pv.stock), 0) AS total_stock,
         COUNT(pv.id) AS variant_count,
@@ -70,10 +78,13 @@ export class ProductRepo {
         LIMIT 1
       ) img ON true
 
+      LEFT JOIN categories c ON c.id = p.category_id
+
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       GROUP BY
         p.id,
-        img.image_key
+        img.image_key,
+        c.name
       ${having.length ? `HAVING ${having.join(" AND ")}` : ""}
       ORDER BY ${sortColumn} ${sortDirection}
       LIMIT ? OFFSET ?
@@ -111,7 +122,7 @@ export class ProductRepo {
   async getDetailById(id: number) {
     const { rows: productRows } = await db.raw<{ rows: ProductDetailRow[] }>(
       `
-      SELECT id, name, description, is_variant, status
+      SELECT id, name, description, is_variant, status, category_id
       FROM products
       WHERE id = :id
     `,
@@ -203,15 +214,30 @@ export class ProductRepo {
     productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
   ) {
-    const { name, description, status, images, variants, variantDimension } = input;
+    const { name, description, status, images, variants, variantDimension, categoryId } = input;
+
+    const { rows: categoryRows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+      SELECT 1
+      FROM categories
+      WHERE id = :categoryId
+        AND is_active = true
+      LIMIT 1;
+    `,
+      { categoryId }
+    );
+
+    if (!categoryRows.length) {
+      throw AppError.notFound("Category not found");
+    }
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
-      INSERT INTO products (name, slug, description, is_variant, status)
-      VALUES(:name, :slug, :description, :is_variant, :status)
+      INSERT INTO products (name, slug, description, is_variant, status, category_id)
+      VALUES(:name, :slug, :description, :is_variant, :status, :categoryId)
       RETURNING id
     `,
-      { name, slug, description, is_variant: isVariant, status }
+      { name, slug, description, is_variant: isVariant, status, categoryId }
     );
 
     const row = rows[0];
@@ -255,16 +281,31 @@ export class ProductRepo {
     productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
   ) {
-    const { name, description, status, images, variants, variantDimension } = input;
+    const { name, description, status, images, variants, variantDimension, categoryId } = input;
+
+    const { rows: categoryRows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+      SELECT 1
+      FROM categories
+      WHERE id = :categoryId
+        AND is_active = true
+      LIMIT 1;
+    `,
+      { categoryId }
+    );
+
+    if (!categoryRows.length) {
+      throw AppError.notFound("Category not found");
+    }
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       UPDATE products
-        SET name = :name, description = :description, status = :status, is_variant = :is_variant, slug = :slug, updated_at = now()
+        SET name = :name, description = :description, status = :status, category_id = :categoryId, is_variant = :is_variant, slug = :slug, updated_at = now()
       WHERE id = :id
       RETURNING id
     `,
-      { name, description, status, is_variant: isVariant, slug, id }
+      { name, description, status, categoryId, is_variant: isVariant, slug, id }
     );
 
     const row = rows[0];
@@ -301,6 +342,31 @@ export class ProductRepo {
     const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
     const variantIdMap = await this.insertVariants(trx, productId, variants);
     await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
+  }
+
+  async updateStatus(input: UpdateProductStatusSchema) {
+    const { productIds, status } = input;
+
+    const { rows } = await db.raw<{ rows: { id: number }[] }>(
+      `
+        SELECT id FROM products
+        WHERE id = ANY(:productIds)
+      `,
+      { productIds }
+    );
+
+    if (rows.length !== productIds.length) {
+      throw AppError.notFound("Some products not found");
+    }
+
+    await db.raw(
+      `
+        UPDATE products
+          SET status = :status
+        WHERE id = ANY(:productIds)
+      `,
+      { status, productIds }
+    );
   }
 
   async remove(trx: Knex.Transaction, id: number) {
@@ -580,8 +646,8 @@ export class ProductRepo {
       throw AppError.badRequest("Product must have at least one image");
     }
 
-    if (activeCount > PRODUCT_IMG_LIMIT) {
-      throw AppError.badRequest(`Product images exceed maximum limit (${PRODUCT_IMG_LIMIT})`);
+    if (activeCount > PRODUCT_LIMITS.IMAGE_LIMIT) {
+      throw AppError.badRequest(`Product images exceed maximum limit (${PRODUCT_LIMITS.IMAGE_LIMIT})`);
     }
   }
 
