@@ -1,6 +1,7 @@
 import { Router } from "express";
 import productRouter from "./products/products.route";
 import categoryRouter from "./categories/categories.route";
+import collectionRouter from "./collections/collections.route";
 
 const router = Router();
 
@@ -11,5 +12,6 @@ const MARKETING_ROUTE = "/marketing";
 
 router.use(PRODUCT_ROUTE, productRouter);
 router.use(CATEGORY_ROUTE, categoryRouter);
+router.use(COLLECTION_ROUTE, collectionRouter);
 
 export default router;
