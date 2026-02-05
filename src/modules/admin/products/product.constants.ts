@@ -34,3 +34,8 @@ export const PRODUCT_LIMITS = {
   MAX_SKU: 32,
   IMAGE_LIMIT: 5
 } as const;
+
+export const PRODUCT_IMAGE_MAX_SIZE = {
+  width: 1200,
+  height: 1200
+} as const;

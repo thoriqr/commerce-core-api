@@ -5,7 +5,7 @@ import { AppError } from "@/errors/app-error";
 import { deleteFile, uploadFile } from "@/libs/s3-client";
 import { generateUniqueSlug } from "./product.slug";
 import { ProductRepo } from "./product.repo";
-import { ALLOWED_IMG_FORMAT } from "./product.constants";
+import { ALLOWED_IMG_FORMAT, PRODUCT_IMAGE_MAX_SIZE } from "./product.constants";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { ProductImageFilesMap, VariantImageFilesMap } from "./product.types";
 import { validateAndMapProductImages, validateAndMapVariantImages } from "./product.image.validator";
@@ -142,7 +142,10 @@ export class ProductService {
         mimeType: processed.mimeType,
         size: processed.size,
         width: processed.width,
-        height: processed.height
+        height: processed.height,
+        originalHeight: processed.originalHeight,
+        originalWidth: processed.originalWidth,
+        originalAvailable: processed.originalAvailable
       });
     }
 
@@ -180,7 +183,10 @@ export class ProductService {
         mimeType: processed.mimeType,
         size: processed.size,
         width: processed.width,
-        height: processed.height
+        height: processed.height,
+        originalHeight: processed.originalHeight,
+        originalWidth: processed.originalWidth,
+        originalAvailable: processed.originalAvailable
       });
     }
 
@@ -193,7 +199,7 @@ export class ProductService {
 
     try {
       image = sharp(file.buffer);
-      meta = await image.metadata(); // REAL IMAGE
+      meta = await image.metadata(); // ORIGINAL IMAGE
 
       if (!meta.format || !ALLOWED_IMG_FORMAT.includes(meta.format as any)) {
         throw AppError.badRequest("Unsupported image format");
@@ -202,9 +208,16 @@ export class ProductService {
       throw AppError.badRequest("Invalid or corrupted image file");
     }
 
+    if (!meta.width || !meta.height) {
+      throw AppError.badRequest("Invalid image dimensions");
+    }
+
+    // CHECK ORIGINAL AVAILABLE
+    const originalAvailable = meta.width <= PRODUCT_IMAGE_MAX_SIZE.width && meta.height <= PRODUCT_IMAGE_MAX_SIZE.height;
+
     const resized = image.resize({
-      width: 1200,
-      height: 1200,
+      width: PRODUCT_IMAGE_MAX_SIZE.width,
+      height: PRODUCT_IMAGE_MAX_SIZE.height,
       fit: "inside",
       withoutEnlargement: true
     });
@@ -222,8 +235,14 @@ export class ProductService {
       buffer,
       mimeType: "image/webp",
       size: buffer.length,
+
+      // FINAL IMAGE
       width: finalMeta.width,
-      height: finalMeta.height
+      height: finalMeta.height,
+      // ORIGINAL INFO
+      originalWidth: meta.width,
+      originalHeight: meta.height,
+      originalAvailable
     };
   }
 

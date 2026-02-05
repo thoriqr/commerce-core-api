@@ -92,6 +92,9 @@ export type VariantImageFilesMap = Map<
     size: number;
     width: number;
     height: number;
+    originalWidth: number;
+    originalHeight: number;
+    originalAvailable: boolean;
   }
 >;
 
@@ -104,5 +107,8 @@ export type ProductImageFilesMap = Map<
     size: number;
     width: number;
     height: number;
+    originalWidth: number;
+    originalHeight: number;
+    originalAvailable: boolean;
   }
 >;

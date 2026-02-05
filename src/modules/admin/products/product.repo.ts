@@ -26,6 +26,7 @@ import {
 } from "./product.types";
 import { mapProductDetail, mapProductList } from "./product.mapper";
 import { PRODUCT_LIMITS } from "./product.constants";
+import { IMAGE_CONTEXT } from "@/constants/image-context";
 
 export class ProductRepo {
   async getAll(qParams: ProductQueryParamsSchema) {
@@ -482,8 +483,9 @@ export class ProductRepo {
       const { rows } = await trx.raw<{ rows: { id: number }[] }>(
         `
           INSERT INTO images_metadata
-            (image_key, original_file_name, mime_type, file_size, width, height, original_available)
-          VALUES (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+            (image_key, original_file_name, mime_type, file_size, width, height, original_available, context)
+          VALUES
+            (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, :original_available, :context)
           RETURNING id
         `,
         {
@@ -492,7 +494,9 @@ export class ProductRepo {
           mime_type: img?.mimeType,
           file_size: img?.size,
           width: img?.width,
-          height: img?.height
+          height: img?.height,
+          original_available: img.originalAvailable,
+          context: IMAGE_CONTEXT.PRODUCT
         }
       );
 
@@ -580,9 +584,9 @@ export class ProductRepo {
         const { rows: metaRows } = await trx.raw<{ rows: { id: number }[] }>(
           `
         INSERT INTO images_metadata
-          (image_key, original_file_name, mime_type, file_size, width, height, original_available)
+          (image_key, original_file_name, mime_type, file_size, width, height, original_available, context)
         VALUES
-          (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+          (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, :original_available, :context)
         RETURNING id
         `,
           {
@@ -591,7 +595,9 @@ export class ProductRepo {
             mime_type: file.mimeType,
             file_size: file.size,
             width: file.width,
-            height: file.height
+            height: file.height,
+            original_available: file.originalAvailable,
+            context: IMAGE_CONTEXT.PRODUCT
           }
         );
 
@@ -666,8 +672,8 @@ export class ProductRepo {
         const { rows } = await trx.raw<{ rows: { id: number }[] }>(
           `
           INSERT INTO images_metadata
-            (image_key, original_file_name, mime_type, file_size, width, height, original_available)
-          VALUES (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+            (image_key, original_file_name, mime_type, file_size, width, height, original_available, context)
+          VALUES (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, :original_available, :context)
           RETURNING id
         `,
           {
@@ -676,7 +682,9 @@ export class ProductRepo {
             mime_type: img?.mimeType,
             file_size: img?.size,
             width: img?.width,
-            height: img?.height
+            height: img?.height,
+            original_available: img.originalAvailable,
+            context: IMAGE_CONTEXT.PRODUCT_VARIANT
           }
         );
 
@@ -838,9 +846,9 @@ export class ProductRepo {
           const { rows: metaRows } = await trx.raw<{ rows: { id: number }[] }>(
             `
           INSERT INTO images_metadata
-            (image_key, original_file_name, mime_type, file_size, width, height, original_available)
+            (image_key, original_file_name, mime_type, file_size, width, height, original_available, context)
           VALUES
-            (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, false)
+            (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, :original_available, :context)
           RETURNING id
         `,
             {
@@ -849,7 +857,9 @@ export class ProductRepo {
               mime_type: img.mimeType,
               file_size: img.size,
               width: img.width,
-              height: img.height
+              height: img.height,
+              original_available: img.originalAvailable,
+              context: IMAGE_CONTEXT.PRODUCT_VARIANT
             }
           );
 
