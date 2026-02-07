@@ -1,13 +1,61 @@
 import { Knex } from "knex";
 import { BannerUpsertSchema } from "./banner.schema";
-import { ImagePayload } from "./banner.types";
+import { BannerDetailRow, BannerListRow, ImagePayload } from "./banner.types";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
+import { db } from "@/infra/db/knex";
+import { mapBannerDetail, mapBannerList } from "./banner.mapper";
 
 const QUERY_TARGET_PLACEHOLDER = "__QUERY_TARGET_PENDING__";
 
 export class BannerRepo {
+  async getAll() {
+    const { rows } = await db.raw<{ rows: BannerListRow[] }>(`
+      SELECT 
+       mb.id,
+       mb.title,
+       mb.placement,
+       im.image_key,
+       mb.target_type,
+       mb.target_value,
+       mb.is_active,
+       mb.sort_order
+       FROM marketing_banners mb
+       JOIN images_metadata im ON im.id = mb.image_id
+       ORDER BY mb.sort_order ASC, mb.id ASC
+    `);
+
+    return mapBannerList(rows);
+  }
+
+  async getById(bannerId: number) {
+    const { rows } = await db.raw<{ rows: BannerDetailRow[] }>(
+      `
+      SELECT
+        mb.id,
+        mb.title,
+        mb.placement,
+        mb.image_id,
+        im.image_key,
+        mb.target_type,
+        mb.target_id,
+        mb.is_active
+      FROM marketing_banners mb
+      JOIN images_metadata im ON im.id = mb.image_id
+      WHERE mb.id = :bannerId  
+    `,
+      { bannerId }
+    );
+
+    const row = rows[0];
+    if (!row) {
+      throw AppError.notFound("Banner not found");
+    }
+
+    return mapBannerDetail(row);
+  }
+
   async create(trx: Knex.Transaction, input: BannerUpsertSchema, imageId: number, targetValue: string | null) {
     await this.assertBannerImageExists(trx, imageId);
 

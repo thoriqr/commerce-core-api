@@ -16,8 +16,11 @@ const repo = new BannerRepo();
 const service = new BannerService(tm, repo);
 const controller = new BannerController(service);
 
+router.get("/", controller.getAll);
 router.get("/meta", controller.getOptions);
+router.get("/:bannerId", controller.getById);
+
 router.post("/", withMulter(bannerImageUpload.single(UPLOAD_FILE.BANNER_FIELD)), controller.create);
-router.put("/:bannerId", controller.update);
+router.put("/:bannerId", withMulter(bannerImageUpload.single(UPLOAD_FILE.BANNER_FIELD)), controller.update);
 
 export default router;

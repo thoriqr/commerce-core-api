@@ -15,6 +15,14 @@ export class BannerService {
     private repo: BannerRepo
   ) {}
 
+  getAll = async () => {
+    return this.repo.getAll();
+  };
+
+  getById = async (bannerId: number) => {
+    return this.repo.getById(bannerId);
+  };
+
   create = async (input: BannerUpsertSchema, imageFile?: Express.Multer.File) => {
     return this.tm.transaction(async (trx) => {
       const resolvedTargetValue = await this.repo.resolveTarget(trx, input.targetType, input.targetId);

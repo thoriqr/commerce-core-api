@@ -8,6 +8,17 @@ import { BANNER_PLACEMENT_OPTIONS, BANNER_TARGET_TYPE_OPTIONS } from "./banner.c
 export class BannerController {
   constructor(private service: BannerService) {}
 
+  getAll = async (req: Request, res: Response) => {
+    const data = await this.service.getAll();
+    sendSuccess(res, 200, { data });
+  };
+
+  getById = async (req: Request, res: Response) => {
+    const params = bannerIdParams.parse(req.params);
+    const data = await this.service.getById(params.bannerId);
+    sendSuccess(res, 200, { data });
+  };
+
   getOptions = async (req: Request, res: Response) => {
     sendSuccess(res, 200, {
       data: {
@@ -37,7 +48,16 @@ export class BannerController {
   update = async (req: Request, res: Response) => {
     const file = req.file;
     const params = bannerIdParams.parse(req.params);
-    const payload = bannerUpsertSchema.parse(req.body);
+
+    const image = {
+      id: req.body["image.id"],
+      originalFileName: req.body["image.originalFileName"]
+    };
+
+    const payload = bannerUpsertSchema.parse({
+      ...req.body,
+      image
+    });
     await this.service.update(params.bannerId, payload, file);
     sendSuccess(res, 200, { message: "Banner updated" });
   };
