@@ -54,7 +54,7 @@ const variantSchema = z.object({
   stock: z.coerce.number().int().positive().min(PRODUCT_LIMITS.STOCK_MIN).max(PRODUCT_LIMITS.STOCK_MAX),
   weight: z.coerce.number().positive().min(PRODUCT_LIMITS.WEIGHT_MIN).max(PRODUCT_LIMITS.WEIGHT_MAX),
   sku: z.string().max(PRODUCT_LIMITS.MAX_SKU),
-  isPrimary: z.boolean(),
+  isPrimary: z.coerce.boolean(),
   options: z.array(
     z.object({
       dimensionId: idSchema,

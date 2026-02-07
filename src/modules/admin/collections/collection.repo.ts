@@ -3,7 +3,7 @@ import { CollectionReorderSchema, CollectionUpsertSchema } from "./collection.sc
 import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { CollectionDetailRow, CollectionRow } from "./collection.types";
-import { mapCollectionDetail, mapCollectionList } from "./collection.mapper";
+import { mapCollectionDetail, mapCollectionList, mapCollectionOptions } from "./collection.mapper";
 
 export class CollectionRepo {
   async getAll() {
@@ -106,6 +106,19 @@ export class CollectionRepo {
     if (!rows.length) {
       throw AppError.notFound("Collection not found");
     }
+  }
+
+  async getOptions() {
+    const { rows } = await db.raw<{
+      rows: { id: number; name: string }[];
+    }>(`
+    SELECT id, name
+    FROM collections
+    WHERE is_active = true
+    ORDER BY sort_order ASC, id ASC
+  `);
+
+    return mapCollectionOptions(rows);
   }
 
   async reorderCollection(trx: Knex.Transaction, input: CollectionReorderSchema) {

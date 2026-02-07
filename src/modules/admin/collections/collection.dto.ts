@@ -15,3 +15,8 @@ export interface CollectionDetailDTO {
   sortOrder: number;
   isActive: boolean;
 }
+
+export interface CollectionOptionDTO {
+  value: string;
+  label: string;
+}

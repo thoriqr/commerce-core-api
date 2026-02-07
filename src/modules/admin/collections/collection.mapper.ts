@@ -1,4 +1,4 @@
-import { CollectionDetailDTO, CollectionDTO } from "./collection.dto";
+import { CollectionDetailDTO, CollectionDTO, CollectionOptionDTO } from "./collection.dto";
 import { CollectionDetailRow, CollectionRow } from "./collection.types";
 
 export function mapCollectionList(rows: (CollectionRow & { product_count: number })[]): CollectionDTO[] {
@@ -21,4 +21,11 @@ export function mapCollectionDetail(row: CollectionDetailRow): CollectionDetailD
     slug: row.slug,
     sortOrder: row.sort_order
   };
+}
+
+export function mapCollectionOptions(rows: { id: number; name: string }[]): CollectionOptionDTO[] {
+  return rows.map((r) => ({
+    value: String(r.id),
+    label: r.name
+  }));
 }

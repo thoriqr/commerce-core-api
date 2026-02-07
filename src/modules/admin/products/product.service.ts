@@ -5,7 +5,7 @@ import { AppError } from "@/errors/app-error";
 import { deleteFile, uploadFile } from "@/libs/s3-client";
 import { generateUniqueSlug } from "./product.slug";
 import { ProductRepo } from "./product.repo";
-import { ALLOWED_IMG_FORMAT, PRODUCT_IMAGE_MAX_SIZE } from "./product.constants";
+import { ALLOWED_IMG_FORMAT, PRODUCT_IMAGE_MAX_SIZE, PRODUCT_IMAGE_MIN_SIZE } from "./product.constants";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { ProductImageFilesMap, VariantImageFilesMap } from "./product.types";
 import { validateAndMapProductImages, validateAndMapVariantImages } from "./product.image.validator";
@@ -18,12 +18,14 @@ import {
   VariantSchema
 } from "./product.schema";
 import { CategoryRepo } from "../categories/category.repo";
+import { CollectionRepo } from "../collections/collection.repo";
 
 export class ProductService {
   constructor(
     private tm: TransactionManager,
     private readonly productRepo: ProductRepo,
-    private readonly categoryRepo: CategoryRepo
+    private readonly categoryRepo: CategoryRepo,
+    private readonly collectionRepo: CollectionRepo
   ) {}
 
   getall = async (qParams: ProductQueryParamsSchema) => {
@@ -49,6 +51,10 @@ export class ProductService {
 
   getCategoryOptions = async () => {
     return await this.categoryRepo.getFlatForProduct();
+  };
+
+  getCollectionOptions = async () => {
+    return await this.collectionRepo.getOptions();
   };
 
   create = async (input: ProductUpsertSchema, productImgs: Express.Multer.File[], variantImgs: Express.Multer.File[]) => {
@@ -210,6 +216,10 @@ export class ProductService {
 
     if (!meta.width || !meta.height) {
       throw AppError.badRequest("Invalid image dimensions");
+    }
+
+    if (meta.width < PRODUCT_IMAGE_MIN_SIZE.width || meta.height < PRODUCT_IMAGE_MIN_SIZE.height) {
+      throw AppError.badRequest(`Image too small. Minimum ${PRODUCT_IMAGE_MIN_SIZE.width}x${PRODUCT_IMAGE_MIN_SIZE.height}px`);
     }
 
     // CHECK ORIGINAL AVAILABLE

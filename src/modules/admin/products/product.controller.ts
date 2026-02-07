@@ -24,6 +24,11 @@ export class ProductController {
     sendSuccess(res, 200, { data });
   };
 
+  getCollectionOptions = async (req: Request, res: Response) => {
+    const data = await this.service.getCollectionOptions();
+    sendSuccess(res, 200, { data });
+  };
+
   create = async (req: Request, res: Response) => {
     const filesMap = req.files as Record<string, Express.Multer.File[] | undefined>;
     const productImgs = filesMap[UPLOAD_FILE.PRODUCT_FIELD] ?? [];

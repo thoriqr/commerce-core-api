@@ -39,3 +39,8 @@ export const PRODUCT_IMAGE_MAX_SIZE = {
   width: 1200,
   height: 1200
 } as const;
+
+export const PRODUCT_IMAGE_MIN_SIZE = {
+  width: 300,
+  height: 300
+} as const;

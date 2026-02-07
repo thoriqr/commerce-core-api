@@ -8,6 +8,7 @@ import { ProductController } from "./product.controller";
 import { withMulter } from "@/middlewares/multer.middleware";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { CategoryRepo } from "../categories/category.repo";
+import { CollectionRepo } from "../collections/collection.repo";
 
 const router = Router();
 
@@ -15,12 +16,14 @@ const tm = new KnexTransactionManager(db);
 
 const productRepo = new ProductRepo();
 const categoryRepo = new CategoryRepo();
-const service = new ProductService(tm, productRepo, categoryRepo);
+const collectionRepo = new CollectionRepo();
+const service = new ProductService(tm, productRepo, categoryRepo, collectionRepo);
 const controller = new ProductController(service);
 
 router.get("/", controller.getAll);
 router.get("/:productId", controller.getById);
 router.get("/options/category", controller.getCategoryOptions);
+router.get("/options/collection", controller.getCollectionOptions);
 
 router.post(
   "/",
