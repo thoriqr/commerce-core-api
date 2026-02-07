@@ -5,29 +5,31 @@ import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
 
+const QUERY_TARGET_PLACEHOLDER = "__QUERY_TARGET_PENDING__";
+
 export class BannerRepo {
-  async create(trx: Knex.Transaction, input: Omit<BannerUpsertSchema, "targetValue"> & { targetValue: string }, imageId: number) {
+  async create(trx: Knex.Transaction, input: BannerUpsertSchema, imageId: number, targetValue: string | null) {
     await this.assertBannerImageExists(trx, imageId);
 
     const sortOrder = await this.getNextSortOrder(trx);
 
-    const { title, placement, targetType, targetValue, isActive } = input;
+    const { title, placement, targetType, targetId, isActive } = input;
 
     await trx.raw(
       `
       INSERT INTO marketing_banners
-        (title, placement, target_type, target_value, is_active, sort_order, image_id)
+        (title, placement, target_type, target_id, target_value, is_active, sort_order, image_id)
       VALUES
-        (:title, :placement, :targetType, :targetValue, :isActive, :sortOrder, :imageId)  
+        (:title, :placement, :targetType, :targetId, :targetValue, :isActive, :sortOrder, :imageId)  
     `,
-      { title, placement, targetType, targetValue, isActive, sortOrder, imageId }
+      { title, placement, targetType, targetId, targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER, isActive, sortOrder, imageId }
     );
   }
 
-  async update(trx: Knex.Transaction, bannerId: number, input: Omit<BannerUpsertSchema, "targetValue"> & { targetValue: string }, imageId: number) {
+  async update(trx: Knex.Transaction, bannerId: number, input: BannerUpsertSchema, imageId: number, targetValue: string | null) {
     await this.assertBannerImageExists(trx, imageId);
 
-    const { title, placement, targetType, targetValue, isActive } = input;
+    const { title, placement, targetType, targetId, isActive } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
@@ -36,6 +38,7 @@ export class BannerRepo {
       title = :title,
       placement = :placement,
       target_type = :targetType,
+      target_id = :targetId,
       target_value = :targetValue,
       is_active = :isActive,
       image_id = :imageId,
@@ -48,7 +51,8 @@ export class BannerRepo {
         title,
         placement,
         targetType,
-        targetValue,
+        targetId,
+        targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER,
         isActive,
         imageId
       }
@@ -92,15 +96,25 @@ export class BannerRepo {
     return row.id;
   }
 
-  async resolveTarget(trx: Knex.Transaction, targetType: BannerUpsertSchema["targetType"], targetValue: number) {
+  async resolveTarget(trx: Knex.Transaction, targetType: BannerUpsertSchema["targetType"], targetId?: number) {
+    // future: rule / query based
+    // if (targetType === "query") {
+    //   return null;
+    // }
+
+    // entity based targets MUST have targetId
+    if (!targetId) {
+      throw AppError.badRequest("targetId is required for this target type");
+    }
+
     if (targetType === "category") {
-      const slugPath = await this.resolveCategorySlugPath(trx, targetValue);
+      const slugPath = await this.resolveCategorySlugPath(trx, targetId);
 
       return slugPath;
     }
 
     if (targetType === "collection") {
-      const slug = await this.resolveCollectionSlug(trx, targetValue);
+      const slug = await this.resolveCollectionSlug(trx, targetId);
 
       return slug;
     }

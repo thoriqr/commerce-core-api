@@ -9,6 +9,7 @@ export const BANNER_PLACEMENT = {
 export const BANNER_TARGET_TYPE = {
   COLLECTION: "collection",
   CATEGORY: "category"
+  // QUERY: "query"
 } as const;
 
 export const BANNER_PLACEMENT_OPTIONS = Object.values(BANNER_PLACEMENT).map((value) => ({

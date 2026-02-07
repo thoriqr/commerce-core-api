@@ -1,4 +1,4 @@
-import z from "zod";
+import z, { optional } from "zod";
 import { BANNER_PLACEMENT, BANNER_TARGET_TYPE } from "./banner.constants";
 
 const MAX_TITLE = 100;
@@ -10,14 +10,19 @@ export const imageSchema = z.object({
   originalFileName: z.string().optional()
 });
 
-export const bannerUpsertSchema = z.object({
-  image: imageSchema,
-  title: z.string().min(1).max(MAX_TITLE),
-  placement: z.enum([BANNER_PLACEMENT.HOMEPAGE_HERO]),
-  targetType: z.enum([BANNER_TARGET_TYPE.COLLECTION, BANNER_TARGET_TYPE.CATEGORY]),
-  targetValue: z.coerce.number().min(1).positive(),
-  isActive: z.coerce.boolean().default(true)
-});
+export const bannerUpsertSchema = z
+  .object({
+    image: imageSchema,
+    title: z.string().min(1).max(MAX_TITLE),
+    placement: z.enum([BANNER_PLACEMENT.HOMEPAGE_HERO]),
+    targetType: z.enum([BANNER_TARGET_TYPE.COLLECTION, BANNER_TARGET_TYPE.CATEGORY]),
+    targetId: z.coerce.number().min(1).positive().optional(),
+    isActive: z.coerce.boolean().default(true)
+  })
+  .refine((data) => data.targetId !== undefined, {
+    message: "targetId is required for category / collection",
+    path: ["targetId"]
+  });
 
 export const bannerIdParams = z.object({
   bannerId: z.coerce.number()
