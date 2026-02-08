@@ -9,7 +9,7 @@ export function mapBannerList(rows: BannerListRow[]): BannerListDTO[] {
     imageKey: r.image_key,
     targetType: r.target_type,
     targetValue: r.target_value,
-    isActive: r.is_active,
+    status: r.status,
     sortOrder: r.sort_order
   }));
 }
@@ -22,6 +22,6 @@ export function mapBannerDetail(row: BannerDetailRow): BannerDetailDTO {
     image: { id: String(row.image_id), imageKey: row.image_key },
     targetType: row.target_type,
     targetId: row.target_id ? String(row.target_id) : "",
-    isActive: row.is_active
+    status: row.status
   };
 }

@@ -1,9 +1,11 @@
+export type CollectionStatus = "ACTIVE" | "INACTIVE";
+
 export type CollectionRow = {
   id: number;
   name: string;
   slug: string;
   sort_order: number;
-  is_active: boolean;
+  status: CollectionStatus;
 };
 
 export type CollectionDetailRow = {
@@ -12,5 +14,5 @@ export type CollectionDetailRow = {
   slug: string;
   description: string | null;
   sort_order: number;
-  is_active: boolean;
+  status: CollectionStatus;
 };

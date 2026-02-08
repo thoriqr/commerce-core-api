@@ -17,7 +17,7 @@ export const bannerUpsertSchema = z
     placement: z.enum([BANNER_PLACEMENT.HOMEPAGE_HERO]),
     targetType: z.enum([BANNER_TARGET_TYPE.COLLECTION, BANNER_TARGET_TYPE.CATEGORY]),
     targetId: z.coerce.number().min(1).positive().optional(),
-    isActive: z.coerce.boolean().default(true)
+    status: z.enum(["ACTIVE", "INACTIVE"])
   })
   .refine((data) => data.targetId !== undefined, {
     message: "targetId is required for category / collection",

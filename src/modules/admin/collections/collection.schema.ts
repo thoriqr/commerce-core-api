@@ -8,7 +8,7 @@ export const collectionUpsertSchema = z.object({
   name: z.string().min(1).max(MAX_NAME),
   slug: z.string().min(1).max(MAX_SLUG).optional(),
   description: z.string().min(1).max(MAX_DESCRIPTION).optional(),
-  isActive: z.boolean().default(true)
+  status: z.enum(["ACTIVE", "INACTIVE"])
 });
 
 export const collectionIdParams = z.object({

@@ -9,7 +9,7 @@ export class CategoryRepo {
   async getById(id: number) {
     const { rows } = await db.raw<{ rows: CategoryDetailRow[] }>(
       `
-      SELECT id, parent_id, name, slug, description, sort_order, is_active FROM categories WHERE id =:id
+      SELECT id, parent_id, name, slug, description, sort_order, status FROM categories WHERE id =:id
     `,
       { id }
     );
@@ -25,7 +25,7 @@ export class CategoryRepo {
 
   async getAllParent() {
     const { rows } = await db.raw<{ rows: CategoryParentRow[] }>(`
-      SELECT id, parent_id, name, slug, sort_order, is_active
+      SELECT id, parent_id, name, slug, sort_order, status
       FROM categories WHERE parent_id IS NULL
       ORDER BY sort_order ASC, id ASC 
     `);
@@ -38,17 +38,17 @@ export class CategoryRepo {
       `
       WITH RECURSIVE category_tree AS(
         -- anchor: self
-        SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order, c.is_active
+        SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order, c.status
         FROM categories c WHERE c.id = :parent_id
 
         UNION ALL
         -- recursive: children
-        SELECT c2.id, c2.parent_id, c2.name, c2.slug, c2.sort_order, c2.is_active
+        SELECT c2.id, c2.parent_id, c2.name, c2.slug, c2.sort_order, c2.status
         FROM categories c2
         JOIN category_tree ct
           ON c2.parent_id = ct.id
       )
-      SELECT ct.id, ct.parent_id, ct.name, ct.slug, ct.sort_order, ct.is_active
+      SELECT ct.id, ct.parent_id, ct.name, ct.slug, ct.sort_order, ct.status
       FROM category_tree ct
       ORDER BY
         ct.parent_id NULLS FIRST,
@@ -73,13 +73,13 @@ export class CategoryRepo {
         id,
         name,
         parent_id,
-        is_active,
+        status,
         ARRAY[sort_order] AS sort_path,
         name::text AS path,
         1 AS depth
       FROM categories
       WHERE parent_id IS NULL
-        AND is_active = true
+        AND status = 'ACTIVE'
 
       UNION ALL
 
@@ -87,14 +87,14 @@ export class CategoryRepo {
         c.id,
         c.name,
         c.parent_id,
-        c.is_active,
+        c.status,
         ct.sort_path || c.sort_order,
         ct.path || ' / ' || c.name,
         ct.depth + 1
       FROM categories c
       JOIN category_tree ct
         ON c.parent_id = ct.id
-        AND c.is_active = true
+        AND c.status = 'ACTIVE'
       )
 
       SELECT
@@ -114,14 +114,14 @@ export class CategoryRepo {
 
     const sortOrder = await this.getNextSortOrder(trx, input.parentId);
 
-    const { name, description, parentId, isActive } = input;
+    const { name, description, parentId, status } = input;
 
     await trx.raw(
       `
       INSERT INTO categories
-        (name, slug, description, parent_id, sort_order, is_active)
+        (name, slug, description, parent_id, sort_order, status)
       VALUES
-        (:name, :slug, :description, :parentId, :sortOrder, :isActive)
+        (:name, :slug, :description, :parentId, :sortOrder, :status)
     `,
       {
         name,
@@ -129,22 +129,22 @@ export class CategoryRepo {
         description: description ?? null,
         parentId,
         sortOrder,
-        isActive
+        status
       }
     );
   }
 
   async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpsertSchema, slug: string) {
-    const { name, description, isActive } = input;
+    const { name, description, status } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       UPDATE categories
-        SET name = :name, description = :description, slug = :slug, is_active = :isActive
+        SET name = :name, description = :description, slug = :slug, status = :status
       WHERE id = :categoryId
       RETURNING id
     `,
-      { name, description: description ?? null, slug, isActive, categoryId }
+      { name, description: description ?? null, slug, status, categoryId }
     );
 
     if (!rows.length) {

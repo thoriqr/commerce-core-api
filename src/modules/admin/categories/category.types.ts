@@ -1,10 +1,12 @@
+export type CategoryStatus = "ACTIVE" | "INACTIVE";
+
 export type CategoryParentRow = {
   id: number;
   parent_id: number | null;
   name: string;
   slug: string;
   sort_order: number;
-  is_active: boolean;
+  status: CategoryStatus;
 };
 
 export type CategoryRow = {
@@ -13,7 +15,7 @@ export type CategoryRow = {
   name: string;
   slug: string;
   sort_order: number;
-  is_active: boolean;
+  status: CategoryStatus;
 };
 
 export type CategoryDetailRow = {
@@ -23,7 +25,7 @@ export type CategoryDetailRow = {
   description: string | null;
   slug: string;
   sort_order: number;
-  is_active: boolean;
+  status: CategoryStatus;
 };
 
 export type CategoryFlatRow = {

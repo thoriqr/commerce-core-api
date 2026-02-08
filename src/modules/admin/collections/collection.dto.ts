@@ -1,9 +1,11 @@
+import { CollectionStatus } from "./collection.types";
+
 export interface CollectionDTO {
   id: number;
   name: string;
   slug: string;
   sortOrder: number;
-  isActive: boolean;
+  status: CollectionStatus;
   productCount: number;
 }
 
@@ -13,7 +15,7 @@ export interface CollectionDetailDTO {
   slug: string;
   description: string;
   sortOrder: number;
-  isActive: boolean;
+  status: CollectionStatus;
 }
 
 export interface CollectionOptionDTO {

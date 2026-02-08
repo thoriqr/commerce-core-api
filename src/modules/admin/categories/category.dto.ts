@@ -1,10 +1,12 @@
+import { CategoryStatus } from "./category.types";
+
 export interface CategoryParentDTO {
   id: number;
   parentId: number | null;
   name: string;
   slug: string;
   sortOrder: number;
-  isActive: boolean;
+  status: CategoryStatus;
 }
 
 export interface CategoryParentTreeDTO {
@@ -12,7 +14,7 @@ export interface CategoryParentTreeDTO {
   parentId: number | null;
   name: string;
   slug: string;
-  isActive: boolean;
+  status: CategoryStatus;
   sortOrder: number;
   children: CategoryParentTreeDTO[];
 }
@@ -24,7 +26,7 @@ export interface CategoryDetailDTO {
   description: string | null;
   slug: string;
   sortOrder: number;
-  isActive: boolean;
+  status: CategoryStatus;
 }
 
 export interface CategoryFlatDTO {

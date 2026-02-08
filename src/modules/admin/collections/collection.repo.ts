@@ -15,7 +15,7 @@ export class CollectionRepo {
         c.name,
         c.slug,
         c.sort_order,
-        c.is_active,
+        c.status,
         COUNT(pc.product_id) AS product_count
       FROM collections c
       LEFT JOIN product_collections pc
@@ -25,7 +25,7 @@ export class CollectionRepo {
         c.name,
         c.slug,
         c.sort_order,
-        c.is_active
+        c.status
       ORDER BY
         c.sort_order ASC,
         c.id ASC
@@ -37,7 +37,7 @@ export class CollectionRepo {
   async getById(collectionId: number) {
     const { rows } = await db.raw<{ rows: CollectionDetailRow[] }>(
       `
-      SELECT id, name, slug, description, sort_order, is_active
+      SELECT id, name, slug, description, sort_order, status
       FROM collections
       WHERE id = :collectionId  
     `,
@@ -56,36 +56,36 @@ export class CollectionRepo {
   async create(trx: Knex.Transaction, input: CollectionUpsertSchema, slug: string) {
     const sortOrder = await this.getNextSortOrder(trx);
 
-    const { name, description, isActive } = input;
+    const { name, description, status } = input;
 
     await trx.raw(
       `
       INSERT INTO collections
-        (name, slug, description, is_active, sort_order)
+        (name, slug, description, status, sort_order)
       VALUES
-        (:name, :slug, :description, :isActive, :sortOrder)
+        (:name, :slug, :description, :status, :sortOrder)
     `,
       {
         name,
         slug,
         description: description ?? null,
-        isActive,
+        status,
         sortOrder
       }
     );
   }
 
   async update(trx: Knex.Transaction, collectionId: number, input: CollectionUpsertSchema, slug: string) {
-    const { name, description, isActive } = input;
+    const { name, description, status } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
           UPDATE collections
-            SET name = :name, description = :description, slug = :slug, is_active = :isActive
+            SET name = :name, description = :description, slug = :slug, status = :status
           WHERE id = :collectionId
           RETURNING id
         `,
-      { name, description: description ?? null, slug, isActive, collectionId }
+      { name, description: description ?? null, slug, status, collectionId }
     );
 
     if (!rows.length) {
@@ -114,7 +114,7 @@ export class CollectionRepo {
     }>(`
     SELECT id, name
     FROM collections
-    WHERE is_active = true
+    WHERE status = 'ACTIVE'
     ORDER BY sort_order ASC, id ASC
   `);
 

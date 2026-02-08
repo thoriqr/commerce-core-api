@@ -8,7 +8,7 @@ export function mapCategoryParents(rows: CategoryParentRow[]): CategoryParentDTO
     name: r.name,
     slug: r.slug,
     sortOrder: r.sort_order,
-    isActive: r.is_active
+    status: r.status
   }));
 }
 
@@ -22,7 +22,7 @@ export function mapCategoryParentTree(rows: CategoryRow[]): CategoryParentTreeDT
       parentId: r.parent_id,
       name: r.name,
       slug: r.slug,
-      isActive: r.is_active,
+      status: r.status,
       sortOrder: r.sort_order,
       children: []
     });
@@ -51,7 +51,7 @@ export function mapCategoryDetail(row: CategoryDetailRow): CategoryDetailDTO {
     slug: row.slug,
     description: row.description,
     sortOrder: row.sort_order,
-    isActive: row.is_active
+    status: row.status
   };
 }
 

@@ -1,4 +1,4 @@
-import { BannerPlacement, BannerTargetType } from "./banner.types";
+import { BannerPlacement, BannerStatus, BannerTargetType } from "./banner.types";
 
 export interface BannerListDTO {
   id: number;
@@ -7,7 +7,7 @@ export interface BannerListDTO {
   imageKey: string;
   targetType: BannerTargetType;
   targetValue: string;
-  isActive: boolean;
+  status: BannerStatus;
   sortOrder: number;
 }
 
@@ -18,5 +18,5 @@ export interface BannerDetailDTO {
   image: { id: string; imageKey: string };
   targetType: BannerTargetType;
   targetId: string;
-  isActive: boolean;
+  status: BannerStatus;
 }

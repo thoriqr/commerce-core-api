@@ -19,7 +19,7 @@ export class BannerRepo {
        im.image_key,
        mb.target_type,
        mb.target_value,
-       mb.is_active,
+       mb.status,
        mb.sort_order
        FROM marketing_banners mb
        JOIN images_metadata im ON im.id = mb.image_id
@@ -40,7 +40,7 @@ export class BannerRepo {
         im.image_key,
         mb.target_type,
         mb.target_id,
-        mb.is_active
+        mb.status
       FROM marketing_banners mb
       JOIN images_metadata im ON im.id = mb.image_id
       WHERE mb.id = :bannerId  
@@ -61,23 +61,23 @@ export class BannerRepo {
 
     const sortOrder = await this.getNextSortOrder(trx);
 
-    const { title, placement, targetType, targetId, isActive } = input;
+    const { title, placement, targetType, targetId, status } = input;
 
     await trx.raw(
       `
       INSERT INTO marketing_banners
-        (title, placement, target_type, target_id, target_value, is_active, sort_order, image_id)
+        (title, placement, target_type, target_id, target_value, status, sort_order, image_id)
       VALUES
-        (:title, :placement, :targetType, :targetId, :targetValue, :isActive, :sortOrder, :imageId)  
+        (:title, :placement, :targetType, :targetId, :targetValue, :status, :sortOrder, :imageId)  
     `,
-      { title, placement, targetType, targetId, targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER, isActive, sortOrder, imageId }
+      { title, placement, targetType, targetId, targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER, status, sortOrder, imageId }
     );
   }
 
   async update(trx: Knex.Transaction, bannerId: number, input: BannerUpsertSchema, imageId: number, targetValue: string | null) {
     await this.assertBannerImageExists(trx, imageId);
 
-    const { title, placement, targetType, targetId, isActive } = input;
+    const { title, placement, targetType, targetId, status } = input;
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
@@ -88,7 +88,7 @@ export class BannerRepo {
       target_type = :targetType,
       target_id = :targetId,
       target_value = :targetValue,
-      is_active = :isActive,
+      status = :status,
       image_id = :imageId,
       updated_at = now()
     WHERE id = :bannerId
@@ -101,7 +101,7 @@ export class BannerRepo {
         targetType,
         targetId,
         targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER,
-        isActive,
+        status,
         imageId
       }
     );
