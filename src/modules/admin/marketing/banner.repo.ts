@@ -1,11 +1,11 @@
 import { Knex } from "knex";
-import { BannerUpsertSchema } from "./banner.schema";
-import { BannerDetailRow, BannerListRow, ImagePayload } from "./banner.types";
+import { BannerImagesQueryParamsSchema, BannerUpsertSchema } from "./banner.schema";
+import { BannerDetailRow, BannerImageRow, BannerListRow, ImagePayload } from "./banner.types";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
 import { db } from "@/infra/db/knex";
-import { mapBannerDetail, mapBannerList } from "./banner.mapper";
+import { mapBannerDetail, mapBannerImages, mapBannerList } from "./banner.mapper";
 
 const QUERY_TARGET_PLACEHOLDER = "__QUERY_TARGET_PENDING__";
 
@@ -109,6 +109,48 @@ export class BannerRepo {
     if (!rows.length) {
       throw AppError.notFound("Banner not found");
     }
+  }
+
+  async getBannerImages(qParams: BannerImagesQueryParamsSchema) {
+    const { page, limit, sortBy, sortDir } = qParams;
+
+    const bindings: any[] = [];
+
+    const SORT_MAP: Record<string, string> = {
+      created_at: "created_at"
+    };
+
+    const sortColumn = SORT_MAP[sortBy] ?? SORT_MAP.created_at;
+    const sortDirection = sortDir === "asc" ? "ASC" : "DESC";
+
+    const offset = (page - 1) * limit;
+    bindings.push(limit, offset);
+
+    const sql = `
+      SELECT id, image_key, width, height
+      FROM images_metadata
+      WHERE context = '${IMAGE_CONTEXT.BANNER}'
+        ORDER BY ${sortColumn} ${sortDirection}
+      LIMIT ? OFFSET ?
+    `;
+
+    const { rows } = await db.raw<{ rows: BannerImageRow[] }>(sql, bindings);
+
+    const { rows: totalRows } = await db.raw<{ rows: { total: number }[] }>(
+      `
+        SELECT COUNT(*)::int AS total FROM images_metadata
+        WHERE context = :context
+    `,
+      { context: IMAGE_CONTEXT.BANNER }
+    );
+
+    const totalRow = totalRows[0];
+    if (!totalRow) {
+      throw AppError.internal("Cannot get total images_metadata");
+    }
+
+    const images = mapBannerImages(rows);
+    return { images, total: totalRow.total };
   }
 
   async insertBannerImage(trx: Knex.Transaction, payload: ImagePayload) {

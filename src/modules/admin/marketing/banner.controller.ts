@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 
 import { sendSuccess } from "@/utils/send-success";
-import { bannerIdParams, bannerUpsertSchema } from "./banner.schema";
+import { bannerIdParams, bannerImagesQueryParams, bannerUpsertSchema } from "./banner.schema";
 import { BannerService } from "./banner.service";
 import { BANNER_PLACEMENT_OPTIONS, BANNER_TARGET_TYPE_OPTIONS } from "./banner.constants";
 
@@ -26,6 +26,12 @@ export class BannerController {
         targetTypes: BANNER_TARGET_TYPE_OPTIONS
       }
     });
+  };
+
+  getBannerImages = async (req: Request, res: Response) => {
+    const qParams = bannerImagesQueryParams.parse(req.query);
+    const { data, meta } = await this.service.getBannerImages(qParams);
+    sendSuccess(res, 200, { data, meta });
   };
 
   create = async (req: Request, res: Response) => {

@@ -1,5 +1,5 @@
-import { BannerDetailDTO, BannerListDTO } from "./banner.dto";
-import { BannerDetailRow, BannerListRow } from "./banner.types";
+import { BannerDetailDTO, BannerImageDTO, BannerListDTO } from "./banner.dto";
+import { BannerDetailRow, BannerImageRow, BannerListRow } from "./banner.types";
 
 export function mapBannerList(rows: BannerListRow[]): BannerListDTO[] {
   return rows.map((r) => ({
@@ -24,4 +24,13 @@ export function mapBannerDetail(row: BannerDetailRow): BannerDetailDTO {
     targetId: row.target_id ? String(row.target_id) : "",
     status: row.status
   };
+}
+
+export function mapBannerImages(rows: BannerImageRow[]): BannerImageDTO[] {
+  return rows.map((r) => ({
+    id: r.id,
+    imageKey: r.image_key,
+    width: r.width,
+    height: r.height
+  }));
 }

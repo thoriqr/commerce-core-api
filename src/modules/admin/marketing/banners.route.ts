@@ -18,6 +18,7 @@ const controller = new BannerController(service);
 
 router.get("/", controller.getAll);
 router.get("/meta", controller.getOptions);
+router.get("/images", controller.getBannerImages);
 router.get("/:bannerId", controller.getById);
 
 router.post("/", withMulter(bannerImageUpload.single(UPLOAD_FILE.BANNER_FIELD)), controller.create);

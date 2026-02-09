@@ -1,6 +1,6 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { BannerRepo } from "./banner.repo";
-import { BannerImageSchema, BannerUpsertSchema } from "./banner.schema";
+import { BannerImageSchema, BannerImagesQueryParamsSchema, BannerUpsertSchema } from "./banner.schema";
 import { AppError } from "@/errors/app-error";
 import sharp from "sharp";
 import { ALLOWED_IMG_FORMAT, BANNER_IMAGE_MAX_SIZE, BANNER_IMAGE_MIN_SIZE } from "./banner.constants";
@@ -43,6 +43,24 @@ export class BannerService {
 
       await this.repo.update(trx, bannerId, input, imageId, resolvedTargetValue);
     });
+  };
+
+  getBannerImages = async (qParams: BannerImagesQueryParamsSchema) => {
+    const { page, limit } = qParams;
+
+    const { images, total } = await this.repo.getBannerImages(qParams);
+
+    return {
+      data: images,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
   };
 
   private async resolveBannerImage(trx: Knex.Transaction, image: BannerImageSchema, imageFile?: Express.Multer.File): Promise<number> {

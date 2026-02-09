@@ -20,3 +20,10 @@ export interface BannerDetailDTO {
   targetId: string;
   status: BannerStatus;
 }
+
+export interface BannerImageDTO {
+  id: number;
+  imageKey: string;
+  width: number;
+  height: number;
+}

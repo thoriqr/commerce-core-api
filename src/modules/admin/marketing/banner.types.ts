@@ -37,3 +37,10 @@ export type ImagePayload = {
   originalWidth: number;
   originalAvailable: boolean;
 };
+
+export type BannerImageRow = {
+  id: number;
+  image_key: string;
+  width: number;
+  height: number;
+};

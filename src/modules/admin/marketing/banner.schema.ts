@@ -37,6 +37,15 @@ export const bannerReorderSchema = z
   )
   .min(1);
 
+export const bannerImagesQueryParams = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+  sortBy: z.enum(["created_at"]).default("created_at"),
+  sortDir: z.enum(["asc", "desc"]).default("desc")
+});
+
 export type BannerUpsertSchema = z.infer<typeof bannerUpsertSchema>;
 export type BannerImageSchema = z.infer<typeof imageSchema>;
 export type BannerReorderSchema = z.infer<typeof bannerReorderSchema>;
+
+export type BannerImagesQueryParamsSchema = z.infer<typeof bannerImagesQueryParams>;
