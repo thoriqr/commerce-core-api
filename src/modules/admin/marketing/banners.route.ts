@@ -19,9 +19,13 @@ const controller = new BannerController(service);
 router.get("/", controller.getAll);
 router.get("/meta", controller.getOptions);
 router.get("/images", controller.getBannerImages);
-router.get("/:bannerId", controller.getById);
+router.delete("/images/:imageId", controller.removeBannerImage);
 
+router.get("/:bannerId", controller.getById);
 router.post("/", withMulter(bannerImageUpload.single(UPLOAD_FILE.BANNER_FIELD)), controller.create);
 router.put("/:bannerId", withMulter(bannerImageUpload.single(UPLOAD_FILE.BANNER_FIELD)), controller.update);
+router.delete("/:bannerId", controller.remove);
+
+router.put("/actions/reorder", controller.reorderBanner);
 
 export default router;

@@ -28,6 +28,10 @@ export const bannerIdParams = z.object({
   bannerId: z.coerce.number()
 });
 
+export const imageIdParams = z.object({
+  imageId: z.coerce.number()
+});
+
 export const bannerReorderSchema = z
   .array(
     z.object({

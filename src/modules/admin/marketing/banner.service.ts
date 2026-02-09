@@ -1,13 +1,14 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { BannerRepo } from "./banner.repo";
-import { BannerImageSchema, BannerImagesQueryParamsSchema, BannerUpsertSchema } from "./banner.schema";
+import { BannerImageSchema, BannerImagesQueryParamsSchema, BannerReorderSchema, BannerUpsertSchema } from "./banner.schema";
 import { AppError } from "@/errors/app-error";
 import sharp from "sharp";
 import { ALLOWED_IMG_FORMAT, BANNER_IMAGE_MAX_SIZE, BANNER_IMAGE_MIN_SIZE } from "./banner.constants";
 import { v4 as uuidv4 } from "uuid";
-import { uploadFile } from "@/libs/s3-client";
+import { deleteFile, uploadFile } from "@/libs/s3-client";
 import { ImagePayload } from "./banner.types";
 import { Knex } from "knex";
+import { logger } from "@/libs/logger";
 
 export class BannerService {
   constructor(
@@ -45,6 +46,14 @@ export class BannerService {
     });
   };
 
+  remove = async (bannerId: number) => {
+    return this.repo.remove(bannerId);
+  };
+
+  reorderBanner = async (input: BannerReorderSchema) => {
+    await this.tm.transaction((trx) => this.repo.reorderBanner(trx, input));
+  };
+
   getBannerImages = async (qParams: BannerImagesQueryParamsSchema) => {
     const { page, limit } = qParams;
 
@@ -61,6 +70,18 @@ export class BannerService {
         hasPrev: page > 1
       }
     };
+  };
+
+  removeBannerImage = async (imageId: number) => {
+    const { image_key } = await this.repo.snapShotBannerImage(imageId);
+
+    await this.repo.removeBannerImageMetadata(imageId);
+
+    try {
+      await deleteFile(image_key);
+    } catch (err) {
+      logger.error("Failed to delete banner image from storage", { imageId, imageKey: image_key, error: err });
+    }
   };
 
   private async resolveBannerImage(trx: Knex.Transaction, image: BannerImageSchema, imageFile?: Express.Multer.File): Promise<number> {

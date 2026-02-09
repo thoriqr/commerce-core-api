@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import { BannerImagesQueryParamsSchema, BannerUpsertSchema } from "./banner.schema";
+import { BannerImagesQueryParamsSchema, BannerReorderSchema, BannerUpsertSchema } from "./banner.schema";
 import { BannerDetailRow, BannerImageRow, BannerListRow, ImagePayload } from "./banner.types";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
@@ -111,6 +111,43 @@ export class BannerRepo {
     }
   }
 
+  async reorderBanner(trx: Knex.Transaction, input: BannerReorderSchema) {
+    const ids = input.map((i) => i.id);
+
+    const cases = input.map((i) => `WHEN ${i.id} THEN ${i.sortOrder}`).join(" ");
+
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+        UPDATE marketing_banners
+          SET sort_order = CASE id
+          ${cases}
+        END
+        WHERE id = ANY(:ids)
+        RETURNING id
+        `,
+      { ids }
+    );
+
+    if (!rows.length) {
+      throw AppError.notFound("Banner not found or invalid collection");
+    }
+  }
+
+  async remove(bannerId: number) {
+    const { rows } = await db.raw<{ rows: { id: number }[] }>(
+      `
+          DELETE FROM marketing_banners
+          WHERE id = :bannerId
+          RETURNING id  
+        `,
+      { bannerId }
+    );
+
+    if (!rows.length) {
+      throw AppError.notFound("Banner not found");
+    }
+  }
+
   async getBannerImages(qParams: BannerImagesQueryParamsSchema) {
     const { page, limit, sortBy, sortDir } = qParams;
 
@@ -151,6 +188,34 @@ export class BannerRepo {
 
     const images = mapBannerImages(rows);
     return { images, total: totalRow.total };
+  }
+
+  async snapShotBannerImage(imageId: number) {
+    const { rows } = await db.raw<{ rows: { id: number; image_key: string }[] }>(
+      `
+      SELECT id, image_key FROM images_metadata
+      WHERE id = :imageId AND context = :context  
+    `,
+      { imageId, context: IMAGE_CONTEXT.BANNER }
+    );
+
+    const row = rows[0];
+    if (!row) {
+      throw AppError.notFound("Banner image not found");
+    }
+
+    return row;
+  }
+
+  async removeBannerImageMetadata(imageId: number) {
+    await db.raw<{ rows: { id: number }[] }>(
+      `
+          DELETE FROM images_metadata
+          WHERE id = :imageId
+            AND context = :context
+        `,
+      { imageId, context: IMAGE_CONTEXT.BANNER }
+    );
   }
 
   async insertBannerImage(trx: Knex.Transaction, payload: ImagePayload) {

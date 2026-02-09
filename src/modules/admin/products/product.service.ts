@@ -118,12 +118,8 @@ export class ProductService {
       }
     }
 
-    // delete images_metadata (best effort)
-    try {
-      await this.productRepo.removeImagesMetadata(imageIds);
-    } catch (err) {
-      logger.error("Failed to delete images metadata", { productId: id, imageIds, error: err });
-    }
+    // DB cleanup (must succeed or error)
+    await this.productRepo.removeImagesMetadata(imageIds);
   };
 
   private async prepareProductImages(images: ProductImageSchema[], files: Express.Multer.File[]): Promise<ProductImageFilesMap> {
