@@ -12,6 +12,10 @@ export type ProductRow = {
   category_id: number | null;
 };
 
+export type ProductCollectionIdRow = {
+  collection_id: number;
+};
+
 // GET BY ID
 export type ProductDetailRow = {
   id: number;

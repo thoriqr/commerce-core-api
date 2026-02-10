@@ -20,6 +20,7 @@ export interface ProductDetailDTO {
   isVariant: boolean;
   status: ProductStatus;
   categoryId: string | null;
+  collectionIds: string[];
   images: { id: string; imageKey: string; sortOrder: number }[];
   variantDimension: {
     id: string;

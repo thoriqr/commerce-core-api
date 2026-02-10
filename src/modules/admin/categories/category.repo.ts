@@ -4,6 +4,7 @@ import { db } from "@/infra/db/knex";
 import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
 import { mapCategoryDetail, mapCategoryFlat, mapCategoryParents, mapCategoryParentTree } from "./category.mapper";
+import { BANNER_TARGET_TYPE } from "../marketing/banner.constants";
 
 export class CategoryRepo {
   async getById(id: number) {
@@ -79,7 +80,6 @@ export class CategoryRepo {
         1 AS depth
       FROM categories
       WHERE parent_id IS NULL
-        AND status = 'ACTIVE'
 
       UNION ALL
 
@@ -94,7 +94,6 @@ export class CategoryRepo {
       FROM categories c
       JOIN category_tree ct
         ON c.parent_id = ct.id
-        AND c.status = 'ACTIVE'
       )
 
       SELECT
@@ -176,6 +175,21 @@ export class CategoryRepo {
   }
 
   async remove(categoryId: number) {
+    const { rows: bannerRows } = await db.raw<{ rows: { id: number }[] }>(
+      `
+          SELECT 1
+          FROM marketing_banners
+          WHERE target_type = :targetType
+            AND target_id = :categoryId
+          LIMIT 1
+          `,
+      { targetType: BANNER_TARGET_TYPE.CATEGORY, categoryId }
+    );
+
+    if (bannerRows.length > 0) {
+      throw AppError.badRequest("Category is still used by a banner");
+    }
+
     const { rows } = await db.raw<{ rows: { id: number }[] }>(
       `
       DELETE FROM categories

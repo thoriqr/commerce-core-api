@@ -69,6 +69,7 @@ export const productUpsertSchema = z
     description: z.coerce.string().min(PRODUCT_LIMITS.DESCRIPTION_MIN).max(PRODUCT_LIMITS.DESCRIPTION_MAX),
     status: z.enum(["ACTIVE", "INACTIVE"]),
     categoryId: z.coerce.number().int().positive(),
+    collectionIds: z.array(z.coerce.number().int().positive()),
     isVariant: z.boolean().optional(),
     images: z.array(productImageSchema, { error: "Images is required" }).min(1).max(PRODUCT_LIMITS.IMAGE_LIMIT),
     variants: z.array(variantSchema).min(1).max(VARIANT_LIMITS.MAX_TOTAL_VARIANTS),

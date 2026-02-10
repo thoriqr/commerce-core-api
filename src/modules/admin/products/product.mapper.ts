@@ -1,6 +1,7 @@
 import { ProductDetailDTO, ProductListDTO } from "./product.dto";
 import {
   ImageRow,
+  ProductCollectionIdRow,
   ProductDetailRow,
   ProductListRow,
   VariantDimensionRow,
@@ -12,6 +13,7 @@ import {
 
 export function mapProductDetail(
   productRow: ProductDetailRow,
+  colIdRows: ProductCollectionIdRow[],
   imageRows: ImageRow[],
   variantRows: VariantRow[],
   dimensionRows: VariantDimensionRow[],
@@ -30,6 +32,7 @@ export function mapProductDetail(
       productId: String(productRow.id),
       name: productRow.name,
       description: productRow.description,
+      collectionIds: colIdRows.map((r) => String(r.collection_id)),
       images,
       isVariant: productRow.is_variant,
       status: productRow.status,
@@ -107,6 +110,7 @@ export function mapProductDetail(
     isVariant: productRow.is_variant,
     status: productRow.status,
     categoryId: productRow.category_id ? String(productRow.category_id) : null,
+    collectionIds: colIdRows.map((r) => String(r.collection_id)),
     variantDimension,
     images,
     variants: variantRows.map((v) => ({

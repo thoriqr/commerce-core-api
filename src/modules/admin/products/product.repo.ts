@@ -22,7 +22,8 @@ import {
   VariantImageFilesMap,
   VariantOptionValueRow,
   VariantRow,
-  ProductImageFilesMap
+  ProductImageFilesMap,
+  ProductCollectionIdRow
 } from "./product.types";
 import { mapProductDetail, mapProductList } from "./product.mapper";
 import { PRODUCT_LIMITS } from "./product.constants";
@@ -120,14 +121,14 @@ export class ProductRepo {
     return row.total;
   }
 
-  async getDetailById(id: number) {
+  async getDetailById(productId: number) {
     const { rows: productRows } = await db.raw<{ rows: ProductDetailRow[] }>(
       `
       SELECT id, name, description, is_variant, status, category_id
       FROM products
-      WHERE id = :id
+      WHERE id = :productId
     `,
-      { id }
+      { productId }
     );
 
     const product = productRows[0];
@@ -135,24 +136,35 @@ export class ProductRepo {
       throw AppError.notFound("Product not found");
     }
 
+    const { rows: colIdRows } = await db.raw<{
+      rows: ProductCollectionIdRow[];
+    }>(
+      `
+      SELECT collection_id
+      FROM product_collections
+      WHERE product_id = :productId
+      `,
+      { productId }
+    );
+
     const { rows: imgRows } = await db.raw(
       `
       SELECT pi.id, pi.sort_order, im.image_key
       FROM product_images pi
       JOIN images_metadata im ON im.id = pi.image_id
-      WHERE pi.product_id = :id
+      WHERE pi.product_id = :productId
         AND pi.is_orphan = false
     `,
-      { id }
+      { productId }
     );
 
     const { rows: variantRows } = await db.raw<{ rows: VariantRow[] }>(
       `
       SELECT id, product_id, price, stock, weight, sku, is_primary
       FROM product_variants
-      WHERE product_id = :id
+      WHERE product_id = :productId
     `,
-      { id }
+      { productId }
     );
 
     const variantIds = variantRows.map((v) => v.id);
@@ -161,9 +173,9 @@ export class ProductRepo {
       `
       SELECT id, product_id, name, normalized_name, display_name
       FROM product_variant_dimensions
-      WHERE product_id = :id
+      WHERE product_id = :productId
     `,
-      { id }
+      { productId }
     );
 
     const dimensionIds = dimensionRows.map((d) => d.id);
@@ -198,13 +210,13 @@ export class ProductRepo {
 
         JOIN product_variant_image_signatures pvis ON pvis.variant_image_id = pvi.id
         JOIN images_metadata im ON im.id = pvi.image_id
-        WHERE pvi.product_id = :id
+        WHERE pvi.product_id = :productId
           AND pvi.is_orphan = false
     `,
-      { id }
+      { productId }
     );
 
-    return mapProductDetail(product, imgRows, variantRows, dimensionRows, dimensionValueRows, optionValueRows, variantImageRows);
+    return mapProductDetail(product, colIdRows, imgRows, variantRows, dimensionRows, dimensionValueRows, optionValueRows, variantImageRows);
   }
 
   async create(
@@ -215,14 +227,13 @@ export class ProductRepo {
     productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
   ) {
-    const { name, description, status, images, variants, variantDimension, categoryId } = input;
+    const { name, description, status, images, variants, variantDimension, categoryId, collectionIds } = input;
 
     const { rows: categoryRows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       SELECT 1
       FROM categories
       WHERE id = :categoryId
-        AND is_active = true
       LIMIT 1;
     `,
       { categoryId }
@@ -248,6 +259,10 @@ export class ProductRepo {
     }
 
     const productId = row.id;
+
+    if (collectionIds.length > 0) {
+      await this.insertProductCollections(trx, productId, collectionIds);
+    }
 
     await this.insertProductImages(trx, productId, images, productImageFilesMap);
 
@@ -282,14 +297,13 @@ export class ProductRepo {
     productImageFilesMap: ProductImageFilesMap,
     variantImageFilesMap: VariantImageFilesMap
   ) {
-    const { name, description, status, images, variants, variantDimension, categoryId } = input;
+    const { name, description, status, images, variants, variantDimension, categoryId, collectionIds } = input;
 
     const { rows: categoryRows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       SELECT 1
       FROM categories
       WHERE id = :categoryId
-        AND is_active = true
       LIMIT 1;
     `,
       { categoryId }
@@ -315,6 +329,18 @@ export class ProductRepo {
     }
 
     const productId = row.id;
+
+    await trx.raw(
+      `
+      DELETE FROM product_collections
+      WHERE product_id = :productId
+    `,
+      { productId }
+    );
+
+    if (collectionIds.length > 0) {
+      await this.insertProductCollections(trx, productId, collectionIds);
+    }
 
     await this.updateProductImages(trx, productId, images, productImageFilesMap);
 
@@ -1136,5 +1162,32 @@ export class ProductRepo {
     }
 
     return { where, having, bindings };
+  }
+
+  private async insertProductCollections(trx: Knex.Transaction, productId: number, collectionIds: number[]) {
+    const uniqueIds = [...new Set(collectionIds)];
+
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+      SELECT id FROM collections
+      WHERE id = ANY(:collectionIds)
+    `,
+      { collectionIds: uniqueIds }
+    );
+
+    if (rows.length !== collectionIds.length) {
+      throw AppError.badRequest("One or more collections not found");
+    }
+
+    await trx.raw(
+      `
+      INSERT INTO product_collections (product_id, collection_id)
+      SELECT :productId, unnest(:collectionIds::bigint[])
+      `,
+      {
+        productId,
+        collectionIds: uniqueIds
+      }
+    );
   }
 }

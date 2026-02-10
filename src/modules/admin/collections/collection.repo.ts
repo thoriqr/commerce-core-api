@@ -4,6 +4,7 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { CollectionDetailRow, CollectionRow } from "./collection.types";
 import { mapCollectionDetail, mapCollectionList, mapCollectionOptions } from "./collection.mapper";
+import { BANNER_TARGET_TYPE } from "../marketing/banner.constants";
 
 export class CollectionRepo {
   async getAll() {
@@ -94,6 +95,21 @@ export class CollectionRepo {
   }
 
   async remove(collectionId: number) {
+    const { rows: bannerRows } = await db.raw<{ rows: { id: number }[] }>(
+      `
+      SELECT 1
+      FROM marketing_banners
+      WHERE target_type = :targetType
+        AND target_id = :collectionId
+      LIMIT 1
+      `,
+      { targetType: BANNER_TARGET_TYPE.COLLECTION, collectionId }
+    );
+
+    if (bannerRows.length > 0) {
+      throw AppError.badRequest("Collection is still used by a banner");
+    }
+
     const { rows } = await db.raw<{ rows: { id: number }[] }>(
       `
           DELETE FROM collections
@@ -114,7 +130,6 @@ export class CollectionRepo {
     }>(`
     SELECT id, name
     FROM collections
-    WHERE status = 'ACTIVE'
     ORDER BY sort_order ASC, id ASC
   `);
 
