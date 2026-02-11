@@ -44,7 +44,7 @@ export class CollectionService {
   };
 
   reorderCollection = async (input: CollectionReorderSchema) => {
-    await this.tm.transaction((trx) => this.repo.reorderCollection(trx, input));
+    return this.tm.transaction((trx) => this.repo.reorderCollection(trx, input));
   };
 
   remove = async (collectionId: number) => {

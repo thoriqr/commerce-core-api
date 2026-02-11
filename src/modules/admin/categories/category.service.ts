@@ -10,18 +10,15 @@ export class CategoryService {
   ) {}
 
   getById = async (id: number) => {
-    const data = await this.repo.getById(id);
-    return data;
+    return await this.repo.getById(id);
   };
 
   getAllParent = async () => {
-    const data = await this.repo.getAllParent();
-    return data;
+    return await this.repo.getAllParent();
   };
 
   getParentTree = async (parentId: number) => {
-    const data = await this.repo.getParentTree(parentId);
-    return data;
+    return await this.repo.getParentTree(parentId);
   };
 
   create = async (input: CategoryUpsertSchema) => {
@@ -52,7 +49,7 @@ export class CategoryService {
   };
 
   reorderCategory = async (parentId: number, input: CategoryReorderSchema) => {
-    await this.tm.transaction((trx) => this.repo.reorderCategory(trx, parentId, input));
+    return this.tm.transaction((trx) => this.repo.reorderCategory(trx, parentId, input));
   };
 
   remove = async (categoryId: number) => {
