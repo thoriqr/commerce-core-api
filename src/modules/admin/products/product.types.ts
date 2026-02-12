@@ -1,5 +1,7 @@
 export type ProductStatus = "ACTIVE" | "INACTIVE";
 
+export type ProductVariantStatus = "ACTIVE" | "INACTIVE" | "ARCHIVED";
+
 export type ProductRow = {
   id: number;
   name: string;

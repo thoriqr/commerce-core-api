@@ -28,8 +28,11 @@ import {
 import { mapProductDetail, mapProductList } from "./product.mapper";
 import { PRODUCT_LIMITS } from "./product.constants";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
+import { ProductVariantRepo } from "./product-variant.repo";
 
 export class ProductRepo {
+  constructor(private readonly variantRepo: ProductVariantRepo) {}
+
   async getAll(qParams: ProductQueryParamsSchema) {
     const { page, limit, sortBy, sortDir } = qParams;
 
@@ -229,19 +232,7 @@ export class ProductRepo {
   ) {
     const { name, description, status, images, variants, variantDimension, categoryId, collectionIds } = input;
 
-    const { rows: categoryRows } = await trx.raw<{ rows: { id: number }[] }>(
-      `
-      SELECT 1
-      FROM categories
-      WHERE id = :categoryId
-      LIMIT 1;
-    `,
-      { categoryId }
-    );
-
-    if (!categoryRows.length) {
-      throw AppError.notFound("Category not found");
-    }
+    await this.validateCategoryId(trx, categoryId);
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
@@ -266,26 +257,25 @@ export class ProductRepo {
 
     await this.insertProductImages(trx, productId, images, productImageFilesMap);
 
-    // SINGLE PRODUCT
-    // guard for single product
+    // 4️⃣ Guard
     if (variantImageFilesMap.size > 0 && variants.length === 1) {
       throw AppError.internal("Variant images are only allowed for multi-variant products");
     }
 
-    if (variants.length === 1) {
-      await this.insertVariants(trx, productId, variants);
-      return;
+    const hasVariantDimension = Array.isArray(variantDimension) && variantDimension.length > 0;
+
+    // 5️⃣ Snapshot lookup
+    const snapshotLookup = hasVariantDimension ? this.buildVariantSnapshotLookup(variantDimension) : null;
+
+    // 6️⃣ Insert variants (NEW ONLY)
+    const variantIdMap = await this.variantRepo.insertNewVariants(trx, productId, variants, snapshotLookup);
+
+    // 7️⃣ Descriptor runtime only if multi
+    if (hasVariantDimension) {
+      await this.variantRepo.handleNewAndRemovedVariantImages(trx, productId, variantDimension, variantImageFilesMap, new Set());
+
+      await this.variantRepo.rebuildDimensionsAndPivot(trx, productId, variantDimension, variants, variantIdMap);
     }
-
-    // MULTI VARIANT
-    const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDimension);
-    const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
-
-    await this.insertVariantImages(trx, productId, variantDimension, variantImageFilesMap);
-
-    const variantIdMap = await this.insertVariants(trx, productId, variants);
-
-    await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
   }
 
   async update(
@@ -299,19 +289,7 @@ export class ProductRepo {
   ) {
     const { name, description, status, images, variants, variantDimension, categoryId, collectionIds } = input;
 
-    const { rows: categoryRows } = await trx.raw<{ rows: { id: number }[] }>(
-      `
-      SELECT 1
-      FROM categories
-      WHERE id = :categoryId
-      LIMIT 1;
-    `,
-      { categoryId }
-    );
-
-    if (!categoryRows.length) {
-      throw AppError.notFound("Category not found");
-    }
+    await this.validateCategoryId(trx, categoryId);
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
@@ -344,31 +322,95 @@ export class ProductRepo {
 
     await this.updateProductImages(trx, productId, images, productImageFilesMap);
 
-    await trx.raw(`DELETE FROM product_variants WHERE product_id = :productId`, { productId });
-    await trx.raw(`DELETE FROM product_variant_dimensions WHERE product_id = :productId`, { productId });
-
-    // SINGLE PRODUCT
-    // guard for single product
+    // multi variant image guard
     if (variantImageFilesMap.size > 0 && variants.length === 1) {
       throw AppError.internal("Variant images are only allowed for multi-variant products");
     }
 
-    if (variants.length === 1) {
-      await this.insertVariants(trx, productId, variants);
-      return;
+    const payloadIds = new Set(variants.filter((v) => v.id).map((v) => Number(v.id)));
+
+    await this.variantRepo.archiveMissingVariants(trx, productId, payloadIds);
+
+    const dbVariantMap = await this.variantRepo.getVariantStatusMap(trx, productId);
+
+    const existingVariants = variants.filter((v) => v.id);
+    const newVariants = variants.filter((v) => !v.id);
+
+    const hasVariantDimension = Array.isArray(variantDimension) && variantDimension.length > 0;
+    const hadDimensionBefore = await this.variantRepo.productHadDimensions(trx, productId);
+
+    const snapshotLookup = hasVariantDimension ? this.buildVariantSnapshotLookup(variantDimension) : null;
+
+    const existingMap = await this.variantRepo.updateExistingVariants(trx, productId, existingVariants, dbVariantMap, snapshotLookup);
+
+    const newMap = await this.variantRepo.insertNewVariants(trx, productId, newVariants, snapshotLookup);
+
+    const variantIdMap = new Map([...existingMap, ...newMap]);
+
+    const state = this.resolveDimensionState(hadDimensionBefore, hasVariantDimension);
+
+    switch (state) {
+      case "MULTI_TO_SINGLE":
+        await this.variantRepo.clearAllVariantImages(trx, productId);
+        await this.variantRepo.clearAllDimensionsAndPivot(trx, productId);
+        break;
+
+      case "SINGLE_TO_MULTI":
+        await this.variantRepo.handleNewAndRemovedVariantImages(trx, productId, variantDimension, variantImageFilesMap, new Set());
+
+        await this.variantRepo.rebuildDimensionsAndPivot(trx, productId, variantDimension, variants, variantIdMap);
+        break;
+
+      case "MULTI_TO_MULTI":
+        const usedImageIds = await this.variantRepo.updateVariantImageSignatures(trx, productId, variantDimension);
+
+        await this.variantRepo.handleNewAndRemovedVariantImages(trx, productId, variantDimension, variantImageFilesMap, usedImageIds);
+
+        await this.variantRepo.rebuildDimensionsAndPivot(trx, productId, variantDimension, variants, variantIdMap);
+        break;
+
+      case "SINGLE_TO_SINGLE":
+        // nothing
+        break;
+    }
+  }
+
+  buildVariantSnapshotLookup(variantDimension: VariantDimensionSchema[]) {
+    const valueMap = new Map<string, { dimensionName: string; value: string }>();
+
+    for (const dim of variantDimension) {
+      for (const opt of dim.options) {
+        valueMap.set(String(opt.id), {
+          dimensionName: dim.name,
+          value: opt.value
+        });
+      }
     }
 
-    // MULTI VARIANT
-    // CASE 1 update signature image lama
-    const usedImageIds = await this.updateVariantImageSignatures(trx, productId, variantDimension);
+    return valueMap;
+  }
 
-    // 4. CASE 2 + CASE 3 — new image + delete image + orphan finalize
-    await this.handleNewAndRemovedVariantImages(trx, productId, variantDimension, variantImageFilesMap, usedImageIds);
+  private resolveDimensionState(had: boolean, has: boolean) {
+    if (!had && !has) return "SINGLE_TO_SINGLE";
+    if (!had && has) return "SINGLE_TO_MULTI";
+    if (had && has) return "MULTI_TO_MULTI";
+    return "MULTI_TO_SINGLE";
+  }
 
-    const dimensionIdMap = await this.insertVariantDimensions(trx, productId, variantDimension);
-    const valueIdMap = await this.insertVariantDimensionValues(trx, variantDimension, dimensionIdMap);
-    const variantIdMap = await this.insertVariants(trx, productId, variants);
-    await this.insertVariantOptionValues(trx, variants, variantIdMap, dimensionIdMap, valueIdMap);
+  async validateCategoryId(trx: Knex.Transaction, categoryId: number) {
+    const { rows: categoryRows } = await trx.raw(
+      `
+      SELECT 1
+      FROM categories
+      WHERE id = :categoryId
+      LIMIT 1;
+    `,
+      { categoryId }
+    );
+
+    if (!categoryRows.length) {
+      throw AppError.notFound("Category not found");
+    }
   }
 
   async updateStatus(input: UpdateProductStatusSchema) {
@@ -680,424 +722,6 @@ export class ProductRepo {
 
     if (activeCount > PRODUCT_LIMITS.IMAGE_LIMIT) {
       throw AppError.badRequest(`Product images exceed maximum limit (${PRODUCT_LIMITS.IMAGE_LIMIT})`);
-    }
-  }
-
-  private async insertVariantImages(
-    trx: Knex.Transaction,
-    productId: number,
-    variantDimensions: VariantDimensionSchema[],
-    variantImageFilesMap: VariantImageFilesMap
-  ) {
-    for (const dim of variantDimensions) {
-      for (const opt of dim.options) {
-        const img = variantImageFilesMap.get(opt.id);
-        if (!img) continue;
-
-        // 1. insert images_metadata
-        const { rows } = await trx.raw<{ rows: { id: number }[] }>(
-          `
-          INSERT INTO images_metadata
-            (image_key, original_file_name, mime_type, file_size, width, height, original_available, context)
-          VALUES (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, :original_available, :context)
-          RETURNING id
-        `,
-          {
-            image_key: img.imageKey,
-            original_file_name: img?.originalFileName,
-            mime_type: img?.mimeType,
-            file_size: img?.size,
-            width: img?.width,
-            height: img?.height,
-            original_available: img.originalAvailable,
-            context: IMAGE_CONTEXT.PRODUCT_VARIANT
-          }
-        );
-
-        const row = rows[0];
-
-        if (!row) {
-          logger.error("Insert images_metadata returned no rows");
-          throw AppError.internal();
-        }
-
-        const imgMetadataId = row.id;
-
-        // 2. insert product_variant_images
-        const { rows: imgRows } = await trx.raw<{ rows: { id: number }[] }>(
-          `
-          INSERT INTO product_variant_images
-            (product_id, image_id, is_orphan)
-          VALUES
-            (:product_id, :image_id, false)
-          RETURNING id
-        `,
-          {
-            product_id: productId,
-            image_id: imgMetadataId
-          }
-        );
-
-        const imgRow = imgRows[0];
-
-        if (!imgRow) {
-          logger.error("Insert product_variant_images returned no rows");
-          throw AppError.internal();
-        }
-
-        const variantImageId = imgRow.id;
-
-        // 3. insert signature
-
-        await trx.raw(
-          `
-          INSERT INTO product_variant_image_signatures
-            (variant_image_id, dimension_key, value_key)
-          VALUES
-             (:variant_image_id, :dimension_key, :value_key)
-        `,
-          {
-            variant_image_id: variantImageId,
-            dimension_key: normalizeName(dim.name),
-            value_key: normalizeValue(opt.value)
-          }
-        );
-      }
-    }
-  }
-
-  private async updateVariantImageSignatures(
-    trx: Knex.Transaction,
-    productId: number,
-    variantDimensions: VariantDimensionSchema[]
-  ): Promise<Set<number>> {
-    // image yang dipakai di update ini
-    const usedImageIds = new Set<number>();
-
-    for (const dim of variantDimensions) {
-      for (const opt of dim.options) {
-        const img = opt.image;
-
-        // CASE 1 only: reuse existing image
-        if (!img?.id || img.originalFileName) {
-          continue;
-        }
-
-        const imageId = Number(img.id);
-
-        if (!Number.isInteger(imageId)) {
-          throw AppError.badRequest("Invalid variant image reference");
-        }
-
-        // 1. validasi image milik product ini
-        const { rows } = await trx.raw<{ rows: { id: number }[] }>(
-          `
-        SELECT id
-        FROM product_variant_images
-        WHERE id = :id
-          AND product_id = :product_id
-        `,
-          {
-            id: imageId,
-            product_id: productId
-          }
-        );
-
-        if (!rows[0]) {
-          throw AppError.badRequest(`Invalid variant image reference: ${imageId}`);
-        }
-
-        // 2. hapus signature lama (rebuild, jadi overwrite)
-        await trx.raw(
-          `
-        DELETE FROM product_variant_image_signatures
-        WHERE variant_image_id = :variant_image_id
-        `,
-          { variant_image_id: imageId }
-        );
-
-        // 3. insert signature baru
-        await trx.raw(
-          `
-        INSERT INTO product_variant_image_signatures
-          (variant_image_id, dimension_key, value_key)
-        VALUES
-          (:variant_image_id, :dimension_key, :value_key)
-        `,
-          {
-            variant_image_id: imageId,
-            dimension_key: normalizeName(dim.name),
-            value_key: normalizeValue(opt.value)
-          }
-        );
-
-        // 4. tandai image ini dipakai
-        usedImageIds.add(Number(imageId));
-      }
-    }
-
-    return usedImageIds;
-  }
-
-  private async handleNewAndRemovedVariantImages(
-    trx: Knex.Transaction,
-    productId: number,
-    variantDimensions: VariantDimensionSchema[],
-    variantImageFilesMap: VariantImageFilesMap,
-    usedImageIds: Set<number> // dari CASE 1
-  ) {
-    // ambil semua image lama
-    const { rows: existingRows } = await trx.raw<{
-      rows: { id: number }[];
-    }>(
-      `
-    SELECT id
-    FROM product_variant_images
-    WHERE product_id = :productId
-      AND is_orphan = false
-  `,
-      { productId }
-    );
-
-    const existingImageIds = new Set(existingRows.map((r) => r.id));
-
-    // LOOP payload FE
-    for (const dim of variantDimensions) {
-      for (const opt of dim.options) {
-        // ===== CASE 2: replace image =====
-        if (variantImageFilesMap.has(opt.id)) {
-          const img = variantImageFilesMap.get(opt.id)!;
-
-          // insert images_metadata
-          const { rows: metaRows } = await trx.raw<{ rows: { id: number }[] }>(
-            `
-          INSERT INTO images_metadata
-            (image_key, original_file_name, mime_type, file_size, width, height, original_available, context)
-          VALUES
-            (:image_key, :original_file_name, :mime_type, :file_size, :width, :height, :original_available, :context)
-          RETURNING id
-        `,
-            {
-              image_key: img.imageKey,
-              original_file_name: img.originalFileName,
-              mime_type: img.mimeType,
-              file_size: img.size,
-              width: img.width,
-              height: img.height,
-              original_available: img.originalAvailable,
-              context: IMAGE_CONTEXT.PRODUCT_VARIANT
-            }
-          );
-
-          const metaRow = metaRows[0];
-
-          if (!metaRow) {
-            logger.error("Insert images_metadata returned no rows");
-            throw AppError.internal();
-          }
-
-          const imageMetadataId = metaRow.id;
-
-          // insert product_variant_images
-          const { rows: pviRows } = await trx.raw<{ rows: { id: number }[] }>(
-            `
-          INSERT INTO product_variant_images
-            (product_id, image_id, is_orphan)
-          VALUES
-            (:product_id, :image_id, false)
-          RETURNING id
-        `,
-            {
-              product_id: productId,
-              image_id: imageMetadataId
-            }
-          );
-
-          const pviRow = pviRows[0];
-
-          if (!pviRow) {
-            logger.error("Insert product_variant_images returned no rows");
-            throw AppError.internal();
-          }
-
-          const variantImageId = pviRow.id;
-
-          // insert signature
-          await trx.raw(
-            `
-          INSERT INTO product_variant_image_signatures
-            (variant_image_id, dimension_key, value_key)
-          VALUES
-            (:variant_image_id, :dimension_key, :value_key)
-        `,
-            {
-              variant_image_id: variantImageId,
-              dimension_key: normalizeName(dim.name),
-              value_key: normalizeValue(opt.value)
-            }
-          );
-
-          // tandai image baru sebagai used
-          usedImageIds.add(variantImageId);
-
-          continue;
-        }
-
-        // ===== CASE 3: delete image =====
-        if (!opt.image) {
-          // tidak insert apa-apa
-          // image lama (kalau ada) akan ke-orphan di finalize step
-          continue;
-        }
-      }
-    }
-
-    // FINAL ORPHAN STEP
-    for (const imageId of existingImageIds) {
-      if (!usedImageIds.has(imageId)) {
-        await trx.raw(
-          `
-        UPDATE product_variant_images
-        SET is_orphan = true
-        WHERE id = :id
-      `,
-          { id: imageId }
-        );
-      }
-    }
-  }
-
-  private async insertVariantDimensions(trx: Knex.Transaction, productId: number, variantDims: VariantDimensionSchema[]) {
-    const map = new Map<string, number>();
-
-    for (const dim of variantDims) {
-      const { rows } = await trx.raw<{ rows: { id: number }[] }>(
-        `
-        INSERT INTO product_variant_dimensions (product_id, name, normalized_name, display_name)
-        VALUES (:product_id, :name, :normalized_name, :display_name)
-        RETURNING id
-      `,
-        { product_id: productId, name: dim.name, normalized_name: normalizeName(dim.name), display_name: displayName(dim.name) }
-      );
-
-      if (!rows[0]) {
-        logger.error("Insert product_variant_dimensions returned no rows");
-        throw AppError.internal();
-      }
-
-      map.set(String(dim.id), rows[0].id);
-    }
-
-    return map;
-  }
-
-  private async insertVariantDimensionValues(trx: Knex.Transaction, variantDims: VariantDimensionSchema[], dimensionIdMap: IdMap) {
-    const map = new Map<string, number>();
-
-    for (const dim of variantDims) {
-      const dbDimensionId = dimensionIdMap.get(String(dim.id));
-
-      if (!dbDimensionId) {
-        throw AppError.internal(`Unknown variant dimension id: ${dim.id}`);
-      }
-
-      for (const opt of dim.options) {
-        const { rows } = await trx.raw<{ rows: { id: number }[] }>(
-          `
-          INSERT INTO product_variant_dimension_values
-            (dimension_id, value, normalized_value, display_value)
-          VALUES
-            (:dimension_id, :value, :normalized_value, :display_value)
-          RETURNING id
-        `,
-          {
-            dimension_id: dbDimensionId,
-            value: opt.value,
-            normalized_value: normalizeValue(opt.value),
-            display_value: displayValue(opt.value)
-          }
-        );
-
-        if (!rows[0]) {
-          logger.error("Insert product_variant_dimension_values returned no rows");
-          throw AppError.internal();
-        }
-
-        // FE optionId → DB valueId
-        map.set(String(opt.id), rows[0].id);
-      }
-    }
-
-    return map;
-  }
-
-  private async insertVariants(trx: Knex.Transaction, productId: number, variants: VariantSchema[]) {
-    const map = new Map<string, number>();
-
-    for (const variant of variants) {
-      const { rows } = await trx.raw<{ rows: { id: number }[] }>(
-        `
-        INSERT INTO product_variants
-          (product_id, price, stock, weight, sku, is_primary)
-        VALUES
-          (:product_id, :price, :stock, :weight, :sku, :is_primary)
-        RETURNING id
-      `,
-        {
-          product_id: productId,
-          price: variant.price,
-          stock: variant.stock,
-          weight: variant.weight,
-          sku: normalizeSku(variant.sku),
-          is_primary: variant.isPrimary
-        }
-      );
-
-      if (!rows[0]) {
-        logger.error("Insert product_variants returned no rows");
-        throw AppError.internal();
-      }
-
-      map.set(String(variant.id), rows[0].id);
-    }
-
-    return map;
-  }
-
-  private async insertVariantOptionValues(
-    trx: Knex.Transaction,
-    variants: VariantSchema[],
-    variantIdMap: IdMap,
-    dimensionIdMap: IdMap,
-    valueIdMap: IdMap
-  ) {
-    for (const variant of variants) {
-      const dbVariantId = variantIdMap.get(String(variant.id));
-      if (!dbVariantId) {
-        throw AppError.internal(`Unknown variant id: ${variant.id}`);
-      }
-
-      for (const opt of variant.options) {
-        const dbDimensionId = dimensionIdMap.get(String(opt.dimensionId));
-
-        if (!dbDimensionId) {
-          throw AppError.internal(`Unknown variant dimension id: ${opt.dimensionId}`);
-        }
-
-        const dbValueId = valueIdMap.get(String(opt.optionId));
-
-        if (!dbValueId) {
-          throw AppError.internal(`Unknown variant option id: ${opt.optionId}`);
-        }
-
-        await trx.raw(
-          `
-          INSERT INTO product_variant_option_values (variant_id, dimension_id, value_id)
-          VALUES (:variant_id, :dimension_id, :value_id)
-        `,
-          { variant_id: dbVariantId, dimension_id: dbDimensionId, value_id: dbValueId }
-        );
-      }
     }
   }
 

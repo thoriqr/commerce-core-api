@@ -9,12 +9,14 @@ import { withMulter } from "@/middlewares/multer.middleware";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { CategoryRepo } from "../categories/category.repo";
 import { CollectionRepo } from "../collections/collection.repo";
+import { ProductVariantRepo } from "./product-variant.repo";
 
 const router = Router();
 
 const tm = new KnexTransactionManager(db);
 
-const productRepo = new ProductRepo();
+const variantRepo = new ProductVariantRepo();
+const productRepo = new ProductRepo(variantRepo);
 const categoryRepo = new CategoryRepo();
 const collectionRepo = new CollectionRepo();
 const service = new ProductService(tm, productRepo, categoryRepo, collectionRepo);
