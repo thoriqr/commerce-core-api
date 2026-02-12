@@ -1,7 +1,8 @@
 import { ProductStatus } from "./product.types";
 
 export interface ProductVariantDTO {
-  id: string;
+  id: number;
+  clientId: string;
   price: number;
   stock: number;
   weight: number;

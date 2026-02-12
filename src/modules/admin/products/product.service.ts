@@ -201,13 +201,13 @@ export class ProductService {
 
     try {
       image = sharp(file.buffer);
-      meta = await image.metadata(); // ORIGINAL IMAGE
-
-      if (!meta.format || !ALLOWED_IMG_FORMAT.includes(meta.format as any)) {
-        throw AppError.badRequest("Unsupported image format");
-      }
+      meta = await image.metadata();
     } catch {
       throw AppError.badRequest("Invalid or corrupted image file");
+    }
+
+    if (!meta.format || !ALLOWED_IMG_FORMAT.includes(meta.format as any)) {
+      throw AppError.badRequest("Unsupported image format");
     }
 
     if (!meta.width || !meta.height) {
@@ -218,34 +218,35 @@ export class ProductService {
       throw AppError.badRequest(`Image too small. Minimum ${PRODUCT_IMAGE_MIN_SIZE.width}x${PRODUCT_IMAGE_MIN_SIZE.height}px`);
     }
 
-    // CHECK ORIGINAL AVAILABLE
-    const originalAvailable = meta.width <= PRODUCT_IMAGE_MAX_SIZE.width && meta.height <= PRODUCT_IMAGE_MAX_SIZE.height;
+    const needsResize = meta.width > PRODUCT_IMAGE_MAX_SIZE.width || meta.height > PRODUCT_IMAGE_MAX_SIZE.height;
 
-    const resized = image.resize({
-      width: PRODUCT_IMAGE_MAX_SIZE.width,
-      height: PRODUCT_IMAGE_MAX_SIZE.height,
-      fit: "inside",
-      withoutEnlargement: true
-    });
+    const originalAvailable = !needsResize;
 
-    const buffer = await resized.toFormat("webp", { quality: 85 }).toBuffer();
-
-    // ambil metadata SETELAH resize (final dimension)
-    const finalMeta = await sharp(buffer).metadata();
-
-    if (!finalMeta.width || !finalMeta.height) {
-      throw AppError.badRequest("Failed to read resized image metadata");
+    if (needsResize) {
+      image = image.resize({
+        width: PRODUCT_IMAGE_MAX_SIZE.width,
+        height: PRODUCT_IMAGE_MAX_SIZE.height,
+        fit: "inside",
+        withoutEnlargement: true
+      });
     }
 
-    return {
-      buffer,
-      mimeType: "image/webp",
-      size: buffer.length,
+    // Always convert to JPEG q80
+    const { data, info } = await image
+      .jpeg({
+        quality: 80,
+        mozjpeg: true
+      })
+      .toBuffer({ resolveWithObject: true });
 
-      // FINAL IMAGE
-      width: finalMeta.width,
-      height: finalMeta.height,
-      // ORIGINAL INFO
+    return {
+      buffer: data,
+      mimeType: "image/jpeg", // force JPEG
+      size: data.length,
+
+      width: info.width,
+      height: info.height,
+
       originalWidth: meta.width,
       originalHeight: meta.height,
       originalAvailable

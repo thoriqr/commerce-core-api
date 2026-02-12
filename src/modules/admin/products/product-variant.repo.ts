@@ -28,7 +28,7 @@ export class ProductVariantRepo {
       AND status <> 'ARCHIVED'
       AND (
         :payloadIdsCount = 0
-        OR id NOT IN (:payloadIds)
+        OR NOT (id = ANY(:payloadIds))
       )
     `,
       {
@@ -55,7 +55,15 @@ export class ProductVariantRepo {
     const idMap = new Map<string, number>();
 
     for (const v of existingVariants) {
+      if (!v.id) {
+        throw AppError.badRequest("Missing variant id for existing variant");
+      }
+
       const id = Number(v.id);
+
+      if (!Number.isInteger(id)) {
+        throw AppError.badRequest(`Invalid variant id: ${v.id}`);
+      }
 
       const currentStatus = dbVariantMap.get(id);
 
@@ -150,7 +158,7 @@ export class ProductVariantRepo {
         throw AppError.internal();
       }
 
-      idMap.set(String(v.id), rows[0].id);
+      idMap.set(String(v.clientId), rows[0].id);
     }
 
     return idMap;
@@ -267,7 +275,8 @@ export class ProductVariantRepo {
 
     // 6️⃣ INSERT pivot (ACTIVE variants only)
     for (const variant of variants) {
-      const dbVariantId = variantIdMap.get(String(variant.id));
+      const key = this.resolveVariantKey(variant);
+      const dbVariantId = variantIdMap.get(key);
       if (!dbVariantId) continue;
 
       for (const opt of variant.options) {
@@ -544,5 +553,9 @@ export class ProductVariantRepo {
     });
 
     return JSON.stringify(snapshot);
+  }
+
+  private resolveVariantKey(variant: VariantSchema): string {
+    return String(variant.id ?? variant.clientId);
   }
 }

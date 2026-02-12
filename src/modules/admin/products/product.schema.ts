@@ -50,6 +50,7 @@ const variantDimensionSchema = z
 
 const variantSchema = z.object({
   id: z.coerce.number().int().positive().optional(),
+  clientId: z.string().min(1),
   price: z.coerce.number().int().positive().min(PRODUCT_LIMITS.PRICE_MIN).max(PRODUCT_LIMITS.PRICE_MAX),
   stock: z.coerce.number().int().positive().min(PRODUCT_LIMITS.STOCK_MIN).max(PRODUCT_LIMITS.STOCK_MAX),
   weight: z.coerce.number().positive().min(PRODUCT_LIMITS.WEIGHT_MIN).max(PRODUCT_LIMITS.WEIGHT_MAX),

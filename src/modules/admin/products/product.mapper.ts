@@ -39,7 +39,8 @@ export function mapProductDetail(
       categoryId: productRow.category_id ? String(productRow.category_id) : null,
       variantDimension: [],
       variants: variantRows.map((v) => ({
-        id: String(v.id),
+        id: v.id,
+        clientId: String(v.id),
         price: v.price,
         stock: v.stock,
         weight: v.weight,
@@ -114,7 +115,8 @@ export function mapProductDetail(
     variantDimension,
     images,
     variants: variantRows.map((v) => ({
-      id: String(v.id),
+      id: v.id,
+      clientId: String(v.id),
       price: v.price,
       stock: v.stock,
       weight: v.weight,

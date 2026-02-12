@@ -70,7 +70,9 @@ export class ProductRepo {
           MIN(pv.sku)
         ) AS representative_sku
       FROM products p
-      JOIN product_variants pv ON pv.product_id = p.id
+      JOIN product_variants pv
+        ON pv.product_id = p.id
+      AND pv.status = 'ACTIVE'
 
       -- get one product_images
       LEFT JOIN LATERAL(
@@ -166,6 +168,7 @@ export class ProductRepo {
       SELECT id, product_id, price, stock, weight, sku, is_primary
       FROM product_variants
       WHERE product_id = :productId
+        AND status <> 'ARCHIVED'
     `,
       { productId }
     );
