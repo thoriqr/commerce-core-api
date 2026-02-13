@@ -1,12 +1,7 @@
 import { Request, Response } from "express";
 import { VariantPresetService } from "./variant-preset.service";
 import { sendSuccess } from "@/utils/send-success";
-import {
-  presetDimensionIdParams,
-  presetDimensionNameParams,
-  presetDimensionUpsertSchema,
-  presetDimensionValueReorderSchema
-} from "./variant-preset.schema";
+import { presetDimensionIdParams, presetDimensionUpsertSchema, presetDimensionValueReorderSchema } from "./variant-preset.schema";
 
 export class VariantPresetController {
   constructor(private service: VariantPresetService) {}
@@ -45,16 +40,5 @@ export class VariantPresetController {
     const payload = presetDimensionValueReorderSchema.parse(req.body);
     await this.service.reorderDimensionValues(payload);
     sendSuccess(res, 200, { message: "Preset dimension value reordered" });
-  };
-
-  getDimensionOptions = async (req: Request, res: Response) => {
-    const data = await this.service.getDimensionOptions();
-    sendSuccess(res, 200, { data });
-  };
-
-  getValuesByDimensionName = async (req: Request, res: Response) => {
-    const params = presetDimensionNameParams.parse(req.params);
-    const data = await this.service.getValuesByDimensionName(params.dimensionPresetName);
-    sendSuccess(res, 200, { data });
   };
 }

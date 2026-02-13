@@ -15,8 +15,6 @@ const controller = new VariantPresetController(service);
 
 router.get("/", controller.getAll);
 router.post("/", controller.create);
-router.get("/options", controller.getDimensionOptions);
-router.get("/options/:dimensionPresetName/values", controller.getValuesByDimensionName);
 
 router.get("/:dimensionPresetId", controller.getById);
 router.put("/:dimensionPresetId", controller.update);

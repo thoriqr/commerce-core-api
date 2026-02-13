@@ -1,6 +1,8 @@
 import z from "zod";
 import { VARIANT_LIMITS } from "../products/product.constants";
 
+const MAX_VALUES = 20;
+
 export const presetDimensionValueSchema = z.object({
   name: z.string().trim().min(VARIANT_LIMITS.OPTION_VALUE_MIN).max(VARIANT_LIMITS.OPTION_VALUE_MAX),
   hexColor: z
@@ -11,7 +13,7 @@ export const presetDimensionValueSchema = z.object({
 
 export const presetDimensionUpsertSchema = z.object({
   name: z.string().trim().min(VARIANT_LIMITS.DIMENSION_NAME_MIN).max(VARIANT_LIMITS.DIMENSION_NAME_MAX),
-  values: z.array(presetDimensionValueSchema).min(1).max(50)
+  values: z.array(presetDimensionValueSchema).min(1).max(MAX_VALUES)
 });
 
 export const presetDimensionValueReorderSchema = z

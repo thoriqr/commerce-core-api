@@ -3,6 +3,7 @@ import { ProductService } from "./product.service";
 import { UPLOAD_FILE } from "./product.constants";
 import { sendSuccess } from "@/utils/send-success";
 import { productIdParams, productQueryParams, productUpsertSchema, updateProductStatusSchema } from "./product.schema";
+import { presetDimensionNameParams } from "../variant-presets/variant-preset.schema";
 
 export class ProductController {
   constructor(private service: ProductService) {}
@@ -26,6 +27,17 @@ export class ProductController {
 
   getCollectionOptions = async (req: Request, res: Response) => {
     const data = await this.service.getCollectionOptions();
+    sendSuccess(res, 200, { data });
+  };
+
+  getDimensionOptions = async (req: Request, res: Response) => {
+    const data = await this.service.getDimensionOptions();
+    sendSuccess(res, 200, { data });
+  };
+
+  getValuesByDimensionName = async (req: Request, res: Response) => {
+    const params = presetDimensionNameParams.parse(req.params);
+    const data = await this.service.getValuesByDimensionName(params.dimensionPresetName);
     sendSuccess(res, 200, { data });
   };
 

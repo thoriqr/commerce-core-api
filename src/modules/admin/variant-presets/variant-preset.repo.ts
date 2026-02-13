@@ -9,7 +9,12 @@ import {
   VariantPresetDimensionValueRow,
   VariantPresetListRow
 } from "./variant-preset.types";
-import { mapVariantPresetDetail, mapVariantPresetList } from "./variant-preset.mapper";
+import {
+  mapVariantPresetDetail,
+  mapVariantPresetDimensionOption,
+  mapVariantPresetDimensionValue,
+  mapVariantPresetList
+} from "./variant-preset.mapper";
 
 export class VariantPresetRepo {
   async getAll() {
@@ -124,7 +129,7 @@ export class VariantPresetRepo {
     ORDER BY name ASC
   `);
 
-    return rows;
+    return mapVariantPresetDimensionOption(rows);
   }
 
   async getValuesByDimensionName(name: string) {
@@ -145,7 +150,7 @@ export class VariantPresetRepo {
       { name }
     );
 
-    return rows;
+    return mapVariantPresetDimensionValue(rows);
   }
 
   private async insertDimensionValues(trx: Knex.Transaction, dimensionPresetId: number, dimensionValues: PresetDimensionValueSchema[]) {

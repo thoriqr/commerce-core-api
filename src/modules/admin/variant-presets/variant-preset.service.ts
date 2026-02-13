@@ -28,14 +28,6 @@ export class VariantPresetService {
     return this.repo.remove(dimensionPresetId);
   };
 
-  getDimensionOptions = async () => {
-    return this.repo.getDimensionOptions();
-  };
-
-  getValuesByDimensionName = async (name: string) => {
-    return this.repo.getValuesByDimensionName(name);
-  };
-
   reorderDimensionValues = async (input: PresetDimensionValueReorderSchema) => {
     return this.tm.transaction((trx) => this.repo.reorderDimensionValues(trx, input));
   };

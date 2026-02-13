@@ -109,7 +109,7 @@ export class BannerService {
 
     const processed = await this.processImage(file);
 
-    const imageKey = `banners/${uuidv4()}.webp`;
+    const imageKey = `banners/${uuidv4()}.${processed.mimeType}`;
 
     try {
       await uploadFile(processed.buffer, imageKey, processed.mimeType);
@@ -136,13 +136,13 @@ export class BannerService {
 
     try {
       image = sharp(file.buffer);
-      meta = await image.metadata(); // ORIGINAL IMAGE
-
-      if (!meta.format || !ALLOWED_IMG_FORMAT.includes(meta.format as any)) {
-        throw AppError.badRequest("Unsupported image format");
-      }
+      meta = await image.metadata();
     } catch {
       throw AppError.badRequest("Invalid or corrupted image file");
+    }
+
+    if (!meta.format || !ALLOWED_IMG_FORMAT.includes(meta.format as any)) {
+      throw AppError.badRequest("Unsupported image format");
     }
 
     if (!meta.width || !meta.height) {
@@ -153,34 +153,34 @@ export class BannerService {
       throw AppError.badRequest(`Image too small. Minimum ${BANNER_IMAGE_MIN_SIZE.width}x${BANNER_IMAGE_MIN_SIZE.height}px`);
     }
 
-    // CHECK ORIGINAL AVAILABLE
-    const originalAvailable = meta.width <= BANNER_IMAGE_MAX_SIZE.width && meta.height <= BANNER_IMAGE_MAX_SIZE.height;
+    const needsResize = meta.width > BANNER_IMAGE_MAX_SIZE.width || meta.height > BANNER_IMAGE_MAX_SIZE.height;
 
-    const resized = image.resize({
-      width: BANNER_IMAGE_MAX_SIZE.width,
-      height: BANNER_IMAGE_MAX_SIZE.height,
-      fit: "inside",
-      withoutEnlargement: true
-    });
+    const originalAvailable = !needsResize;
 
-    const buffer = await resized.toFormat("webp", { quality: 85 }).toBuffer();
-
-    // ambil metadata SETELAH resize (final dimension)
-    const finalMeta = await sharp(buffer).metadata();
-
-    if (!finalMeta.width || !finalMeta.height) {
-      throw AppError.badRequest("Failed to read resized image metadata");
+    if (needsResize) {
+      image = image.resize({
+        width: BANNER_IMAGE_MAX_SIZE.width,
+        height: BANNER_IMAGE_MAX_SIZE.height,
+        fit: "inside",
+        withoutEnlargement: true
+      });
     }
 
-    return {
-      buffer,
-      mimeType: "image/webp",
-      size: buffer.length,
+    // Always convert to webp q80
+    const { data, info } = await image
+      .webp({
+        quality: 80
+      })
+      .toBuffer({ resolveWithObject: true });
 
-      // FINAL IMAGE
-      width: finalMeta.width,
-      height: finalMeta.height,
-      // ORIGINAL INFO
+    return {
+      buffer: data,
+      mimeType: "image/webp", // force webp
+      size: data.length,
+
+      width: info.width,
+      height: info.height,
+
       originalWidth: meta.width,
       originalHeight: meta.height,
       originalAvailable

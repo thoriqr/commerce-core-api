@@ -10,6 +10,7 @@ import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { CategoryRepo } from "../categories/category.repo";
 import { CollectionRepo } from "../collections/collection.repo";
 import { ProductVariantRepo } from "./product-variant.repo";
+import { VariantPresetRepo } from "../variant-presets/variant-preset.repo";
 
 const router = Router();
 
@@ -19,13 +20,16 @@ const variantRepo = new ProductVariantRepo();
 const productRepo = new ProductRepo(variantRepo);
 const categoryRepo = new CategoryRepo();
 const collectionRepo = new CollectionRepo();
-const service = new ProductService(tm, productRepo, categoryRepo, collectionRepo);
+const variantPresetRepo = new VariantPresetRepo();
+const service = new ProductService(tm, productRepo, categoryRepo, collectionRepo, variantPresetRepo);
 const controller = new ProductController(service);
 
 router.get("/", controller.getAll);
 router.get("/:productId", controller.getById);
 router.get("/options/category", controller.getCategoryOptions);
 router.get("/options/collection", controller.getCollectionOptions);
+router.get("/options/dimension-preset", controller.getDimensionOptions);
+router.get("/options/dimension-preset/:dimensionPresetName", controller.getValuesByDimensionName);
 
 router.post(
   "/",

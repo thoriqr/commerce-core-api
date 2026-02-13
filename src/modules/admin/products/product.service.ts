@@ -19,13 +19,15 @@ import {
 } from "./product.schema";
 import { CategoryRepo } from "../categories/category.repo";
 import { CollectionRepo } from "../collections/collection.repo";
+import { VariantPresetRepo } from "../variant-presets/variant-preset.repo";
 
 export class ProductService {
   constructor(
     private tm: TransactionManager,
     private readonly productRepo: ProductRepo,
     private readonly categoryRepo: CategoryRepo,
-    private readonly collectionRepo: CollectionRepo
+    private readonly collectionRepo: CollectionRepo,
+    private readonly variantPresetRepo: VariantPresetRepo
   ) {}
 
   getall = async (qParams: ProductQueryParamsSchema) => {
@@ -55,6 +57,14 @@ export class ProductService {
 
   getCollectionOptions = async () => {
     return await this.collectionRepo.getOptions();
+  };
+
+  getDimensionOptions = async () => {
+    return this.variantPresetRepo.getDimensionOptions();
+  };
+
+  getValuesByDimensionName = async (name: string) => {
+    return this.variantPresetRepo.getValuesByDimensionName(name);
   };
 
   create = async (input: ProductUpsertSchema, productImgs: Express.Multer.File[], variantImgs: Express.Multer.File[]) => {
@@ -130,7 +140,7 @@ export class ProductService {
     for (const [sortOrder, file] of imageMap) {
       const processed = await this.processImage(file);
 
-      const imageKey = `products/${uuidv4()}.webp`;
+      const imageKey = `products/${uuidv4()}.${processed.mimeType}`;
 
       try {
         await uploadFile(processed.buffer, imageKey, processed.mimeType);
@@ -169,13 +179,13 @@ export class ProductService {
       const processed = await this.processImage(file);
 
       // generate key
-      const imageKey = `product_variants/${uuidv4()}.webp`;
+      const imageKey = `product_variants/${uuidv4()}.${processed.mimeType}`;
 
       try {
         await uploadFile(processed.buffer, imageKey, processed.mimeType);
       } catch (err) {
         logger.error("Failed to upload variant image", { optionId, imageKey, fileName: file.originalname });
-        throw AppError.serviceUnavailable("Failed to upload variant image");
+        throw AppError.serviceUnavailable(`Failed to upload image: ${file.originalname}`);
       }
 
       // collect final metadata
@@ -231,17 +241,16 @@ export class ProductService {
       });
     }
 
-    // Always convert to JPEG q80
+    // Always convert to webp q80
     const { data, info } = await image
-      .jpeg({
-        quality: 80,
-        mozjpeg: true
+      .webp({
+        quality: 80
       })
       .toBuffer({ resolveWithObject: true });
 
     return {
       buffer: data,
-      mimeType: "image/jpeg", // force JPEG
+      mimeType: "image/webp", // force webp
       size: data.length,
 
       width: info.width,
