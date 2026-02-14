@@ -19,6 +19,10 @@ const variantDimensionSchema = z
         z.object({
           id: idSchema,
           value: z.string().trim().min(VARIANT_LIMITS.OPTION_VALUE_MIN).max(VARIANT_LIMITS.OPTION_VALUE_MAX),
+          hexColor: z
+            .string()
+            .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+            .optional(),
           image: imageSchema.optional()
         })
       )

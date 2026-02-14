@@ -35,6 +35,7 @@ export interface ProductDetailDTO {
             imageKey: string;
           }
         | undefined;
+      hexColor: string | undefined;
     }[];
   }[];
   variants: ProductVariantDTO[];

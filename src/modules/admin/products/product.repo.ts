@@ -188,7 +188,7 @@ export class ProductRepo {
 
     const { rows: dimensionValueRows } = await db.raw<{ rows: VariantDimensionValueRow[] }>(
       `
-      SELECT id, dimension_id, value, normalized_value, display_value
+      SELECT id, dimension_id, value, normalized_value, display_value, hex_color
       FROM product_variant_dimension_values
       WHERE dimension_id = ANY(:dimensionIds)
     `,

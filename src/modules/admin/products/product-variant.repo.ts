@@ -251,16 +251,17 @@ export class ProductVariantRepo {
         const { rows } = await trx.raw<{ rows: { id: number }[] }>(
           `
         INSERT INTO product_variant_dimension_values
-          (dimension_id, value, normalized_value, display_value)
+          (dimension_id, value, normalized_value, display_value, hex_color)
         VALUES
-          (:dimensionId, :value, :normalizedValue, :displayValue)
+          (:dimensionId, :value, :normalizedValue, :displayValue, :hexColor)
         RETURNING id
         `,
           {
             dimensionId: dbDimensionId,
             value: opt.value,
             normalizedValue: normalizeValue(opt.value),
-            displayValue: displayValue(opt.value)
+            displayValue: displayValue(opt.value),
+            hexColor: opt.hexColor ?? null
           }
         );
 

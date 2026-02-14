@@ -54,6 +54,7 @@ export type VariantDimensionValueRow = {
   value: string;
   normalized_value: string;
   display_value: string;
+  hex_color: string | null;
 };
 
 export type VariantOptionValueRow = {

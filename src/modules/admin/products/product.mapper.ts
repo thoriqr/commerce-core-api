@@ -51,7 +51,9 @@ export function mapProductDetail(
     };
   }
 
-  const valueByDimension = dimensionValueRows.reduce<Record<number, { id: string; value: string; normalized_value: string }[]>>((acc, value) => {
+  const valueByDimension = dimensionValueRows.reduce<
+    Record<number, { id: string; value: string; normalized_value: string; hexColor: string | undefined }[]>
+  >((acc, value) => {
     if (!acc[value.dimension_id]) {
       acc[value.dimension_id] = [];
     }
@@ -59,7 +61,8 @@ export function mapProductDetail(
     acc[value.dimension_id]?.push({
       id: String(value.id),
       value: value.value,
-      normalized_value: value.normalized_value
+      normalized_value: value.normalized_value,
+      hexColor: value.hex_color ? value.hex_color : undefined
     });
 
     return acc;
@@ -84,7 +87,8 @@ export function mapProductDetail(
       return {
         id: String(opt.id),
         value: opt.value,
-        image: image ? { id: image.id, imageKey: image.imageKey } : undefined
+        image: image ? { id: image.id, imageKey: image.imageKey } : undefined,
+        hexColor: opt.hexColor
       };
     })
   }));
