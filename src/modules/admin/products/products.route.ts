@@ -61,6 +61,4 @@ router.put(
 
 router.patch("/actions/status", controller.updateStatus);
 
-router.delete("/:productId", controller.remove);
-
 export default router;

@@ -2,7 +2,7 @@ import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
-import { deleteFile, uploadFile } from "@/libs/s3-client";
+import { uploadFile } from "@/libs/s3-client";
 import { generateUniqueSlug } from "./product.slug";
 import { ProductRepo } from "./product.repo";
 import { ALLOWED_IMG_FORMAT, PRODUCT_IMAGE_MAX_SIZE, PRODUCT_IMAGE_MIN_SIZE } from "./product.constants";
@@ -113,25 +113,6 @@ export class ProductService {
     return await this.productRepo.updateStatus(input);
   };
 
-  remove = async (id: number) => {
-    // 1. DB transaction
-    const { imageIds, imageKeys } = await this.tm.transaction(async (trx) => {
-      return this.productRepo.remove(trx, id);
-    });
-
-    // 2. infra cleanup (best effort, OUTSIDE transaction)
-    for (const key of imageKeys) {
-      try {
-        await deleteFile(key);
-      } catch (err) {
-        logger.error("Failed to delete product image from storage", { productId: id, imageKey: key, error: err });
-      }
-    }
-
-    // DB cleanup (must succeed or error)
-    await this.productRepo.removeImagesMetadata(imageIds);
-  };
-
   private async prepareProductImages(images: ProductImageSchema[], files: Express.Multer.File[]): Promise<ProductImageFilesMap> {
     const imageMap = validateAndMapProductImages(images, files);
 
@@ -139,8 +120,8 @@ export class ProductService {
 
     for (const [sortOrder, file] of imageMap) {
       const processed = await this.processImage(file);
-
-      const imageKey = `products/${uuidv4()}.${processed.mimeType}`;
+      const extension = processed.mimeType.split("/")[1];
+      const imageKey = `products/${uuidv4()}.${extension}`;
 
       try {
         await uploadFile(processed.buffer, imageKey, processed.mimeType);
@@ -179,7 +160,8 @@ export class ProductService {
       const processed = await this.processImage(file);
 
       // generate key
-      const imageKey = `product_variants/${uuidv4()}.${processed.mimeType}`;
+      const extension = processed.mimeType.split("/")[1];
+      const imageKey = `product_variants/${uuidv4()}.${extension}`;
 
       try {
         await uploadFile(processed.buffer, imageKey, processed.mimeType);

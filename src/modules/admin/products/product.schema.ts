@@ -19,10 +19,17 @@ const variantDimensionSchema = z
         z.object({
           id: idSchema,
           value: z.string().trim().min(VARIANT_LIMITS.OPTION_VALUE_MIN).max(VARIANT_LIMITS.OPTION_VALUE_MAX),
-          hexColor: z
-            .string()
-            .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
-            .optional(),
+          hexColor: z.preprocess(
+            (val) => {
+              if (typeof val !== "string") return undefined;
+              const trimmed = val.trim();
+              return trimmed === "" ? undefined : trimmed;
+            },
+            z
+              .string()
+              .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+              .optional()
+          ),
           image: imageSchema.optional()
         })
       )
@@ -58,7 +65,11 @@ const variantSchema = z.object({
   price: z.coerce.number().int().positive().min(PRODUCT_LIMITS.PRICE_MIN).max(PRODUCT_LIMITS.PRICE_MAX),
   stock: z.coerce.number().int().positive().min(PRODUCT_LIMITS.STOCK_MIN).max(PRODUCT_LIMITS.STOCK_MAX),
   weight: z.coerce.number().positive().min(PRODUCT_LIMITS.WEIGHT_MIN).max(PRODUCT_LIMITS.WEIGHT_MAX),
-  sku: z.string().max(PRODUCT_LIMITS.MAX_SKU),
+  sku: z.preprocess((val) => {
+    if (typeof val !== "string") return undefined;
+    const trimmed = val.trim();
+    return trimmed === "" ? undefined : trimmed;
+  }, z.string().max(PRODUCT_LIMITS.MAX_SKU).optional()),
   isPrimary: z.boolean(),
   options: z.array(
     z.object({
@@ -178,7 +189,7 @@ export const productQueryParams = z
     q: z.string().trim().min(1).optional(),
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).max(100).default(10),
-    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+    status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).optional(),
     isVariant: z.coerce.boolean().optional(),
     stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),
     priceMin: z.coerce.number().min(0).optional(),
@@ -197,7 +208,7 @@ export const productQueryParams = z
   });
 
 export const updateProductStatusSchema = z.object({
-  status: z.enum(["ACTIVE", "INACTIVE"]),
+  status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]),
   productIds: z.array(z.number()).min(1)
 });
 

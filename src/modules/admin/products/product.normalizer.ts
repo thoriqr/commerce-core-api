@@ -10,4 +10,9 @@ export const normalizeValue = (input: string) => input.trim().toLowerCase();
 
 export const displayValue = (input: string) => input.trim();
 
-export const normalizeSku = (sku: string) => (sku.trim() === "" ? null : sku);
+export const normalizeSku = (sku?: string) => {
+  if (typeof sku !== "string") return null;
+
+  const trimmed = sku.trim();
+  return trimmed === "" ? null : trimmed;
+};

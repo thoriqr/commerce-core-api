@@ -2,17 +2,14 @@ import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
-import { displayName, displayValue, normalizeName, normalizeSku, normalizeValue } from "./product.normalizer";
 import {
   ProductImageSchema,
   ProductQueryParamsSchema,
   ProductUpsertSchema,
   UpdateProductStatusSchema,
-  VariantDimensionSchema,
-  VariantSchema
+  VariantDimensionSchema
 } from "./product.schema";
 import {
-  IdMap,
   ProductDetailRow,
   ProductListRow,
   ProductRow,
@@ -441,45 +438,6 @@ export class ProductRepo {
     );
   }
 
-  async remove(trx: Knex.Transaction, id: number) {
-    const { rows: metaRows } = await trx.raw<{
-      rows: { id: number; image_key: string }[];
-    }>(
-      `
-    SELECT im.id, im.image_key
-    FROM images_metadata im
-    JOIN product_images pi ON pi.image_id = im.id
-    WHERE pi.product_id = :id
-
-    UNION
-
-    SELECT im.id, im.image_key
-    FROM images_metadata im
-    JOIN product_variant_images pvi ON pvi.image_id = im.id
-    WHERE pvi.product_id = :id
-    `,
-      { id }
-    );
-
-    const imageKeys = metaRows.map((r) => r.image_key);
-    const imageIds = metaRows.map((r) => r.id);
-
-    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
-      `
-    DELETE FROM products
-    WHERE id = :id
-    RETURNING id
-    `,
-      { id }
-    );
-
-    if (rows.length === 0) {
-      throw AppError.notFound("Product not found");
-    }
-
-    return { imageIds, imageKeys };
-  }
-
   async findBaseById(id: number, trx?: Knex.Transaction) {
     const executor = trx ?? db;
 
@@ -497,28 +455,6 @@ export class ProductRepo {
     }
 
     return product;
-  }
-
-  async removeImagesMetadata(ids: number[]) {
-    if (ids.length === 0) return;
-
-    await db.raw(
-      `
-    DELETE FROM images_metadata im
-    WHERE im.id = ANY(:ids)
-      AND NOT EXISTS (
-        SELECT 1
-        FROM product_variant_images pvi
-        WHERE pvi.image_id = im.id
-      )
-      AND NOT EXISTS (
-        SELECT 1
-        FROM product_images pi
-        WHERE pi.image_id = im.id
-      )
-    `,
-      { ids }
-    );
   }
 
   private async getExistingProductImages(trx: Knex.Transaction, productId: number): Promise<{ id: number; image_id: number }[]> {

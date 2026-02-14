@@ -108,8 +108,8 @@ export class BannerService {
     }
 
     const processed = await this.processImage(file);
-
-    const imageKey = `banners/${uuidv4()}.${processed.mimeType}`;
+    const extension = processed.mimeType.split("/")[1];
+    const imageKey = `banners/${uuidv4()}.${extension}`;
 
     try {
       await uploadFile(processed.buffer, imageKey, processed.mimeType);

@@ -71,10 +71,4 @@ export class ProductController {
     await this.service.updateStatus(payload);
     sendSuccess(res, 200, { message: "Products status updated" });
   };
-
-  remove = async (req: Request, res: Response) => {
-    const params = productIdParams.parse(req.params);
-    await this.service.remove(params.productId);
-    sendSuccess(res, 200, { message: "Product removed" });
-  };
 }
