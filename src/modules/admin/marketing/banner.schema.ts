@@ -1,5 +1,5 @@
+import { BANNER_PLACEMENT, BANNER_TARGET_TYPE } from "@/shared/banner/banner.constants";
 import z, { optional } from "zod";
-import { BANNER_PLACEMENT, BANNER_TARGET_TYPE } from "./banner.constants";
 
 const MAX_TITLE = 100;
 

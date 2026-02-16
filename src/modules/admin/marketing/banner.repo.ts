@@ -1,32 +1,55 @@
 import { Knex } from "knex";
 import { BannerImagesQueryParamsSchema, BannerReorderSchema, BannerUpsertSchema } from "./banner.schema";
-import { BannerDetailRow, BannerImageRow, BannerListRow, ImagePayload } from "./banner.types";
+import { BannerDetailRow, BannerImageRow, BannerListRow, BannerResolvedRow, ImagePayload } from "./banner.types";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
 import { db } from "@/infra/db/knex";
 import { mapBannerDetail, mapBannerImages, mapBannerList } from "./banner.mapper";
 
-const QUERY_TARGET_PLACEHOLDER = "__QUERY_TARGET_PENDING__";
-
 export class BannerRepo {
   async getAll() {
     const { rows } = await db.raw<{ rows: BannerListRow[] }>(`
-      SELECT 
-       mb.id,
-       mb.title,
-       mb.placement,
-       im.image_key,
-       mb.target_type,
-       mb.target_value,
-       mb.status,
-       mb.sort_order
-       FROM marketing_banners mb
-       JOIN images_metadata im ON im.id = mb.image_id
-       ORDER BY mb.sort_order ASC, mb.id ASC
-    `);
+    SELECT 
+      mb.id,
+      mb.title,
+      mb.placement,
+      im.image_key,
+      mb.target_type,
+      mb.target_entity_id,
+      mb.status,
+      mb.sort_order
+    FROM marketing_banners mb
+    JOIN images_metadata im ON im.id = mb.image_id
+    ORDER BY mb.sort_order ASC, mb.id ASC
+  `);
 
-    return mapBannerList(rows);
+    const resolved: BannerResolvedRow[] = [];
+
+    for (const row of rows) {
+      let url = "#";
+
+      if (row.target_type === "category" && row.target_entity_id) {
+        url = await this.buildCategoryUrl(row.target_entity_id);
+      }
+
+      if (row.target_type === "collection" && row.target_entity_id) {
+        url = await this.buildCollectionUrl(row.target_entity_id);
+      }
+
+      resolved.push({
+        id: row.id,
+        title: row.title,
+        placement: row.placement,
+        image_key: row.image_key,
+        target_type: row.target_type,
+        url,
+        status: row.status,
+        sort_order: row.sort_order
+      });
+    }
+
+    return mapBannerList(resolved);
   }
 
   async getById(bannerId: number) {
@@ -39,7 +62,7 @@ export class BannerRepo {
         mb.image_id,
         im.image_key,
         mb.target_type,
-        mb.target_id,
+        mb.target_entity_id,
         mb.status
       FROM marketing_banners mb
       JOIN images_metadata im ON im.id = mb.image_id
@@ -56,7 +79,7 @@ export class BannerRepo {
     return mapBannerDetail(row);
   }
 
-  async create(trx: Knex.Transaction, input: BannerUpsertSchema, imageId: number, targetValue: string | null) {
+  async create(trx: Knex.Transaction, input: BannerUpsertSchema, imageId: number) {
     await this.assertBannerImageExists(trx, imageId);
 
     const sortOrder = await this.getNextSortOrder(trx);
@@ -66,15 +89,15 @@ export class BannerRepo {
     await trx.raw(
       `
       INSERT INTO marketing_banners
-        (title, placement, target_type, target_id, target_value, status, sort_order, image_id)
+        (title, placement, target_type, target_entity_id, target_value, status, sort_order, image_id)
       VALUES
         (:title, :placement, :targetType, :targetId, :targetValue, :status, :sortOrder, :imageId)  
     `,
-      { title, placement, targetType, targetId, targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER, status, sortOrder, imageId }
+      { title, placement, targetType, targetId, status, sortOrder, imageId }
     );
   }
 
-  async update(trx: Knex.Transaction, bannerId: number, input: BannerUpsertSchema, imageId: number, targetValue: string | null) {
+  async update(trx: Knex.Transaction, bannerId: number, input: BannerUpsertSchema, imageId: number) {
     await this.assertBannerImageExists(trx, imageId);
 
     const { title, placement, targetType, targetId, status } = input;
@@ -86,11 +109,9 @@ export class BannerRepo {
       title = :title,
       placement = :placement,
       target_type = :targetType,
-      target_id = :targetId,
-      target_value = :targetValue,
+      target_entity_id = :targetId,
       status = :status,
-      image_id = :imageId,
-      updated_at = now()
+      image_id = :imageId
     WHERE id = :bannerId
     RETURNING id
     `,
@@ -100,7 +121,6 @@ export class BannerRepo {
         placement,
         targetType,
         targetId,
-        targetValue: targetValue ?? QUERY_TARGET_PLACEHOLDER,
         status,
         imageId
       }
@@ -109,6 +129,34 @@ export class BannerRepo {
     if (!rows.length) {
       throw AppError.notFound("Banner not found");
     }
+  }
+
+  private async buildCategoryUrl(categoryId: number): Promise<string> {
+    const { rows } = await db.raw<{ rows: { slug_path: string }[] }>(
+      `
+    SELECT string_agg(c.slug, '/' ORDER BY array_position(string_to_array(parent.id_path, '/'), c.id::text)) AS slug_path
+    FROM categories parent
+    JOIN categories c 
+      ON c.id::text = ANY(string_to_array(parent.id_path, '/'))
+    WHERE parent.id = :id
+    GROUP BY parent.id_path
+  `,
+      { id: categoryId }
+    );
+
+    const row = rows[0];
+    if (!row) return "#";
+
+    return `/categories/${row.slug_path}`;
+  }
+
+  private async buildCollectionUrl(collectionId: number): Promise<string> {
+    const { rows } = await db.raw<{ rows: { slug: string }[] }>(`SELECT slug FROM collections WHERE id = :id LIMIT 1`, { id: collectionId });
+
+    const row = rows[0];
+    if (!row) return "#";
+
+    return `/collections/${row.slug}`;
   }
 
   async reorderBanner(trx: Knex.Transaction, input: BannerReorderSchema) {
@@ -249,74 +297,6 @@ export class BannerRepo {
     }
 
     return row.id;
-  }
-
-  async resolveTarget(trx: Knex.Transaction, targetType: BannerUpsertSchema["targetType"], targetId?: number) {
-    // future: rule / query based
-    // if (targetType === "query") {
-    //   return null;
-    // }
-
-    // entity based targets MUST have targetId
-    if (!targetId) {
-      throw AppError.badRequest("targetId is required for this target type");
-    }
-
-    if (targetType === "category") {
-      const slugPath = await this.resolveCategorySlugPath(trx, targetId);
-
-      return slugPath;
-    }
-
-    if (targetType === "collection") {
-      const slug = await this.resolveCollectionSlug(trx, targetId);
-
-      return slug;
-    }
-
-    throw AppError.badRequest("Invalid target type");
-  }
-
-  async resolveCategorySlugPath(trx: Knex.Transaction, categoryId: number): Promise<string> {
-    const { rows } = await trx.raw<{ rows: { slug_path: string }[] }>(
-      `
-    WITH RECURSIVE category_tree AS (
-      SELECT id, slug, parent_id, slug::text AS slug_path
-      FROM categories
-      WHERE id = :id
-
-      UNION ALL
-
-      SELECT c.id, c.slug, c.parent_id, c.slug || '/' || ct.slug_path
-      FROM categories c
-      JOIN category_tree ct ON ct.parent_id = c.id
-    )
-    SELECT slug_path
-    FROM category_tree
-    WHERE parent_id IS NULL
-    LIMIT 1
-    `,
-      { id: categoryId }
-    );
-
-    const row = rows[0];
-
-    if (!row) {
-      throw AppError.notFound("Category not found");
-    }
-
-    return row.slug_path;
-  }
-
-  async resolveCollectionSlug(trx: Knex.Transaction, collectionId: number): Promise<string> {
-    const { rows } = await trx.raw<{ rows: { slug: string }[] }>(`SELECT slug FROM collections WHERE id = :id LIMIT 1`, { id: collectionId });
-    const row = rows[0];
-
-    if (!row) {
-      throw AppError.notFound("Collection not found");
-    }
-
-    return row.slug;
   }
 
   async assertBannerImageExists(trx: Knex.Transaction, imageId: number) {

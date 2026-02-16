@@ -1,15 +1,15 @@
-import { BannerPlacement, BannerStatus, BannerTargetType } from "./banner.types";
+import { BannerPlacement, BannerStatus, BannerTargetType } from "@/shared/banner/banner.types";
 
-export interface BannerListDTO {
+export type BannerListDTO = {
   id: number;
   title: string;
   placement: BannerPlacement;
   imageKey: string;
   targetType: BannerTargetType;
-  targetValue: string;
+  url: string | null;
   status: BannerStatus;
   sortOrder: number;
-}
+};
 
 export interface BannerDetailDTO {
   id: number;

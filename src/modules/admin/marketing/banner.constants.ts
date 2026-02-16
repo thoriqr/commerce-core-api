@@ -1,16 +1,8 @@
+import { BANNER_PLACEMENT, BANNER_TARGET_TYPE } from "@/shared/banner/banner.constants";
+
 export const UPLOAD_FILE = {
   BANNER_FIELD: "bannerImage"
 };
-
-export const BANNER_PLACEMENT = {
-  HOMEPAGE_HERO: "homepage_hero"
-} as const;
-
-export const BANNER_TARGET_TYPE = {
-  COLLECTION: "collection",
-  CATEGORY: "category"
-  // QUERY: "query"
-} as const;
 
 export const BANNER_PLACEMENT_OPTIONS = Object.values(BANNER_PLACEMENT).map((value) => ({
   value,

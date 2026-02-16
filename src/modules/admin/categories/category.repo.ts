@@ -4,7 +4,8 @@ import { db } from "@/infra/db/knex";
 import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
 import { mapCategoryDetail, mapCategoryFlat, mapCategoryParents, mapCategoryParentTree } from "./category.mapper";
-import { BANNER_TARGET_TYPE } from "../marketing/banner.constants";
+import { BANNER_TARGET_TYPE } from "@/shared/banner/banner.constants";
+import { logger } from "@/libs/logger";
 
 export class CategoryRepo {
   async getById(id: number) {
@@ -35,27 +36,44 @@ export class CategoryRepo {
   }
 
   async getParentTree(parentId: number) {
+    // 1️⃣ ambil id_path parent dulu
+    const { rows: parentRows } = await db.raw<{ rows: { id_path: string }[] }>(
+      `
+      SELECT id_path
+      FROM categories
+      WHERE id = :parentId
+    `,
+      { parentId }
+    );
+
+    const parentRow = parentRows[0];
+
+    if (!parentRow) {
+      throw AppError.notFound("Category not found");
+    }
+
+    const rootPath = parentRow.id_path;
+    const rootPrefix = `${rootPath}/%`;
+
+    // 2️⃣ ambil subtree pakai id_path
     const { rows } = await db.raw<{ rows: CategoryRow[] }>(
       `
-      WITH RECURSIVE category_tree AS(
-        -- anchor: self
-        SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order, c.status
-        FROM categories c WHERE c.id = :parent_id
-
-        UNION ALL
-        -- recursive: children
-        SELECT c2.id, c2.parent_id, c2.name, c2.slug, c2.sort_order, c2.status
-        FROM categories c2
-        JOIN category_tree ct
-          ON c2.parent_id = ct.id
-      )
-      SELECT ct.id, ct.parent_id, ct.name, ct.slug, ct.sort_order, ct.status
-      FROM category_tree ct
-      ORDER BY
-        ct.parent_id NULLS FIRST,
-        ct.sort_order ASC, ct.id ASC
+      SELECT
+        id,
+        parent_id,
+        name,
+        slug,
+        sort_order,
+        status
+      FROM categories
+      WHERE id_path = :rootPath
+         OR id_path LIKE :rootPrefix
+      ORDER BY id_path ASC
     `,
-      { parent_id: parentId }
+      {
+        rootPath,
+        rootPrefix
+      }
     );
 
     const tree = mapCategoryParentTree(rows);
@@ -69,41 +87,20 @@ export class CategoryRepo {
 
   async getFlatForProduct() {
     const { rows } = await db.raw<{ rows: CategoryFlatRow[] }>(`
-      WITH RECURSIVE category_tree AS (
-        SELECT
-        id,
-        name,
-        parent_id,
-        status,
-        ARRAY[sort_order] AS sort_path,
-        name::text AS path,
-        1 AS depth
-      FROM categories
-      WHERE parent_id IS NULL
-
-      UNION ALL
-
-        SELECT
-        c.id,
-        c.name,
-        c.parent_id,
-        c.status,
-        ct.sort_path || c.sort_order,
-        ct.path || ' / ' || c.name,
-        ct.depth + 1
-      FROM categories c
-      JOIN category_tree ct
-        ON c.parent_id = ct.id
-      )
-
-      SELECT
-      id,
-      path,
-      depth
-    FROM category_tree
-    WHERE depth <= 3
-    ORDER BY sort_path;
-    `);
+    SELECT
+      c.id,
+      CASE
+        WHEN p2.id IS NOT NULL THEN p2.name || ' / ' || p1.name || ' / ' || c.name
+        WHEN p1.id IS NOT NULL THEN p1.name || ' / ' || c.name
+        ELSE c.name
+      END AS path,
+      array_length(string_to_array(c.id_path, '/'), 1) AS depth
+    FROM categories c
+    LEFT JOIN categories p1 ON p1.id = c.parent_id
+    LEFT JOIN categories p2 ON p2.id = p1.parent_id
+    WHERE array_length(string_to_array(c.id_path, '/'), 1) <= 3
+    ORDER BY c.id_path;
+  `);
 
     return mapCategoryFlat(rows);
   }
@@ -115,12 +112,14 @@ export class CategoryRepo {
 
     const { name, description, parentId, status } = input;
 
-    await trx.raw(
+    // 1️⃣ Insert dulu dan ambil id
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
-      INSERT INTO categories
-        (name, slug, description, parent_id, sort_order, status)
-      VALUES
-        (:name, :slug, :description, :parentId, :sortOrder, :status)
+    INSERT INTO categories
+      (name, slug, description, parent_id, sort_order, status)
+    VALUES
+      (:name, :slug, :description, :parentId, :sortOrder, :status)
+    RETURNING id
     `,
       {
         name,
@@ -131,10 +130,57 @@ export class CategoryRepo {
         status
       }
     );
+
+    const row = rows[0];
+
+    if (!row) {
+      logger.error("Insert to categories returning no rows");
+      throw AppError.internal();
+    }
+
+    const newId = row.id;
+
+    // 2️⃣ Hitung id_path
+    let idPath: string;
+
+    if (!parentId) {
+      // root
+      idPath = String(newId);
+    } else {
+      const { rows } = await trx.raw<{ rows: { id_path: string }[] }>(`SELECT id_path FROM categories WHERE id = :parentId`, { parentId });
+
+      const row = rows[0];
+
+      if (!row) {
+        logger.error("Get id_path categories returning no rows");
+        throw AppError.internal();
+      }
+
+      const parentPath = row.id_path;
+
+      idPath = `${parentPath}/${newId}`;
+    }
+
+    // 3️⃣ Update id_path
+    await trx.raw(
+      `
+    UPDATE categories
+    SET id_path = :idPath
+    WHERE id = :id
+    `,
+      {
+        idPath,
+        id: newId
+      }
+    );
   }
 
   async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpsertSchema, slug: string) {
-    const { name, description, status } = input;
+    const { name, description, status, parentId } = input;
+
+    if (parentId !== undefined) {
+      throw AppError.badRequest("Changing parent is not supported yet");
+    }
 
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `

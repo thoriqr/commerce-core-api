@@ -1,8 +1,4 @@
-import { BANNER_PLACEMENT, BANNER_TARGET_TYPE } from "./banner.constants";
-
-export type BannerPlacement = (typeof BANNER_PLACEMENT)[keyof typeof BANNER_PLACEMENT];
-export type BannerTargetType = (typeof BANNER_TARGET_TYPE)[keyof typeof BANNER_TARGET_TYPE];
-export type BannerStatus = "ACTIVE" | "INACTIVE";
+import { BannerPlacement, BannerStatus, BannerTargetType } from "@/shared/banner/banner.types";
 
 export type BannerListRow = {
   id: number;
@@ -10,7 +6,18 @@ export type BannerListRow = {
   placement: BannerPlacement;
   image_key: string;
   target_type: BannerTargetType;
-  target_value: string;
+  target_entity_id: number | null;
+  status: BannerStatus;
+  sort_order: number;
+};
+
+export type BannerResolvedRow = {
+  id: number;
+  title: string;
+  placement: BannerPlacement;
+  image_key: string;
+  target_type: BannerTargetType;
+  url: string;
   status: BannerStatus;
   sort_order: number;
 };
@@ -22,7 +29,7 @@ export type BannerDetailRow = {
   image_id: number;
   image_key: string;
   target_type: BannerTargetType;
-  target_id: number | null;
+  target_entity_id: number | null;
   status: BannerStatus;
 };
 

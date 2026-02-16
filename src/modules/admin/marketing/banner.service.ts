@@ -26,23 +26,18 @@ export class BannerService {
 
   create = async (input: BannerUpsertSchema, imageFile?: Express.Multer.File) => {
     return this.tm.transaction(async (trx) => {
-      const resolvedTargetValue = await this.repo.resolveTarget(trx, input.targetType, input.targetId);
-
       const imageId = await this.resolveBannerImage(trx, input.image, imageFile);
 
-      await this.repo.create(trx, input, imageId, resolvedTargetValue);
+      await this.repo.create(trx, input, imageId);
     });
   };
 
   update = async (bannerId: number, input: BannerUpsertSchema, imageFile?: Express.Multer.File) => {
     return this.tm.transaction(async (trx) => {
-      // resolve ID -> slug / slug-path
-      const resolvedTargetValue = await this.repo.resolveTarget(trx, input.targetType, input.targetId);
-
       // resolve image (reuse / upload)
       const imageId = await this.resolveBannerImage(trx, input.image, imageFile);
 
-      await this.repo.update(trx, bannerId, input, imageId, resolvedTargetValue);
+      await this.repo.update(trx, bannerId, input, imageId);
     });
   };
 
