@@ -1,6 +1,5 @@
 import { db } from "@/infra/db/knex";
 import { BreadcrumbRow, CategoryMetadataRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
-import { mapMegaMenu } from "./category.mapper";
 import { AppError } from "@/errors/app-error";
 
 export class CategoryRepo {
@@ -39,9 +38,7 @@ export class CategoryRepo {
 
     const etagSeed = meta ? `categories:${meta.max_updated_at}:${meta.total}` : `categories:empty`;
 
-    const nodes = mapMegaMenu(rows);
-
-    return { nodes, etagSeed };
+    return { rows, etagSeed };
   }
 
   async getTopLevelCategories() {

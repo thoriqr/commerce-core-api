@@ -1,17 +1,17 @@
 import { generateETag } from "@/utils/generate-etag";
 import { CategoryRepo } from "./category.repo";
-import { mapCategoryMetadata, mapTopLevelCategories } from "./category.mapper";
+import { mapCategoryMetadata, mapMegaMenu, mapTopLevelCategories } from "./category.mapper";
 import { mapBreadcrumb } from "@/modules/admin/categories/category.mapper";
 
 export class CategoryService {
   constructor(private readonly repo: CategoryRepo) {}
 
   getMegaMenu = async () => {
-    const { nodes, etagSeed } = await this.repo.getMegaMenuTree();
-
+    const { rows, etagSeed } = await this.repo.getMegaMenuTree();
+    const dto = mapMegaMenu(rows);
     const etag = generateETag(etagSeed);
 
-    return { nodes, etag };
+    return { dto, etag };
   };
 
   getPopular = async () => {
@@ -36,10 +36,11 @@ export class CategoryService {
     const { row, etagSeed } = await this.repo.getMetadataBySlugPath(slugPath);
 
     const dto = mapCategoryMetadata(row);
+    const etag = generateETag(etagSeed);
 
     return {
-      data: dto,
-      etag: etagSeed
+      dto,
+      etag
     };
   };
 }

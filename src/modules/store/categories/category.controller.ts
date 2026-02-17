@@ -8,12 +8,12 @@ export class CategoryController {
   constructor(private readonly service: CategoryService) {}
 
   getMegaMenu = async (req: Request, res: Response) => {
-    const { nodes, etag } = await this.service.getMegaMenu();
+    const { dto, etag } = await this.service.getMegaMenu();
 
     sendStoreResponse({
       req,
       res,
-      data: nodes,
+      data: dto,
       etag,
       maxAge: 300
     });
@@ -48,12 +48,12 @@ export class CategoryController {
   getMetadata = async (req: Request, res: Response) => {
     const qParams = categorySlugPathQueryParams.parse(req.query);
 
-    const { data, etag } = await this.service.getMetadata(qParams.slugPath);
+    const { dto, etag } = await this.service.getMetadata(qParams.slugPath);
 
     sendStoreResponse({
       req,
       res,
-      data,
+      data: dto,
       etag,
       maxAge: 300
     });
