@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { categoryIdParams, categoryParentIdParams, categoryReorderSchema, categoryUpsertSchema } from "./category.schema";
+import { categoryIdParams, categoryParentIdParams, categoryReorderSchema, categoryUpdateSchema, categoryUpsertSchema } from "./category.schema";
 import { CategoryService } from "./category.service";
 import { sendSuccess } from "@/utils/send-success";
 
@@ -31,7 +31,7 @@ export class CategoryController {
 
   update = async (req: Request, res: Response) => {
     const params = categoryIdParams.parse(req.params);
-    const payload = categoryUpsertSchema.parse(req.body);
+    const payload = categoryUpdateSchema.parse(req.body);
     const data = await this.service.update(params.categoryId, payload);
     sendSuccess(res, 200, { data, message: "Category updated" });
   };

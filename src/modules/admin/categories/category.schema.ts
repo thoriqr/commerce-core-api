@@ -12,6 +12,8 @@ export const categoryUpsertSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE"])
 });
 
+export const categoryUpdateSchema = categoryUpsertSchema.omit({ parentId: true });
+
 export const categoryReorderSchema = z
   .array(
     z.object({
@@ -30,4 +32,5 @@ export const categoryIdParams = z.object({
 });
 
 export type CategoryUpsertSchema = z.infer<typeof categoryUpsertSchema>;
+export type CategoryUpdateSchema = z.infer<typeof categoryUpdateSchema>;
 export type CategoryReorderSchema = z.infer<typeof categoryReorderSchema>;

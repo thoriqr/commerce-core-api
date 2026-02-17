@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import { CategoryReorderSchema, CategoryUpsertSchema } from "./category.schema";
+import { CategoryReorderSchema, CategoryUpdateSchema, CategoryUpsertSchema } from "./category.schema";
 import { db } from "@/infra/db/knex";
 import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
@@ -112,13 +112,13 @@ export class CategoryRepo {
 
     const { name, description, parentId, status } = input;
 
-    // 1️⃣ Insert dulu dan ambil id
+    // 1️⃣ insert dulu
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
     INSERT INTO categories
-      (name, slug, description, parent_id, sort_order, status)
+      (name, slug, description, parent_id, sort_order, status, id_path, slug_path)
     VALUES
-      (:name, :slug, :description, :parentId, :sortOrder, :status)
+      (:name, :slug, :description, :parentId, :sortOrder, :status, '', '')
     RETURNING id
     `,
       {
@@ -132,7 +132,6 @@ export class CategoryRepo {
     );
 
     const row = rows[0];
-
     if (!row) {
       logger.error("Insert to categories returning no rows");
       throw AppError.internal();
@@ -140,61 +139,157 @@ export class CategoryRepo {
 
     const newId = row.id;
 
-    // 2️⃣ Hitung id_path
+    // 2️⃣ hitung id_path & slug_path
     let idPath: string;
+    let slugPath: string;
 
     if (!parentId) {
       // root
       idPath = String(newId);
+      slugPath = slug;
     } else {
-      const { rows } = await trx.raw<{ rows: { id_path: string }[] }>(`SELECT id_path FROM categories WHERE id = :parentId`, { parentId });
+      const { rows: parentRows } = await trx.raw<{
+        rows: { id_path: string; slug_path: string }[];
+      }>(
+        `
+      SELECT id_path, slug_path
+      FROM categories
+      WHERE id = :parentId
+      `,
+        { parentId }
+      );
 
-      const row = rows[0];
+      const parent = parentRows[0];
 
-      if (!row) {
-        logger.error("Get id_path categories returning no rows");
-        throw AppError.internal();
+      if (!parent) {
+        throw AppError.badRequest("Invalid parent category");
       }
 
-      const parentPath = row.id_path;
-
-      idPath = `${parentPath}/${newId}`;
+      idPath = `${parent.id_path}/${newId}`;
+      slugPath = `${parent.slug_path}/${slug}`;
     }
 
-    // 3️⃣ Update id_path
+    // 3️⃣ update id_path + slug_path
     await trx.raw(
       `
     UPDATE categories
-    SET id_path = :idPath
+    SET id_path = :idPath,
+        slug_path = :slugPath
     WHERE id = :id
     `,
       {
         idPath,
+        slugPath,
         id: newId
       }
     );
   }
 
-  async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpsertSchema, slug: string) {
-    const { name, description, status, parentId } = input;
+  async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpdateSchema, slug: string) {
+    const { name, description, status } = input;
 
-    if (parentId !== undefined) {
-      throw AppError.badRequest("Changing parent is not supported yet");
-    }
-
-    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+    // 1️⃣ Ambil slug_path lama
+    const { rows: existingRows } = await trx.raw<{
+      rows: { slug_path: string }[];
+    }>(
       `
-      UPDATE categories
-        SET name = :name, description = :description, slug = :slug, status = :status
-      WHERE id = :categoryId
-      RETURNING id
+    SELECT slug_path
+    FROM categories
+    WHERE id = :categoryId
     `,
-      { name, description: description ?? null, slug, status, categoryId }
+      { categoryId }
     );
 
-    if (!rows.length) {
+    const existing = existingRows[0];
+    if (!existing) {
       throw AppError.notFound("Category not found");
     }
+
+    const oldSlugPath = existing.slug_path;
+
+    // 2️⃣ Update basic fields + slug
+    await trx.raw(
+      `
+    UPDATE categories
+    SET name = :name,
+        description = :description,
+        slug = :slug,
+        status = :status
+    WHERE id = :categoryId
+    `,
+      {
+        name,
+        description: description ?? null,
+        slug,
+        status,
+        categoryId
+      }
+    );
+
+    // 3️⃣ Ambil parent slug_path untuk hitung slug_path baru
+    const { rows: parentRows } = await trx.raw<{
+      rows: { parent_id: number | null; parent_slug_path: string | null }[];
+    }>(
+      `
+    SELECT c.parent_id,
+           p.slug_path AS parent_slug_path
+    FROM categories c
+    LEFT JOIN categories p ON p.id = c.parent_id
+    WHERE c.id = :categoryId
+    `,
+      { categoryId }
+    );
+
+    const parent = parentRows[0];
+
+    if (!parent) {
+      logger.error("Category parent lookup failed unexpectedly", {
+        categoryId
+      });
+
+      throw AppError.internal();
+    }
+
+    let newSlugPath: string;
+
+    if (!parent.parent_id) {
+      newSlugPath = slug;
+    } else {
+      newSlugPath = `${parent.parent_slug_path}/${slug}`;
+    }
+
+    // 4️⃣ Update current category slug_path
+    await trx.raw(
+      `
+    UPDATE categories
+    SET slug_path = :newSlugPath
+    WHERE id = :categoryId
+    `,
+      {
+        newSlugPath,
+        categoryId
+      }
+    );
+
+    // 5️⃣ Update subtree slug_path
+    await trx.raw(
+      `
+    UPDATE categories
+    SET slug_path = regexp_replace(
+      slug_path,
+      '^' || :oldSlugPath,
+      :newSlugPath
+    )
+    WHERE slug_path LIKE :pattern
+      AND id <> :categoryId
+    `,
+      {
+        oldSlugPath,
+        newSlugPath,
+        pattern: `${oldSlugPath}/%`,
+        categoryId
+      }
+    );
   }
 
   async reorderCategory(trx: Knex.Transaction, parentId: number, input: CategoryReorderSchema) {
@@ -215,8 +310,8 @@ export class CategoryRepo {
       { parentId, ids }
     );
 
-    if (!rows.length) {
-      throw AppError.notFound("Category not found or invalid parent");
+    if (rows.length !== input.length) {
+      throw AppError.badRequest("Some categories do not belong to this parent");
     }
   }
 
@@ -226,7 +321,7 @@ export class CategoryRepo {
           SELECT 1
           FROM marketing_banners
           WHERE target_type = :targetType
-            AND target_id = :categoryId
+            AND target_entity_id = :categoryId
           LIMIT 1
           `,
       { targetType: BANNER_TARGET_TYPE.CATEGORY, categoryId }
@@ -285,31 +380,20 @@ export class CategoryRepo {
   }
 
   async assertMaxDepth(trx: Knex.Transaction, parentId: number | null) {
-    if (parentId === null) return; // root
+    if (!parentId) return;
 
     const { rows } = await trx.raw<{ rows: { depth: number }[] }>(
       `
-    WITH RECURSIVE parent_chain AS (
-      SELECT id, parent_id, 0 AS depth
-      FROM categories
-      WHERE id = :parentId
-
-      UNION ALL
-
-      SELECT c.id, c.parent_id, pc.depth + 1
-      FROM categories c
-      JOIN parent_chain pc
-        ON c.id = pc.parent_id
-    )
-    SELECT MAX(depth) AS depth FROM parent_chain
-    `,
+    SELECT array_length(string_to_array(id_path, '/'), 1) AS depth
+    FROM categories
+    WHERE id = :parentId
+  `,
       { parentId }
     );
 
-    const parentDepth = rows[0]?.depth ?? 0;
+    const depth = rows[0]?.depth ?? 1;
 
-    // parentDepth = 2 grandchild
-    if (parentDepth >= 2) {
+    if (depth >= 3) {
       throw AppError.badRequest("Maximum category depth reached");
     }
   }

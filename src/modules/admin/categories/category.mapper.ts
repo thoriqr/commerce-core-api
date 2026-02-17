@@ -1,5 +1,7 @@
+import { BreadcrumbRow } from "@/modules/store/categories/category.types";
 import { CategoryDetailDTO, CategoryFlatDTO, CategoryParentDTO, CategoryParentTreeDTO } from "./category.dto";
 import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
+import { BreadcrumbDTO } from "@/modules/store/categories/category.dto";
 
 export function mapCategoryParents(rows: CategoryParentRow[]): CategoryParentDTO[] {
   return rows.map((r) => ({
@@ -59,5 +61,13 @@ export function mapCategoryFlat(rows: CategoryFlatRow[]): CategoryFlatDTO[] {
   return rows.map((r) => ({
     value: String(r.id),
     label: r.path
+  }));
+}
+
+export function mapBreadcrumb(rows: BreadcrumbRow[]): BreadcrumbDTO[] {
+  return rows.map((r) => ({
+    name: r.name,
+    slug: r.slug,
+    fullSlug: r.slug_path
   }));
 }

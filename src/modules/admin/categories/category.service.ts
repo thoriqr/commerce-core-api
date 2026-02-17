@@ -1,7 +1,7 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CategoryRepo } from "./category.repo";
 import { generateUniqueCategorySlug } from "./category.slug";
-import { CategoryReorderSchema, CategoryUpsertSchema } from "./category.schema";
+import { CategoryReorderSchema, CategoryUpdateSchema, CategoryUpsertSchema } from "./category.schema";
 
 export class CategoryService {
   constructor(
@@ -31,7 +31,7 @@ export class CategoryService {
     );
   };
 
-  update = async (categoryId: number, input: CategoryUpsertSchema) => {
+  update = async (categoryId: number, input: CategoryUpdateSchema) => {
     return this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
         const existing = await this.repo.findBaseId(categoryId, trx);
