@@ -1,5 +1,5 @@
-import { CategoryMetadataDTO, CategoryNodeDTO, CategoryTopLevelDTO } from "./category.dto";
-import { CategoryMetadataRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
+import { CategoryDetailDTO, CategoryFilterDimensionDTO, CategoryNodeDTO, CategoryTopLevelDTO } from "./category.dto";
+import { CategoryBreadcrumbRow, CategoryChildRow, CategoryDetailRow, CategoryFilterRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
 
 export function mapMegaMenu(rows: CategoryRow[]): CategoryNodeDTO[] {
   const map = new Map<number, CategoryNodeDTO>();
@@ -37,15 +37,55 @@ export function mapTopLevelCategories(rows: CategoryTopLevelRow[]): CategoryTopL
   }));
 }
 
-const STORE_NAME = "Commerce"; // can be in env
+function buildGenericDescription(name: string): string {
+  return `Shop ${name} online. Discover top deals and new arrivals in ${name}.`;
+}
 
-export function mapCategoryMetadata(row: CategoryMetadataRow): CategoryMetadataDTO {
-  const title = `${row.name} | ${STORE_NAME}`;
-
-  const description = row.description ?? `Browse ${row.name} collection at ${STORE_NAME}. Discover curated products and latest arrivals.`;
-
+export function mapCategoryDetail(
+  current: CategoryDetailRow,
+  breadcrumbRows: CategoryBreadcrumbRow[],
+  childrenRows: CategoryChildRow[]
+): CategoryDetailDTO {
   return {
-    title,
-    description
+    category: {
+      id: current.id,
+      name: current.name,
+      description: current.description ?? buildGenericDescription(current.name),
+      slug: current.slug,
+      slugPath: current.slug_path
+    },
+    breadcrumb: breadcrumbRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slugPath: r.slug_path
+    })),
+    children: childrenRows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slugPath: c.slug_path
+    }))
   };
+}
+
+export function mapCategoryFilters(rows: CategoryFilterRow[]): CategoryFilterDimensionDTO[] {
+  const map = new Map<string, CategoryFilterDimensionDTO>();
+
+  for (const r of rows) {
+    if (!map.has(r.dimension_name)) {
+      map.set(r.dimension_name, {
+        name: r.dimension_name,
+        label: r.dimension_display_name,
+        values: []
+      });
+    }
+
+    map.get(r.dimension_name)!.values.push({
+      value: r.value_normalized,
+      label: r.value_display,
+      count: Number(r.product_count),
+      hexColor: r.hex_color
+    });
+  }
+
+  return Array.from(map.values());
 }

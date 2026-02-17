@@ -15,7 +15,17 @@ export type CategoryTopLevelRow = {
   updated_at: Date;
 };
 
-export type BreadcrumbRow = {
+export type CategoryDetailRow = {
+  id: number;
+  name: string;
+  description: string | null;
+  slug: string;
+  slug_path: string;
+  id_path: string;
+  updated_at: Date;
+};
+
+export type CategoryBreadcrumbRow = {
   id: number;
   name: string;
   slug: string;
@@ -24,9 +34,25 @@ export type BreadcrumbRow = {
   updated_at: Date;
 };
 
+export type CategoryChildRow = {
+  id: number;
+  name: string;
+  slug: string;
+  slug_path: string;
+};
+
 export type CategoryMetadataRow = {
   name: string;
   description: string | null;
   slug_path: string;
   updated_at: Date;
+};
+
+export type CategoryFilterRow = {
+  dimension_name: string;
+  dimension_display_name: string;
+  value_normalized: string;
+  value_display: string;
+  product_count: number;
+  hex_color: string | null;
 };

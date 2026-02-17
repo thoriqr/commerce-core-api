@@ -11,7 +11,7 @@ const controller = new CategoryController(service);
 
 router.get("/mega-menu", controller.getMegaMenu);
 router.get("/popular", controller.getPopular);
-router.get("/breadcrumb", controller.getBreadcrumb);
-router.get("/metadata", controller.getMetadata);
+router.get("/detail", controller.getDetail);
+router.get("/filters", controller.getFilters);
 
 export default router;

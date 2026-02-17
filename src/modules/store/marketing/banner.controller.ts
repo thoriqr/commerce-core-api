@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { bannerQueryParams } from "./banner.schema";
 import { BannerService } from "./banner.service";
-import { sendStoreResponse } from "@/utils/send-store-reponse";
+import { sendStoreResponse } from "@/utils/send-store-response";
 
 export class BannerController {
   constructor(private service: BannerService) {}

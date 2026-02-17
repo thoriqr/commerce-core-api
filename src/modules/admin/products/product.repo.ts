@@ -294,7 +294,7 @@ export class ProductRepo {
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
       UPDATE products
-        SET name = :name, description = :description, status = :status, category_id = :categoryId, is_variant = :is_variant, slug = :slug, updated_at = now()
+        SET name = :name, description = :description, status = :status, category_id = :categoryId, is_variant = :is_variant, slug = :slug
       WHERE id = :id
       RETURNING id
     `,

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import { sendStoreResponse } from "@/utils/send-store-reponse";
+import { sendStoreResponse } from "@/utils/send-store-response";
 import { CategoryService } from "./category.service";
 import { categorySlugPathQueryParams } from "./category.schema";
 
@@ -31,10 +31,10 @@ export class CategoryController {
     });
   };
 
-  getBreadcrumb = async (req: Request, res: Response) => {
+  getDetail = async (req: Request, res: Response) => {
     const qParams = categorySlugPathQueryParams.parse(req.query);
 
-    const { dto, etag } = await this.service.getBreadcrumb(qParams.slugPath);
+    const { dto, etag } = await this.service.getCategoryDetail(qParams.slugPath);
 
     sendStoreResponse({
       req,
@@ -45,15 +45,15 @@ export class CategoryController {
     });
   };
 
-  getMetadata = async (req: Request, res: Response) => {
+  getFilters = async (req: Request, res: Response) => {
     const qParams = categorySlugPathQueryParams.parse(req.query);
 
-    const { dto, etag } = await this.service.getMetadata(qParams.slugPath);
+    const { nodes, etag } = await this.service.getCategoryFilters(qParams.slugPath);
 
     sendStoreResponse({
       req,
       res,
-      data: dto,
+      data: nodes,
       etag,
       maxAge: 300
     });

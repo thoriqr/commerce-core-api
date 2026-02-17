@@ -22,8 +22,7 @@ export class ProductVariantRepo {
     await trx.raw(
       `
     UPDATE product_variants
-    SET status = 'ARCHIVED',
-        updated_at = now()
+    SET status = 'ARCHIVED'
     WHERE product_id = :productId
       AND status <> 'ARCHIVED'
       AND (
@@ -87,7 +86,6 @@ export class ProductVariantRepo {
           sku = :sku,
           is_primary = :isPrimary,
           status = 'ACTIVE',
-          updated_at = now(),
           option_snapshot = :snapshot
       WHERE id = :id
       AND product_id = :productId

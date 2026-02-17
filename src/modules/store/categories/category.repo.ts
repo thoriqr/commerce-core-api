@@ -1,5 +1,13 @@
 import { db } from "@/infra/db/knex";
-import { BreadcrumbRow, CategoryMetadataRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
+import {
+  CategoryBreadcrumbRow,
+  CategoryChildRow,
+  CategoryDetailRow,
+  CategoryFilterRow,
+  CategoryMetadataRow,
+  CategoryRow,
+  CategoryTopLevelRow
+} from "./category.types";
 import { AppError } from "@/errors/app-error";
 
 export class CategoryRepo {
@@ -62,11 +70,11 @@ export class CategoryRepo {
     return { rows, etagSeed };
   }
 
-  async getBreadcrumbBySlugPath(slugPath: string) {
-    // 1️⃣ Ambil category target
-    const { rows } = await db.raw<{ rows: BreadcrumbRow[] }>(
+  async getCategoryDetail(slugPath: string) {
+    // 1️⃣ current category
+    const { rows } = await db.raw<{ rows: CategoryDetailRow[] }>(
       `
-      SELECT id, name, slug, slug_path, id_path, updated_at
+      SELECT id, name, description, slug, slug_path, id_path, updated_at
       FROM categories
       WHERE slug_path = :slugPath
         AND status = 'ACTIVE'
@@ -75,42 +83,62 @@ export class CategoryRepo {
       { slugPath }
     );
 
-    const target = rows[0];
-    if (!target) {
+    const current = rows[0];
+    if (!current) {
       throw AppError.notFound("Category not found");
     }
 
-    // 2️⃣ Ambil seluruh chain berdasarkan id_path
-    const { rows: chainRows } = await db.raw<{ rows: BreadcrumbRow[] }>(
+    // 2️⃣ breadcrumb chain
+    const { rows: breadcrumbRows } = await db.raw<{
+      rows: CategoryBreadcrumbRow[];
+    }>(
       `
-      SELECT id, name, slug, slug_path, id_path, updated_at
+      SELECT id, name, slug, slug_path, updated_at
       FROM categories
       WHERE id::text = ANY(string_to_array(:idPath, '/'))
         AND status = 'ACTIVE'
       ORDER BY array_position(string_to_array(:idPath, '/'), id::text)
       `,
-      { idPath: target.id_path }
+      { idPath: current.id_path }
     );
 
-    // 3️⃣ ETag seed
-    const maxUpdatedAt = chainRows.reduce((acc, r) => (!acc || r.updated_at > acc ? r.updated_at : acc), null as Date | null);
+    // 3️⃣ children
+    const { rows: childrenRows } = await db.raw<{
+      rows: CategoryChildRow[];
+    }>(
+      `
+      SELECT id, name, slug, slug_path
+      FROM categories
+      WHERE parent_id = :parentId
+        AND status = 'ACTIVE'
+      ORDER BY sort_order ASC, id ASC
+      `,
+      { parentId: current.id }
+    );
 
-    const etagSeed = `breadcrumb:${slugPath}:${maxUpdatedAt?.toISOString() ?? "none"}:${chainRows.length}`;
+    // 4️⃣ ETag seed
+    const maxUpdatedAt = [current.updated_at, ...breadcrumbRows.map((b) => b.updated_at)].reduce(
+      (acc, d) => (!acc || d > acc ? d : acc),
+      null as Date | null
+    );
+
+    const etagSeed = `category:${slugPath}:${maxUpdatedAt?.toISOString() ?? "none"}:${childrenRows.length}`;
 
     return {
-      rows,
+      current,
+      breadcrumbRows,
+      childrenRows,
       etagSeed
     };
   }
 
-  async getMetadataBySlugPath(slugPath: string) {
-    const { rows } = await db.raw<{ rows: CategoryMetadataRow[] }>(
+  async getCategoryFilters(slugPath: string) {
+    // 1️⃣ ambil category target
+    const { rows: targetRows } = await db.raw<{
+      rows: { id: number; id_path: string }[];
+    }>(
       `
-      SELECT
-        name,
-        description,
-        slug_path,
-        updated_at
+      SELECT id, id_path
       FROM categories
       WHERE slug_path = :slugPath
         AND status = 'ACTIVE'
@@ -119,16 +147,66 @@ export class CategoryRepo {
       { slugPath }
     );
 
-    const row = rows[0];
-
-    if (!row) {
+    const target = targetRows[0];
+    if (!target) {
       throw AppError.notFound("Category not found");
     }
 
-    const etagSeed = `category-meta:${row.updated_at.toISOString()}`;
+    // 2️⃣ filter dimensions + distinct product count
+    const { rows } = await db.raw<{ rows: CategoryFilterRow[] }>(
+      `
+      SELECT
+        d.normalized_name AS dimension_name,
+        d.display_name AS dimension_display_name,
+        dv.normalized_value AS value_normalized,
+        dv.display_value AS value_display,
+        dv.hex_color AS hex_color,
+        COUNT(DISTINCT p.id) AS product_count
+      FROM products p
+      JOIN categories c ON c.id = p.category_id
+      JOIN product_variants v ON v.product_id = p.id
+      JOIN product_variant_option_values pov ON pov.variant_id = v.id
+      JOIN product_variant_dimensions d ON d.id = pov.dimension_id
+      JOIN product_variant_dimension_values dv ON dv.id = pov.value_id
+      WHERE
+        p.status = 'ACTIVE'
+        AND v.status = 'ACTIVE'
+        AND c.id_path LIKE :idPathPrefix
+      GROUP BY
+        d.normalized_name,
+        d.display_name,
+        dv.normalized_value,
+        dv.display_value,
+        dv.hex_color
+      ORDER BY
+        d.normalized_name,
+        dv.display_value
+      `,
+      { idPathPrefix: `${target.id_path}%` }
+    );
+
+    // 3️⃣ ETag seed
+    const { rows: metaRows } = await db.raw<{
+      rows: { max_updated_at: string | null }[];
+    }>(
+      `
+      SELECT MAX(v.updated_at) AS max_updated_at
+      FROM products p
+      JOIN categories c ON c.id = p.category_id
+      JOIN product_variants v ON v.product_id = p.id
+      WHERE
+        p.status = 'ACTIVE'
+        AND v.status = 'ACTIVE'
+        AND c.id::text = ANY(string_to_array(:idPath, '/'))
+      `,
+      { idPath: target.id_path }
+    );
+
+    const meta = metaRows[0];
+    const etagSeed = `category-filters:${slugPath}:${meta?.max_updated_at ?? "none"}:${rows.length}`;
 
     return {
-      row,
+      rows,
       etagSeed
     };
   }
