@@ -32,9 +32,9 @@ export class CategoryController {
   };
 
   getDetail = async (req: Request, res: Response) => {
-    const qParams = categorySlugPathQueryParams.parse(req.query);
+    const params = categorySlugPathQueryParams.parse(req.query);
 
-    const { dto, etag } = await this.service.getCategoryDetail(qParams.slugPath);
+    const { dto, etag } = await this.service.getCategoryDetail(params.slugPath);
 
     sendStoreResponse({
       req,
@@ -46,9 +46,9 @@ export class CategoryController {
   };
 
   getFilters = async (req: Request, res: Response) => {
-    const qParams = categorySlugPathQueryParams.parse(req.query);
+    const params = categorySlugPathQueryParams.parse(req.query);
 
-    const { nodes, etag } = await this.service.getCategoryFilters(qParams.slugPath);
+    const { nodes, etag } = await this.service.getCategoryFilters(params.slugPath);
 
     sendStoreResponse({
       req,

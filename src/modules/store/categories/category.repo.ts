@@ -133,17 +133,17 @@ export class CategoryRepo {
   }
 
   async getCategoryFilters(slugPath: string) {
-    // 1️⃣ ambil category target
+    // 1️⃣ Resolve category
     const { rows: targetRows } = await db.raw<{
-      rows: { id: number; id_path: string }[];
+      rows: { id_path: string }[];
     }>(
       `
-      SELECT id, id_path
-      FROM categories
-      WHERE slug_path = :slugPath
-        AND status = 'ACTIVE'
-      LIMIT 1
-      `,
+    SELECT id_path
+    FROM categories
+    WHERE slug_path = :slugPath
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
       { slugPath }
     );
 
@@ -152,57 +152,73 @@ export class CategoryRepo {
       throw AppError.notFound("Category not found");
     }
 
-    // 2️⃣ filter dimensions + distinct product count
+    // 2️⃣ DISTINCT first (important)
     const { rows } = await db.raw<{ rows: CategoryFilterRow[] }>(
       `
-      SELECT
+    SELECT
+      t.dimension_name,
+      t.dimension_display_name,
+      t.value_normalized,
+      t.value_display,
+      t.hex_color,
+      COUNT(*)::int AS product_count
+    FROM (
+      SELECT DISTINCT
+        p.id AS product_id,
         d.normalized_name AS dimension_name,
         d.display_name AS dimension_display_name,
         dv.normalized_value AS value_normalized,
         dv.display_value AS value_display,
-        dv.hex_color AS hex_color,
-        COUNT(DISTINCT p.id) AS product_count
+        dv.hex_color AS hex_color
       FROM products p
       JOIN categories c ON c.id = p.category_id
-      JOIN product_variants v ON v.product_id = p.id
-      JOIN product_variant_option_values pov ON pov.variant_id = v.id
-      JOIN product_variant_dimensions d ON d.id = pov.dimension_id
-      JOIN product_variant_dimension_values dv ON dv.id = pov.value_id
+      JOIN product_variants v
+        ON v.product_id = p.id
+       AND v.status = 'ACTIVE'
+      JOIN product_variant_option_values pov
+        ON pov.variant_id = v.id
+      JOIN product_variant_dimensions d
+        ON d.id = pov.dimension_id
+      JOIN product_variant_dimension_values dv
+        ON dv.id = pov.value_id
       WHERE
         p.status = 'ACTIVE'
-        AND v.status = 'ACTIVE'
         AND c.id_path LIKE :idPathPrefix
-      GROUP BY
-        d.normalized_name,
-        d.display_name,
-        dv.normalized_value,
-        dv.display_value,
-        dv.hex_color
-      ORDER BY
-        d.normalized_name,
-        dv.display_value
-      `,
-      { idPathPrefix: `${target.id_path}%` }
+    ) t
+    GROUP BY
+      t.dimension_name,
+      t.dimension_display_name,
+      t.value_normalized,
+      t.value_display,
+      t.hex_color
+    ORDER BY
+      t.dimension_name,
+      t.value_display
+    `,
+      {
+        idPathPrefix: `${target.id_path}%`
+      }
     );
 
-    // 3️⃣ ETag seed
+    // 3️⃣ ETag (consistent subtree logic)
     const { rows: metaRows } = await db.raw<{
       rows: { max_updated_at: string | null }[];
     }>(
       `
-      SELECT MAX(v.updated_at) AS max_updated_at
-      FROM products p
-      JOIN categories c ON c.id = p.category_id
-      JOIN product_variants v ON v.product_id = p.id
-      WHERE
-        p.status = 'ACTIVE'
-        AND v.status = 'ACTIVE'
-        AND c.id::text = ANY(string_to_array(:idPath, '/'))
-      `,
-      { idPath: target.id_path }
+    SELECT MAX(v.updated_at) AS max_updated_at
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    JOIN product_variants v ON v.product_id = p.id
+    WHERE
+      p.status = 'ACTIVE'
+      AND v.status = 'ACTIVE'
+      AND c.id_path LIKE :idPathPrefix
+    `,
+      { idPathPrefix: `${target.id_path}%` }
     );
 
     const meta = metaRows[0];
+
     const etagSeed = `category-filters:${slugPath}:${meta?.max_updated_at ?? "none"}:${rows.length}`;
 
     return {

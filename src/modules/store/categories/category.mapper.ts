@@ -67,6 +67,36 @@ export function mapCategoryDetail(
   };
 }
 
+const SIZE_ORDER = ["xxs", "xs", "s", "m", "l", "xl", "xxl", "xxxl"];
+
+function isSizeDimension(name: string) {
+  return name.toLowerCase().includes("size");
+}
+
+function sortSizeValues(values: CategoryFilterDimensionDTO["values"]) {
+  // 🔢 Numeric size (38, 39, 40)
+  const isNumeric = values.every((v) => /^\d+$/.test(v.value));
+
+  if (isNumeric) {
+    return values.sort((a, b) => Number(a.value) - Number(b.value));
+  }
+
+  // 🔤 Alpha size (XS, S, M, etc)
+  return values.sort((a, b) => {
+    const aIndex = SIZE_ORDER.indexOf(a.value.toLowerCase());
+    const bIndex = SIZE_ORDER.indexOf(b.value.toLowerCase());
+
+    if (aIndex === -1 && bIndex === -1) {
+      return a.label.localeCompare(b.label);
+    }
+
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+
+    return aIndex - bIndex;
+  });
+}
+
 export function mapCategoryFilters(rows: CategoryFilterRow[]): CategoryFilterDimensionDTO[] {
   const map = new Map<string, CategoryFilterDimensionDTO>();
 
@@ -87,5 +117,16 @@ export function mapCategoryFilters(rows: CategoryFilterRow[]): CategoryFilterDim
     });
   }
 
-  return Array.from(map.values());
+  const result = Array.from(map.values());
+
+  // 🔥 SORT PER DIMENSION
+  for (const dimension of result) {
+    if (isSizeDimension(dimension.name)) {
+      dimension.values = sortSizeValues(dimension.values);
+    } else {
+      dimension.values.sort((a, b) => a.label.localeCompare(b.label));
+    }
+  }
+
+  return result;
 }
