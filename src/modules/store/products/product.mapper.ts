@@ -16,7 +16,6 @@ function mapProductCard(row: ProductCardRow): ProductCardDTO {
     slug: row.slug,
     categorySlugPath: row.category_slug_path,
     imageKey: row.image_key,
-    displayPrice: Number(row.display_price),
-    createdAt: row.created_at.toISOString()
+    displayPrice: Number(row.display_price)
   };
 }

@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-
 import { sendStoreResponse } from "@/utils/send-store-response";
 import { CategoryService } from "./category.service";
 import { categorySlugPathQueryParams } from "./category.schema";

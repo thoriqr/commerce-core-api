@@ -3,6 +3,7 @@ import { ProductByCategoryQueryParams } from "./product.schema";
 import { AppError } from "@/errors/app-error";
 import { decodeCursor, encodeCursor } from "@/utils/pagination-cursor";
 import { ProductCardRow } from "./product.types";
+import { buildProductCardJoins } from "./sql/product-card.sql";
 
 export class ProductRepo {
   async getByCategoryIdPath(idPath: string, qParams: ProductByCategoryQueryParams) {
@@ -68,47 +69,23 @@ export class ProductRepo {
     // ===============================
     const { rows } = await db.raw<{ rows: ProductCardRow[] }>(
       `
-    SELECT
-      p.id,
-      p.name,
-      p.slug,
-      c.slug_path AS category_slug_path,
-      im.image_key,
-      v.price AS display_price,
-      p.created_at
+      SELECT
+        p.id,
+        p.name,
+        p.slug,
+        c.slug_path AS category_slug_path,
+        im.image_key,
+        v.price AS display_price,
+        p.created_at
 
-    FROM products p
+      FROM products p
+      ${buildProductCardJoins("p")}
+      ${whereSql}
+      ${decodedCursor ? cursorCondition : ""}
 
-    JOIN categories c ON c.id = p.category_id
-
-    -- Primary variant fallback
-    JOIN LATERAL (
-      SELECT v.id, v.price
-      FROM product_variants v
-      WHERE v.product_id = p.id
-        AND v.status = 'ACTIVE'
-      ORDER BY v.is_primary DESC, v.id ASC
-      LIMIT 1
-    ) v ON true
-
-    -- Primary image fallback
-    JOIN LATERAL (
-      SELECT pi.image_id
-      FROM product_images pi
-      WHERE pi.product_id = p.id
-        AND pi.is_orphan = false
-      ORDER BY pi.sort_order ASC, pi.id ASC
-      LIMIT 1
-    ) img ON true
-
-    JOIN images_metadata im ON im.id = img.image_id
-
-    ${whereSql}
-    ${decodedCursor ? cursorCondition : ""}
-
-    ORDER BY ${sortColumn} ${sortDir}, p.id ${sortDir}
-    LIMIT :limitPlusOne
-    `,
+      ORDER BY ${sortColumn} ${sortDir}, p.id ${sortDir}
+      LIMIT :limitPlusOne
+      `,
       {
         ...bindings,
         limitPlusOne: limit + 1

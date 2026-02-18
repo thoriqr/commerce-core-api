@@ -5,7 +5,6 @@ export interface ProductCardDTO {
   categorySlugPath: string;
   imageKey: string;
   displayPrice: number;
-  createdAt: string;
 }
 
 export interface ProductListingDTO {

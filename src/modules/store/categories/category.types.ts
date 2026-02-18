@@ -41,13 +41,6 @@ export type CategoryChildRow = {
   slug_path: string;
 };
 
-export type CategoryMetadataRow = {
-  name: string;
-  description: string | null;
-  slug_path: string;
-  updated_at: Date;
-};
-
 export type CategoryFilterRow = {
   dimension_name: string;
   dimension_display_name: string;

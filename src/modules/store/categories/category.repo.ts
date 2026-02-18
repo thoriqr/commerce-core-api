@@ -1,13 +1,5 @@
 import { db } from "@/infra/db/knex";
-import {
-  CategoryBreadcrumbRow,
-  CategoryChildRow,
-  CategoryDetailRow,
-  CategoryFilterRow,
-  CategoryMetadataRow,
-  CategoryRow,
-  CategoryTopLevelRow
-} from "./category.types";
+import { CategoryBreadcrumbRow, CategoryChildRow, CategoryDetailRow, CategoryFilterRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
 
 export class CategoryRepo {
