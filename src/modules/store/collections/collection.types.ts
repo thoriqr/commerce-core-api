@@ -6,7 +6,6 @@ export type CollectionPreviewRow = {
   product_id: number;
   product_name: string;
   product_slug: string;
-  category_slug_path: string;
   image_key: string;
   display_price: number;
   created_at: Date;

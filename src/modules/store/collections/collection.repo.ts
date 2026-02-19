@@ -17,7 +17,6 @@ export class CollectionRepo {
       p.id AS product_id,
       p.name AS product_name,
       p.slug AS product_slug,
-      c.slug_path AS category_slug_path,
       im.image_key,
       v.price AS display_price,
       p.created_at

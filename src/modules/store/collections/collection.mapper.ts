@@ -21,7 +21,6 @@ export function mapCollectionPreview(rows: CollectionPreviewRow[], productLimit:
       id: r.product_id,
       name: r.product_name,
       slug: r.product_slug,
-      categorySlugPath: r.category_slug_path,
       imageKey: r.image_key,
       displayPrice: r.display_price
     });

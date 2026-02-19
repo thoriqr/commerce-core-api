@@ -1,7 +1,5 @@
 export function buildProductCardJoins(productAlias: string = "p") {
   return `
-    JOIN categories c ON c.id = ${productAlias}.category_id
-
     JOIN LATERAL (
       SELECT v.id, v.price
       FROM product_variants v
