@@ -9,10 +9,10 @@ const repo = new ProductRepo();
 const service = new ProductService(repo);
 const controller = new ProductController(service);
 
-router.get("/:slug", controller.getProductDetail);
-router.get("/:productSlug/variants/:variantId", controller.getVariantDetail);
 router.get("/by-category", controller.getByCategory);
 router.get("/by-collection", controller.getByCollection);
 router.get("/by-search", controller.getBySearch);
+router.get("/:slug", controller.getProductDetail);
+router.get("/:productSlug/variants/:variantId", controller.getVariantDetail);
 
 export default router;
