@@ -1,5 +1,6 @@
 import z from "zod";
-import { PRODUCT_LIMITS, VARIANT_LIMITS } from "./product.constants";
+import { VARIANT_LIMITS } from "./product.constants";
+import { PRODUCT_LIMITS } from "@/shared/product/product.constants";
 
 const idSchema = z.string().min(1);
 
@@ -192,8 +193,8 @@ export const productQueryParams = z
     status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).optional(),
     isVariant: z.coerce.boolean().optional(),
     stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),
-    priceMin: z.coerce.number().min(0).optional(),
-    priceMax: z.coerce.number().min(0).optional(),
+    priceMin: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional(),
+    priceMax: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional(),
     sortBy: z.enum(["created_at", "name", "price", "stock"]).default("created_at"),
     sortDir: z.enum(["asc", "desc"]).default("desc")
   })

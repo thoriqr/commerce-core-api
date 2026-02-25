@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { categorySlugPathQueryParams } from "../categories/category.schema";
+import { PRODUCT_LIMITS } from "@/shared/product/product.constants";
 
 export const baseQueryParams = z
   .object({
@@ -8,8 +9,8 @@ export const baseQueryParams = z
 
     limit: z.coerce.number().min(1).max(50).default(12),
 
-    priceMin: z.coerce.number().min(0).optional(),
-    priceMax: z.coerce.number().min(0).optional(),
+    priceMin: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional(),
+    priceMax: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional(),
 
     sortBy: z.enum(["created_at", "price"]).default("created_at"),
     sortDir: z.enum(["asc", "desc"]).default("desc")
