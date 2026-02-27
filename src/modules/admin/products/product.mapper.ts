@@ -1,4 +1,4 @@
-import { ProductDetailDTO, ProductListDTO } from "./product.dto";
+import { ProductDetailDTO, ProductListDTO, ProductVariantDTO } from "./product.dto";
 import {
   ImageRow,
   ProductCollectionIdRow,
@@ -51,6 +51,8 @@ export function mapProductDetail(
     };
   }
 
+  // ================= VALUE GROUPING =================
+
   const valueByDimension = dimensionValueRows.reduce<
     Record<number, { id: string; value: string; normalized_value: string; hexColor: string | undefined }[]>
   >((acc, value) => {
@@ -93,6 +95,8 @@ export function mapProductDetail(
     })
   }));
 
+  // ================= BUILD OPTION MAP =================
+
   const optValMap = new Map<string, Array<{ dimensionId: string; optionId: string }>>();
 
   optionValueRows.forEach((opt) => {
@@ -108,6 +112,51 @@ export function mapProductDetail(
     });
   });
 
+  // ================= BUILD VARIANTS =================
+
+  const variants: ProductVariantDTO[] = variantRows.map((v) => ({
+    id: v.id,
+    clientId: String(v.id),
+    price: v.price,
+    stock: v.stock,
+    weight: v.weight,
+    sku: v.sku ?? "",
+    isPrimary: v.is_primary,
+    options: optValMap.get(String(v.id)) ?? []
+  }));
+
+  // ================= SORT VARIANTS  =================
+
+  // Build order map per dimension
+  const optionOrderMap = new Map<string, string[]>();
+
+  variantDimension.forEach((dim) => {
+    optionOrderMap.set(
+      dim.id,
+      dim.options.map((o) => o.id)
+    );
+  });
+
+  variants.sort((a, b) => {
+    for (const dim of variantDimension) {
+      const order = optionOrderMap.get(dim.id) ?? [];
+
+      const aOpt = a.options.find((o) => o.dimensionId === dim.id);
+      const bOpt = b.options.find((o) => o.dimensionId === dim.id);
+
+      const aIndex = order.indexOf(aOpt?.optionId ?? "");
+      const bIndex = order.indexOf(bOpt?.optionId ?? "");
+
+      if (aIndex !== bIndex) {
+        return aIndex - bIndex;
+      }
+    }
+
+    return 0;
+  });
+
+  // ================= FINAL RETURN =================
+
   return {
     productId: String(productRow.id),
     name: productRow.name,
@@ -118,16 +167,7 @@ export function mapProductDetail(
     collectionIds: colIdRows.map((r) => String(r.collection_id)),
     variantDimension,
     images,
-    variants: variantRows.map((v) => ({
-      id: v.id,
-      clientId: String(v.id),
-      price: v.price,
-      stock: v.stock,
-      weight: v.weight,
-      sku: v.sku ?? "",
-      isPrimary: v.is_primary,
-      options: optValMap.get(String(v.id)) ?? []
-    }))
+    variants
   };
 }
 

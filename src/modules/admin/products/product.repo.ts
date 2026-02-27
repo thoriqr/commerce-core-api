@@ -23,9 +23,9 @@ import {
   ProductCollectionIdRow
 } from "./product.types";
 import { mapProductDetail, mapProductList } from "./product.mapper";
-import { PRODUCT_LIMITS } from "./product.constants";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
 import { ProductVariantRepo } from "./product-variant.repo";
+import { PRODUCT_LIMITS } from "@/shared/product/product.constants";
 
 export class ProductRepo {
   constructor(private readonly variantRepo: ProductVariantRepo) {}
@@ -156,6 +156,7 @@ export class ProductRepo {
       JOIN images_metadata im ON im.id = pi.image_id
       WHERE pi.product_id = :productId
         AND pi.is_orphan = false
+      ORDER BY pi.sort_order ASC, pi.id ASC
     `,
       { productId }
     );

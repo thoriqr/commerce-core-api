@@ -4,7 +4,7 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { CollectionDetailRow, CollectionRow } from "./collection.types";
 import { mapCollectionDetail, mapCollectionList, mapCollectionOptions } from "./collection.mapper";
-import { BANNER_TARGET_TYPE } from "../marketing/banner.constants";
+import { BANNER_TARGET_TYPE } from "@/shared/banner/banner.constants";
 
 export class CollectionRepo {
   async getAll() {
@@ -100,7 +100,7 @@ export class CollectionRepo {
       SELECT 1
       FROM marketing_banners
       WHERE target_type = :targetType
-        AND target_id = :collectionId
+        AND target_entity_id = :collectionId
       LIMIT 1
       `,
       { targetType: BANNER_TARGET_TYPE.COLLECTION, collectionId }
