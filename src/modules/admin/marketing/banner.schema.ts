@@ -3,11 +3,22 @@ import z, { optional } from "zod";
 
 const MAX_TITLE = 100;
 
-export const imageSchema = z.object({
+const cropSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number()
+});
+
+const imageSchema = z.object({
   id: z.string().min(1),
-  imageKey: z.string().optional(),
-  previewUrl: z.string().optional(),
-  originalFileName: z.string().optional()
+  originalFileName: z.string().optional(),
+  crop: z
+    .preprocess((val) => {
+      if (typeof val === "string") return JSON.parse(val);
+      return val;
+    }, cropSchema)
+    .optional()
 });
 
 export const bannerUpsertSchema = z

@@ -89,9 +89,9 @@ export class BannerRepo {
     await trx.raw(
       `
       INSERT INTO marketing_banners
-        (title, placement, target_type, target_entity_id, target_value, status, sort_order, image_id)
+        (title, placement, target_type, target_entity_id, status, sort_order, image_id)
       VALUES
-        (:title, :placement, :targetType, :targetId, :targetValue, :status, :sortOrder, :imageId)  
+        (:title, :placement, :targetType, :targetId, :status, :sortOrder, :imageId)  
     `,
       { title, placement, targetType, targetId, status, sortOrder, imageId }
     );

@@ -87,7 +87,11 @@ export class BannerService {
         throw AppError.badRequest("Missing image originalFileName");
       }
 
-      const payload: ImagePayload = await this.prepareBannerImage(image, imageFile);
+      if (!image.crop) {
+        throw AppError.badRequest("Missing crop data for uploaded banner image");
+      }
+
+      const payload: ImagePayload = await this.prepareBannerImage(image, imageFile, image.crop);
 
       imageId = await this.repo.insertBannerImage(trx, payload);
     } else {
@@ -97,20 +101,21 @@ export class BannerService {
     return imageId;
   }
 
-  private async prepareBannerImage(image: BannerImageSchema, file: Express.Multer.File) {
+  private async prepareBannerImage(
+    image: BannerImageSchema,
+    file: Express.Multer.File,
+    crop: { x: number; y: number; width: number; height: number }
+  ) {
     if (image.originalFileName !== file.originalname) {
       throw AppError.badRequest(`Missing banner image file: ${image.originalFileName}`);
     }
 
-    const processed = await this.processImage(file);
+    const processed = await this.processImage(file, crop);
+
     const extension = processed.mimeType.split("/")[1];
     const imageKey = `banners/${uuidv4()}.${extension}`;
 
-    try {
-      await uploadFile(processed.buffer, imageKey, processed.mimeType);
-    } catch {
-      throw AppError.serviceUnavailable(`Failed to upload image: ${file.originalname}`);
-    }
+    await uploadFile(processed.buffer, imageKey, processed.mimeType);
 
     return {
       imageKey,
@@ -125,13 +130,11 @@ export class BannerService {
     };
   }
 
-  private async processImage(file: Express.Multer.File) {
-    let image: sharp.Sharp;
+  private async processImage(file: Express.Multer.File, crop: { x: number; y: number; width: number; height: number }) {
     let meta: sharp.Metadata;
 
     try {
-      image = sharp(file.buffer);
-      meta = await image.metadata();
+      meta = await sharp(file.buffer).metadata();
     } catch {
       throw AppError.badRequest("Invalid or corrupted image file");
     }
@@ -148,37 +151,37 @@ export class BannerService {
       throw AppError.badRequest(`Image too small. Minimum ${BANNER_IMAGE_MIN_SIZE.width}x${BANNER_IMAGE_MIN_SIZE.height}px`);
     }
 
-    const needsResize = meta.width > BANNER_IMAGE_MAX_SIZE.width || meta.height > BANNER_IMAGE_MAX_SIZE.height;
-
-    const originalAvailable = !needsResize;
-
-    if (needsResize) {
-      image = image.resize({
-        width: BANNER_IMAGE_MAX_SIZE.width,
-        height: BANNER_IMAGE_MAX_SIZE.height,
-        fit: "inside",
-        withoutEnlargement: true
-      });
+    // Validate crop boundary
+    if (crop.x < 0 || crop.y < 0 || crop.width <= 0 || crop.height <= 0 || crop.x + crop.width > meta.width || crop.y + crop.height > meta.height) {
+      throw AppError.badRequest("Invalid crop area");
     }
 
-    // Always convert to webp q80
-    const { data, info } = await image
-      .webp({
-        quality: 80
+    // ✅ Optional: validate 3:1 ratio
+    const ratio = crop.width / crop.height;
+    if (Math.abs(ratio - 3) > 0.01) {
+      throw AppError.badRequest("Invalid crop ratio. Expected 3:1");
+    }
+
+    const { data, info } = await sharp(file.buffer)
+      .extract({
+        left: Math.round(crop.x),
+        top: Math.round(crop.y),
+        width: Math.round(crop.width),
+        height: Math.round(crop.height)
       })
+      .resize(1200, 400)
+      .webp({ quality: 80 })
       .toBuffer({ resolveWithObject: true });
 
     return {
       buffer: data,
-      mimeType: "image/webp", // force webp
+      mimeType: "image/webp",
       size: data.length,
-
-      width: info.width,
-      height: info.height,
-
+      width: info.width, // 1200
+      height: info.height, // 400
       originalWidth: meta.width,
       originalHeight: meta.height,
-      originalAvailable
+      originalAvailable: false
     };
   }
 }
