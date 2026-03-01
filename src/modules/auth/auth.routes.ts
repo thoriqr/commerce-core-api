@@ -5,6 +5,7 @@ import { AuthController } from "./auth.controller";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
 import { requireAuth } from "@/middlewares/auth.middleware";
+import { requireRole } from "@/middlewares/role.middleware";
 
 const router = Router();
 
@@ -22,5 +23,7 @@ router.post("/request-password-reset", controller.requestPasswordReset);
 router.post("/reset-password", controller.resetPassword);
 router.post("/google", controller.googleLogin);
 router.get("/me", requireAuth, controller.me);
+
+router.post("/invite", requireAuth, requireRole("SUPER"), controller.inviteAdmin);
 
 export default router;

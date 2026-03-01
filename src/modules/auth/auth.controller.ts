@@ -8,6 +8,16 @@ import { clearAuthCookies, setAuthCookies } from "@/utils/set-auth-cookie";
 export class AuthController {
   constructor(private readonly service: AuthService) {}
 
+  inviteAdmin = async (req: Request, res: Response) => {
+    const payload = registerSchema.parse(req.body);
+
+    await this.service.inviteAdmin(payload.email);
+
+    sendSuccess(res, 200, {
+      message: "Verification email sent"
+    });
+  };
+
   register = async (req: Request, res: Response) => {
     const payload = registerSchema.parse(req.body);
 
