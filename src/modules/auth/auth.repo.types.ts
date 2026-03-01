@@ -5,6 +5,7 @@ export type UserRow = {
   email: string;
   role: UserRole;
   display_name: string | null;
+  status: UserStatus;
 };
 
 export type UserDetailRow = {
@@ -15,3 +16,5 @@ export type UserDetailRow = {
   status: UserStatus;
   display_name: string | null;
 };
+
+export type VerificationType = "REGISTER" | "RESET_PASSWORD" | "CHANGE_EMAIL";
