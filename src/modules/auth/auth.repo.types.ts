@@ -17,4 +17,4 @@ export type UserDetailRow = {
   display_name: string | null;
 };
 
-export type VerificationType = "REGISTER" | "RESET_PASSWORD" | "CHANGE_EMAIL";
+export type VerificationType = "REGISTER" | "RESET_PASSWORD" | "INVITE" | "CHANGE_EMAIL";

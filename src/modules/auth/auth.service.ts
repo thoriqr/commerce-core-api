@@ -13,21 +13,46 @@ export class AuthService {
     private readonly repo: AuthRepo
   ) {}
 
+  inviteAdmin = async (email: string): Promise<void> => {
+    return this.tm.transaction(async (trx) => {
+      // Reject if email already exists
+      const existingUser = await this.repo.findUserByEmailOptional(email, trx);
+
+      if (existingUser) {
+        throw AppError.conflict("Email already registered");
+      }
+
+      // Delete old pending invites
+      await this.repo.deletePendingInviteByEmail(trx, email);
+
+      // Generate token
+      const token = generateRefreshToken(); // reuse util
+      const tokenHash = hashRefreshToken(token);
+
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+      // Insert pending verification
+      await this.repo.insertPendingVerification(trx, {
+        email,
+        tokenHash,
+        type: "INVITE",
+        expiresAt
+      });
+
+      // 5️⃣ TODO: send email with token
+      // await mailer.sendInvite(email, token);
+    });
+  };
+
   register = async (input: RegisterInput): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
     return this.tm.transaction(async (trx) => {
       // Check if already exists
-      const { rows } = await trx.raw<{ rows: Array<{ id: number }> }>(
-        `
-      SELECT id
-      FROM users
-      WHERE email = :email
-      `,
-        { email }
-      );
+      const existingUser = await this.repo.findUserByEmailOptional(email, trx);
 
-      if (rows.length > 0) {
+      if (existingUser) {
         throw AppError.conflict("Email already registered");
       }
 
@@ -65,10 +90,9 @@ export class AuthService {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
-      // Find pending
       const pending = await this.repo.findPendingVerificationByHash(trx, tokenHash);
 
-      if (!pending || pending.type !== "REGISTER") {
+      if (!pending) {
         throw AppError.unauthorized("Invalid token");
       }
 
@@ -80,20 +104,32 @@ export class AuthService {
         throw AppError.unauthorized("Token expired");
       }
 
+      // Determine role
+      let role: "USER" | "ADMIN";
+
+      if (pending.type === "REGISTER") {
+        role = "USER";
+      } else if (pending.type === "INVITE") {
+        role = "ADMIN";
+      } else {
+        throw AppError.badRequest("Invalid verification type");
+      }
+
       // Hash password
       const passwordHash = await bcrypt.hash(input.password, 10);
 
       // Insert user
-      const user = await this.repo.insertUser(trx, {
+      const user = await this.repo.insertUserWithRole(trx, {
         email: pending.email,
         passwordHash,
-        displayName: input.displayName
+        displayName: input.displayName,
+        role
       });
 
-      // Mark pending used
+      // Mark used
       await this.repo.markPendingVerificationUsed(trx, pending.id);
 
-      // Generate tokens
+      // Issue tokens
       const accessToken = signAccessToken({
         sub: String(user.id),
         role: user.role
@@ -148,10 +184,6 @@ export class AuthService {
       // Check status
       if (user.status === "SUSPENDED") {
         throw AppError.forbidden("Account suspended");
-      }
-
-      if (user.status === "INVITED") {
-        throw AppError.forbidden("Account not activated");
       }
 
       // Generate access token

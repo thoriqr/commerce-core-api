@@ -202,51 +202,10 @@ export class AuthRepo {
     );
   }
 
-  async insertUser(
-    trx: Knex.Transaction,
-    data: {
-      email: string;
-      passwordHash: string;
-      displayName: string;
-    }
-  ) {
-    const { rows } = await trx.raw<{ rows: Array<{ id: number; email: string; role: UserRole; display_name: string }> }>(
-      `
-    INSERT INTO users (
-      email,
-      password_hash,
-      role,
-      status,
-      display_name
-    )
-    VALUES (
-      :email,
-      :passwordHash,
-      'USER',
-      'ACTIVE',
-      :displayName
-    )
-    RETURNING id, email, role, display_name
-    `,
-      {
-        email: data.email,
-        passwordHash: data.passwordHash,
-        displayName: data.displayName
-      }
-    );
+  async findUserByEmailOptional(email: string, trx?: Knex.Transaction) {
+    const executor = trx ?? db;
 
-    const row = rows[0];
-
-    if (!row) {
-      logger.error("Insert users returned no rows");
-      throw AppError.internal();
-    }
-
-    return row;
-  }
-
-  async findUserByEmailOptional(email: string) {
-    const { rows } = await db.raw<{
+    const { rows } = await executor.raw<{
       rows: Array<{ id: number; email: string }>;
     }>(
       `
@@ -303,5 +262,68 @@ export class AuthRepo {
     `,
       { userId, passwordHash }
     );
+  }
+
+  async deletePendingInviteByEmail(trx: Knex.Transaction, email: string) {
+    await trx.raw(
+      `
+    DELETE FROM pending_verifications
+    WHERE email = :email
+      AND type = 'INVITE'
+    `,
+      { email }
+    );
+  }
+
+  async insertUserWithRole(
+    trx: Knex.Transaction,
+    data: {
+      email: string;
+      passwordHash: string;
+      displayName: string;
+      role: UserRole; // "USER" | "ADMIN" | "SUPER"
+    }
+  ) {
+    const { rows } = await trx.raw<{
+      rows: Array<{
+        id: number;
+        email: string;
+        role: UserRole;
+        display_name: string | null;
+      }>;
+    }>(
+      `
+    INSERT INTO users (
+      email,
+      password_hash,
+      role,
+      status,
+      display_name
+    )
+    VALUES (
+      :email,
+      :passwordHash,
+      :role,
+      'ACTIVE',
+      :displayName
+    )
+    RETURNING id, email, role, display_name
+    `,
+      {
+        email: data.email,
+        passwordHash: data.passwordHash,
+        role: data.role,
+        displayName: data.displayName
+      }
+    );
+
+    const row = rows[0];
+
+    if (!row) {
+      logger.error("Insert users returned no rows");
+      throw AppError.internal();
+    }
+
+    return row;
   }
 }

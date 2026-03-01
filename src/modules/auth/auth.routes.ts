@@ -4,6 +4,7 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
+import { requireAuth } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
@@ -20,6 +21,6 @@ router.post("/logout", controller.logout);
 router.post("/request-password-reset", controller.requestPasswordReset);
 router.post("/reset-password", controller.resetPassword);
 router.post("/google", controller.googleLogin);
-router.get("/me", controller.me);
+router.get("/me", requireAuth, controller.me);
 
 export default router;
