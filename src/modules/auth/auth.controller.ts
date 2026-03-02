@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
 import { sendSuccess } from "@/utils/send-success";
 import { AppError } from "@/errors/app-error";
-import { loginSchema, registerSchema, requestPasswordResetSchema, resetPasswordSchema, verifyEmailSchema } from "./auth.schema";
+import { googleLoginSchema, loginSchema, registerSchema, requestPasswordResetSchema, resetPasswordSchema, verifyEmailSchema } from "./auth.schema";
 import { clearAuthCookies, setAuthCookies } from "@/utils/set-auth-cookie";
 
 export class AuthController {
@@ -97,7 +97,13 @@ export class AuthController {
   };
 
   googleLogin = async (req: Request, res: Response) => {
-    sendSuccess(res, 200);
+    const payload = googleLoginSchema.parse(req.body);
+
+    const { user, accessToken, refreshToken } = await this.service.googleLogin(payload);
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    sendSuccess(res, 200, { data: { user } });
   };
 
   me = async (req: Request, res: Response) => {

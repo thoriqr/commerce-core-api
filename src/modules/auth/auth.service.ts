@@ -6,6 +6,10 @@ import { AppError } from "@/errors/app-error";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import bcrypt from "bcrypt";
 import { signAccessToken } from "@/shared/jwt/jwt.util";
+import { verifyGoogleIdToken } from "@/shared/google/google.util";
+import { UserDetailRow } from "./auth.repo.types";
+import { Knex } from "knex";
+import { logger } from "@/libs/logger";
 
 export class AuthService {
   constructor(
@@ -16,21 +20,20 @@ export class AuthService {
   inviteAdmin = async (email: string): Promise<void> => {
     return this.tm.transaction(async (trx) => {
       // Reject if email already exists
-      const existingUser = await this.repo.findUserByEmailOptional(email, trx);
+      const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
 
       if (existingUser) {
         throw AppError.conflict("Email already registered");
       }
 
       // Delete old pending invites
-      await this.repo.deletePendingInviteByEmail(trx, email);
+      await this.repo.deletePendingByEmailAndType(trx, email, "INVITE");
 
       // Generate token
       const token = generateRefreshToken(); // reuse util
       const tokenHash = hashRefreshToken(token);
 
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+      const expiresAt = this.getShortExpiry(15);
 
       // Insert pending verification
       await this.repo.insertPendingVerification(trx, {
@@ -50,21 +53,22 @@ export class AuthService {
 
     return this.tm.transaction(async (trx) => {
       // Check if already exists
-      const existingUser = await this.repo.findUserByEmailOptional(email, trx);
+      const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
 
       if (existingUser) {
         throw AppError.conflict("Email already registered");
       }
 
       // Delete old pending
-      await this.repo.deletePendingRegisterByEmail(trx, email);
+      await this.repo.deletePendingByEmailAndType(trx, email, "REGISTER");
 
       // Generate token
       const rawToken = generateRefreshToken(); // reuse util
       const tokenHash = hashRefreshToken(rawToken);
 
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+      console.log("REGISTER RAW TOKEN:", rawToken);
+
+      const expiresAt = this.getShortExpiry(15);
 
       // insert pending verification
       await this.repo.insertPendingVerification(trx, {
@@ -80,17 +84,11 @@ export class AuthService {
     });
   };
 
-  verifyEmail = async (
-    input: VerifyEmailInput
-  ): Promise<{
-    user: AuthUser;
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+  verifyEmail = async (input: VerifyEmailInput) => {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
-      const pending = await this.repo.findPendingVerificationByHash(trx, tokenHash);
+      const pending = await this.repo.findPendingVerification(trx, tokenHash, "REGISTER");
 
       if (!pending) {
         throw AppError.unauthorized("Invalid token");
@@ -104,55 +102,26 @@ export class AuthService {
         throw AppError.unauthorized("Token expired");
       }
 
-      // Determine role
-      let role: "USER" | "ADMIN";
+      // REGISTER only
+      const role = "USER";
 
-      if (pending.type === "REGISTER") {
-        role = "USER";
-      } else if (pending.type === "INVITE") {
-        role = "ADMIN";
-      } else {
-        throw AppError.badRequest("Invalid verification type");
-      }
-
-      // Hash password
       const passwordHash = await bcrypt.hash(input.password, 10);
 
-      // Insert user
       const user = await this.repo.insertUserWithRole(trx, {
         email: pending.email,
         passwordHash,
         displayName: input.displayName,
-        role
+        role,
+        status: "ACTIVE"
       });
 
-      // Mark used
       await this.repo.markPendingVerificationUsed(trx, pending.id);
 
-      // Issue tokens
-      const accessToken = signAccessToken({
-        sub: String(user.id),
-        role: user.role
-      });
-
-      const refreshToken = generateRefreshToken();
-      const refreshHash = hashRefreshToken(refreshToken);
-      const expiresAt = this.getRefreshTokenExpiryDate();
-
-      await this.repo.insertRefreshToken(trx, {
-        userId: user.id,
-        tokenHash: refreshHash,
-        expiresAt,
-        replacedById: null
-      });
+      const accessToken = this.issueAccessToken(user);
+      const refreshToken = await this.issueRefreshToken(trx, user.id);
 
       return {
-        user: {
-          id: String(user.id),
-          email: user.email,
-          role: user.role,
-          displayName: user.display_name
-        },
+        user: this.buildAuthUser(user),
         accessToken,
         refreshToken
       };
@@ -167,53 +136,73 @@ export class AuthService {
     refreshToken: string;
   }> => {
     return this.tm.transaction(async (trx) => {
-      // Find user
-      const user = await this.repo.findUserByEmail(input.email);
+      const user = await this.repo.findUserByEmailOrNull(input.email, trx);
 
-      if (!user.password_hash) {
+      if (!user || !user.password_hash) {
         throw AppError.unauthorized("Invalid email or password");
       }
 
-      // Compare password
       const isMatch = await bcrypt.compare(input.password, user.password_hash);
 
       if (!isMatch) {
         throw AppError.unauthorized("Invalid email or password");
       }
 
-      // Check status
       if (user.status === "SUSPENDED") {
         throw AppError.forbidden("Account suspended");
       }
 
-      // Generate access token
-      const accessToken = signAccessToken({
-        sub: String(user.id),
-        role: user.role
-      });
-
-      // Generate refresh token
-      const refreshToken = generateRefreshToken();
-      const tokenHash = hashRefreshToken(refreshToken);
-      const expiresAt = this.getRefreshTokenExpiryDate();
-
       await this.repo.updateLastLoginAt(trx, user.id);
 
-      // Store refresh token
-      await this.repo.insertRefreshToken(trx, {
-        userId: user.id,
-        tokenHash,
-        expiresAt,
-        replacedById: null
-      });
+      const accessToken = this.issueAccessToken(user);
+      const refreshToken = await this.issueRefreshToken(trx, user.id);
 
       return {
-        user: {
-          id: String(user.id),
-          email: user.email,
-          role: user.role,
-          displayName: user.display_name
-        },
+        user: this.buildAuthUser(user),
+        accessToken,
+        refreshToken
+      };
+    });
+  };
+
+  googleLogin = async (input: GoogleLoginInput) => {
+    const google = await verifyGoogleIdToken(input.idToken);
+
+    if (!google.email_verified) {
+      throw AppError.unauthorized("Google email not verified");
+    }
+
+    const email = google.email.toLowerCase();
+
+    return this.tm.transaction(async (trx) => {
+      let user = await this.repo.findUserByEmailOrNull(email, trx);
+
+      if (!user) {
+        user = await this.repo.insertUserWithRole(trx, {
+          email,
+          passwordHash: null,
+          displayName: google.name ?? null,
+          role: "USER",
+          status: "ACTIVE"
+        });
+      }
+
+      if (user.status === "SUSPENDED") {
+        throw AppError.forbidden("Account suspended");
+      }
+
+      await this.repo.insertUserProviderIfNotExists(trx, {
+        userId: user.id,
+        provider: "GOOGLE",
+        providerUserId: google.sub,
+        email
+      });
+
+      const accessToken = this.issueAccessToken(user);
+      const refreshToken = await this.issueRefreshToken(trx, user.id);
+
+      return {
+        user: this.buildAuthUser(user),
         accessToken,
         refreshToken
       };
@@ -230,7 +219,6 @@ export class AuthService {
     const tokenHash = hashRefreshToken(refreshToken);
 
     return this.tm.transaction(async (trx) => {
-      // Find existing token
       const existingToken = await this.repo.findRefreshTokenByHash(trx, tokenHash);
 
       if (!existingToken) {
@@ -249,43 +237,23 @@ export class AuthService {
         throw AppError.unauthorized("Refresh token expired");
       }
 
-      // Get user
       const user = await this.repo.findUserById(existingToken.user_id, trx);
 
-      if (user.status === "SUSPENDED") {
-        await this.repo.revokeAllUserRefreshTokens(trx, user.id);
+      if (!user || user.status === "SUSPENDED") {
+        await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
         throw AppError.forbidden("Account suspended");
       }
-
-      // Generate new tokens
-      const newRefreshToken = generateRefreshToken();
-      const newTokenHash = hashRefreshToken(newRefreshToken);
-      const expiresAt = this.getRefreshTokenExpiryDate();
-
-      const accessToken = signAccessToken({
-        sub: String(user.id),
-        role: user.role
-      });
 
       // Revoke old token
       await this.repo.revokeRefreshToken(trx, existingToken.id);
 
-      // Insert new token
-      await this.repo.insertRefreshToken(trx, {
-        userId: user.id,
-        tokenHash: newTokenHash,
-        expiresAt,
-        replacedById: existingToken.id
-      });
+      // Generate new tokens
+      const newAccessToken = this.issueAccessToken(user);
+      const newRefreshToken = await this.issueRefreshToken(trx, user.id, existingToken.id);
 
       return {
-        user: {
-          id: String(user.id),
-          email: user.email,
-          role: user.role,
-          displayName: user.display_name
-        },
-        accessToken,
+        user: this.buildAuthUser(user),
+        accessToken: newAccessToken,
         refreshToken: newRefreshToken
       };
     });
@@ -312,28 +280,30 @@ export class AuthService {
 
     return this.tm.transaction(async (trx) => {
       // Check user (optional, silent)
-      const user = await this.repo.findUserByEmailOptional(email);
+      const user = await this.repo.findUserByEmailOrNull(email);
 
       if (!user) {
         return; // silent success
       }
 
       // Delete old pending reset
-      await this.repo.deletePendingResetByEmail(trx, email);
+      await this.repo.deletePendingByEmailAndType(trx, email, "RESET_PASSWORD");
 
       // Generate token
       const rawToken = generateRefreshToken();
       const tokenHash = hashRefreshToken(rawToken);
 
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+      console.log("REQUEST PASSWORD RESET RAW TOKEN:", rawToken);
+
+      const expiresAt = this.getShortExpiry(15);
 
       // Insert pending RESET_PASSWORD
       await this.repo.insertPendingVerification(trx, {
         email,
         tokenHash,
         type: "RESET_PASSWORD",
-        expiresAt
+        expiresAt,
+        userId: user.id
       });
 
       // TODO: send reset email with rawToken
@@ -350,27 +320,34 @@ export class AuthService {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
-      // Find verification
-      const verification = await this.repo.findPendingVerificationByTokenHash(trx, tokenHash, "RESET_PASSWORD");
+      // ind RESET_PASSWORD verification
+      const verification = await this.repo.findPendingVerification(trx, tokenHash, "RESET_PASSWORD");
 
       if (!verification) {
         throw AppError.badRequest("Invalid or expired token");
       }
 
+      // Check used
       if (verification.used_at) {
         throw AppError.badRequest("Token already used");
       }
 
+      // Check expired
       if (new Date(verification.expires_at) < new Date()) {
         throw AppError.badRequest("Token expired");
       }
 
+      // Must have user_id
       if (!verification.user_id) {
         throw AppError.badRequest("Invalid token");
       }
 
       // Get user
-      const user = await this.repo.findUserById(verification.user_id);
+      const user = await this.repo.findUserById(verification.user_id, trx);
+
+      if (!user) {
+        throw AppError.unauthorized("User not found");
+      }
 
       if (user.status !== "ACTIVE") {
         throw AppError.forbidden("Account not active");
@@ -385,55 +362,81 @@ export class AuthService {
       // Mark token used
       await this.repo.markPendingVerificationUsed(trx, verification.id);
 
-      // Revoke all existing refresh tokens (security)
+      // Revoke ALL existing refresh tokens
       await this.repo.revokeAllUserRefreshTokens(trx, user.id);
 
-      // Auto-login
-      const accessToken = signAccessToken({
-        sub: String(user.id),
-        role: user.role
-      });
+      // Refetch fresh user (clean & future-proof)
+      const freshUser = await this.repo.findUserById(user.id, trx);
 
-      const refreshToken = generateRefreshToken();
-      const newTokenHash = hashRefreshToken(refreshToken);
-      const expiresAt = this.getRefreshTokenExpiryDate();
+      if (!freshUser) {
+        logger.error("User disappeared during reset");
+        throw AppError.internal();
+      }
 
-      await this.repo.insertRefreshToken(trx, {
-        userId: user.id,
-        tokenHash: newTokenHash,
-        expiresAt,
-        replacedById: null
-      });
+      // Issue new tokens (auto-login)
+      const accessToken = this.issueAccessToken(freshUser);
+      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
 
       return {
-        user: {
-          id: String(user.id),
-          email: user.email,
-          role: user.role,
-          displayName: user.display_name
-        },
+        user: this.buildAuthUser(freshUser),
         accessToken,
         refreshToken
       };
     });
   };
 
-  googleLogin = async (input: GoogleLoginInput) => {};
-
   me = async (userId: number): Promise<AuthUser> => {
     const user = await this.repo.findUserById(userId);
 
+    if (!user) {
+      throw AppError.unauthorized();
+    }
+
+    return this.buildAuthUser(user);
+  };
+
+  private buildAuthUser(user: UserDetailRow): AuthUser {
     return {
       id: String(user.id),
       email: user.email,
       role: user.role,
       displayName: user.display_name
     };
-  };
+  }
+
+  private getShortExpiry(minutes: number): Date {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + minutes);
+    return now;
+  }
 
   private getRefreshTokenExpiryDate(): Date {
     const now = new Date();
     now.setDate(now.getDate() + 7); // 7 days
     return now;
+  }
+
+  private issueAccessToken(user: UserDetailRow): string {
+    return signAccessToken({
+      sub: String(user.id),
+      role: user.role
+    });
+  }
+
+  private async issueRefreshToken(trx: Knex.Transaction, userId: number, replacedById: number | null = null): Promise<string> {
+    const refreshToken = generateRefreshToken();
+
+    console.log("ISSUE REFRESH RAW:", refreshToken);
+    const tokenHash = hashRefreshToken(refreshToken);
+    const expiresAt = this.getRefreshTokenExpiryDate();
+
+    await this.repo.insertRefreshToken(trx, {
+      userId,
+      tokenHash,
+      expiresAt,
+      replacedById
+    });
+
+    return refreshToken;
   }
 }

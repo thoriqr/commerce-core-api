@@ -1,13 +1,5 @@
 import { UserRole, UserStatus } from "@/shared/user/user.types";
 
-export type UserRow = {
-  id: number;
-  email: string;
-  role: UserRole;
-  display_name: string | null;
-  status: UserStatus;
-};
-
 export type UserDetailRow = {
   id: number;
   email: string;
