@@ -199,6 +199,27 @@ export class AuthRepo {
     return rows[0] ?? null;
   }
 
+  async findRefreshTokenByHashForUpdate(trx: Knex.Transaction, hash: string) {
+    const { rows } = await trx.raw<{
+      rows: Array<{
+        id: number;
+        user_id: number;
+        expires_at: Date;
+        revoked_at: Date | null;
+      }>;
+    }>(
+      `
+    SELECT id, user_id, expires_at, revoked_at
+    FROM refresh_tokens
+    WHERE token_hash = :hash
+    FOR UPDATE
+    `,
+      { hash }
+    );
+
+    return rows[0] ?? null;
+  }
+
   async insertRefreshToken(
     trx: Knex.Transaction,
     data: {

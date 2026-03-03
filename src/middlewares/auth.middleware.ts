@@ -1,24 +1,52 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "@/shared/jwt/jwt.util";
 import { AppError } from "@/errors/app-error";
+import { setAuthCookies } from "@/utils/set-auth-cookie";
+import { AuthService } from "@/modules/auth/auth.service";
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.access_token;
+export function createRequireAuth(service: AuthService) {
+  return async function requireAuth(req: Request, res: Response, next: NextFunction) {
+    const accessToken = req.cookies?.access_token;
 
-  if (!token) {
-    return next(AppError.unauthorized("Access token missing"));
-  }
+    if (!accessToken) {
+      return next(AppError.unauthorized("Access token missing"));
+    }
 
-  try {
-    const payload = verifyAccessToken(token);
+    try {
+      const payload = verifyAccessToken(accessToken);
 
-    req.user = {
-      id: payload.sub,
-      role: payload.role
-    };
+      req.user = {
+        id: payload.sub,
+        role: payload.role
+      };
 
-    next();
-  } catch {
-    return next(AppError.unauthorized("Invalid or expired access token"));
-  }
+      return next();
+    } catch (err: any) {
+      // Expired token → attempt refresh
+      if (err?.name === "TokenExpiredError") {
+        const refreshToken = req.cookies?.refresh_token;
+
+        if (!refreshToken) {
+          return next(AppError.unauthorized("Session expired"));
+        }
+
+        try {
+          const { user, accessToken: newAccess, refreshToken: newRefresh } = await service.refresh(refreshToken);
+
+          setAuthCookies(res, newAccess, newRefresh);
+
+          req.user = {
+            id: user.id,
+            role: user.role
+          };
+
+          return next();
+        } catch {
+          return next(AppError.unauthorized("Session expired"));
+        }
+      }
+
+      return next(AppError.unauthorized("Invalid access token"));
+    }
+  };
 }

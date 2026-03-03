@@ -4,8 +4,8 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
-import { requireAuth } from "@/middlewares/auth.middleware";
 import { requireRole } from "@/middlewares/role.middleware";
+import { createRequireAuth } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
@@ -13,6 +13,7 @@ const tm = new KnexTransactionManager(db);
 const repo = new AuthRepo();
 const service = new AuthService(tm, repo);
 const controller = new AuthController(service);
+const requireAuth = createRequireAuth(service);
 
 router.post("/register", controller.register);
 router.post("/verify-email", controller.verifyEmail);
@@ -22,6 +23,7 @@ router.post("/logout", controller.logout);
 router.post("/request-password-reset", controller.requestPasswordReset);
 router.post("/reset-password", controller.resetPassword);
 router.post("/google", controller.googleLogin);
+
 router.get("/me", requireAuth, controller.me);
 
 router.post("/invite", requireAuth, requireRole("SUPER"), controller.inviteAdmin);

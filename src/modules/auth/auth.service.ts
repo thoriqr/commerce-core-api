@@ -209,30 +209,21 @@ export class AuthService {
     });
   };
 
-  refresh = async (
-    refreshToken: string
-  ): Promise<{
-    user: AuthUser;
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+  refresh = async (refreshToken: string) => {
     const tokenHash = hashRefreshToken(refreshToken);
 
     return this.tm.transaction(async (trx) => {
-      const existingToken = await this.repo.findRefreshTokenByHash(trx, tokenHash);
+      const existingToken = await this.repo.findRefreshTokenByHashForUpdate(trx, tokenHash);
 
       if (!existingToken) {
         throw AppError.unauthorized("Invalid refresh token");
       }
 
-      // Reuse detection
       if (existingToken.revoked_at) {
         await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
-
         throw AppError.unauthorized("Refresh token reuse detected");
       }
 
-      // Expiry check
       if (new Date(existingToken.expires_at) < new Date()) {
         throw AppError.unauthorized("Refresh token expired");
       }
@@ -244,10 +235,8 @@ export class AuthService {
         throw AppError.forbidden("Account suspended");
       }
 
-      // Revoke old token
       await this.repo.revokeRefreshToken(trx, existingToken.id);
 
-      // Generate new tokens
       const newAccessToken = this.issueAccessToken(user);
       const newRefreshToken = await this.issueRefreshToken(trx, user.id, existingToken.id);
 

@@ -9,7 +9,7 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
     secure: isProd,
     sameSite: "lax",
     path: "/",
-    maxAge: 15 * 60 * 1000
+    maxAge: 30 * 60 * 1000 // lebih lama dari JWT
   });
 
   res.cookie("refresh_token", refreshToken, {
