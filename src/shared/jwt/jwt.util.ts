@@ -3,7 +3,7 @@ import { env } from "@/config/env"; // sesuaikan path kamu
 import { AppError } from "@/errors/app-error";
 import { AccessTokenPayload } from "@/modules/auth/auth.types";
 
-const ACCESS_TOKEN_EXPIRES_IN = "10s"; // bisa nanti ambil dari env
+const ACCESS_TOKEN_EXPIRES_IN = "15m"; // bisa nanti ambil dari env
 
 /* =========================
    Sign Access Token

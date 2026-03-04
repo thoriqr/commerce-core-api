@@ -4,14 +4,16 @@ import { AuthContext } from "@/modules/auth/auth.types";
 
 export function requireRole(...allowedRoles: AuthContext["role"][]) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user) {
+    const user = req.user;
+
+    if (!user) {
       return next(AppError.unauthorized("Authentication required"));
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(user.role)) {
       return next(AppError.forbidden("Insufficient permissions"));
     }
 
-    next();
+    return next();
   };
 }

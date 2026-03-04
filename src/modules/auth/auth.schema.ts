@@ -10,19 +10,9 @@ const passwordSchema = z.string().min(8, "Password must be at least 8 characters
 
 const tokenSchema = z.string().min(10, "Invalid token");
 
-/* =========================
-   Register (Step 1)
-   Send magic link
-========================= */
-
 export const registerSchema = z.object({
   email: emailSchema
 });
-
-/* =========================
-   Verify Email (Step 2)
-   Complete registration
-========================= */
 
 export const verifyEmailSchema = z.object({
   token: tokenSchema,
@@ -30,50 +20,40 @@ export const verifyEmailSchema = z.object({
   password: passwordSchema
 });
 
-/* =========================
-   Login
-========================= */
-
 export const loginSchema = z.object({
   email: emailSchema,
   password: passwordSchema
 });
 
-/* =========================
-   Refresh
-   (no body needed if cookie-based)
-========================= */
-
-export const refreshSchema = z.object({});
-
-/* =========================
-   Request Password Reset
-========================= */
-
 export const requestPasswordResetSchema = z.object({
   email: emailSchema
 });
-
-/* =========================
-   Reset Password
-========================= */
 
 export const resetPasswordSchema = z.object({
   token: tokenSchema,
   password: passwordSchema
 });
 
-/* =========================
-   Google Login
-========================= */
+export const setPasswordSchema = z.object({
+  password: passwordSchema
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: passwordSchema,
+  newPassword: passwordSchema
+});
 
 export const googleLoginSchema = z.object({
   idToken: z.string().min(10)
 });
 
-/* =========================
-   Types
-========================= */
+export const changeEmailSchema = z.object({
+  email: emailSchema
+});
+
+export const confirmEmailChangeSchema = z.object({
+  token: tokenSchema
+});
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;

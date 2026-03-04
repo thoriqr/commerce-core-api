@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   role: UserRole;
   displayName: string | null;
+  hasPassword: boolean;
 };
 
 export type LoginResponse = {

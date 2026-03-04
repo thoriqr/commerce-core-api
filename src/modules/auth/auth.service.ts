@@ -121,7 +121,6 @@ export class AuthService {
       const refreshToken = await this.issueRefreshToken(trx, user.id);
 
       return {
-        user: this.buildAuthUser(user),
         accessToken,
         refreshToken
       };
@@ -131,7 +130,6 @@ export class AuthService {
   login = async (
     input: LoginInput
   ): Promise<{
-    user: AuthUser;
     accessToken: string;
     refreshToken: string;
   }> => {
@@ -158,7 +156,6 @@ export class AuthService {
       const refreshToken = await this.issueRefreshToken(trx, user.id);
 
       return {
-        user: this.buildAuthUser(user),
         accessToken,
         refreshToken
       };
@@ -264,7 +261,7 @@ export class AuthService {
     });
   };
 
-  requestPasswordReset = async (input: RequestPasswordResetInput): Promise<void> => {
+  requestPasswordReset = async (input: RequestPasswordResetInput, origin: string): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
     return this.tm.transaction(async (trx) => {
@@ -282,8 +279,6 @@ export class AuthService {
       const rawToken = generateRefreshToken();
       const tokenHash = hashRefreshToken(rawToken);
 
-      console.log("REQUEST PASSWORD RESET RAW TOKEN:", rawToken);
-
       const expiresAt = this.getShortExpiry(15);
 
       // Insert pending RESET_PASSWORD
@@ -296,13 +291,16 @@ export class AuthService {
       });
 
       // TODO: send reset email with rawToken
+      // reset link
+      const resetUrl = `${origin}/reset-password?token=${rawToken}`;
+
+      console.log("RESET URL:", resetUrl);
     });
   };
 
   resetPassword = async (
     input: ResetPasswordInput
   ): Promise<{
-    user: AuthUser;
     accessToken: string;
     refreshToken: string;
   }> => {
@@ -367,11 +365,242 @@ export class AuthService {
       const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
 
       return {
+        accessToken,
+        refreshToken
+      };
+    });
+  };
+
+  changePassword = async (
+    userId: number,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  }> => {
+    const result = await this.tm.transaction(async (trx) => {
+      const user = await this.repo.findUserById(userId, trx);
+
+      if (!user) {
+        throw AppError.unauthorized();
+      }
+
+      // Google user / OAuth user
+      if (!user.password_hash) {
+        throw AppError.badRequest("Password login is not enabled for this account");
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+
+      if (!isMatch) {
+        throw AppError.unauthorized("Current password is incorrect");
+      }
+
+      // prevent same password
+      const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+
+      if (isSamePassword) {
+        throw AppError.badRequest("New password must be different from current password");
+      }
+
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+      await this.repo.updateUserPassword(trx, user.id, newPasswordHash);
+
+      await this.repo.revokeAllUserRefreshTokens(trx, user.id);
+
+      const freshUser = await this.repo.findUserById(user.id, trx);
+
+      if (!freshUser) {
+        logger.error("freshUser is null");
+        throw AppError.internal();
+      }
+
+      const accessToken = this.issueAccessToken(freshUser);
+      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
+
+      return {
+        email: freshUser.email,
         user: this.buildAuthUser(freshUser),
         accessToken,
         refreshToken
       };
     });
+
+    // TODO: send security notification email
+    // await mailer.sendPasswordChangedAlert(result.email);
+
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken
+    };
+  };
+
+  setPassword = async (
+    userId: number,
+    password: string
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  }> => {
+    const result = await this.tm.transaction(async (trx) => {
+      const user = await this.repo.findUserById(userId, trx);
+
+      if (!user) {
+        throw AppError.unauthorized();
+      }
+
+      // user has password
+      if (user.password_hash) {
+        throw AppError.badRequest("Password already set");
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      await this.repo.updateUserPassword(trx, user.id, passwordHash);
+
+      await this.repo.revokeAllUserRefreshTokens(trx, user.id);
+
+      const freshUser = await this.repo.findUserById(user.id, trx);
+
+      if (!freshUser) {
+        logger.error("freshUser is null");
+        throw AppError.internal();
+      }
+
+      const accessToken = this.issueAccessToken(freshUser);
+      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
+
+      return {
+        email: freshUser.email,
+        accessToken,
+        refreshToken
+      };
+    });
+
+    // TODO: send security notification email
+    // await mailer.sendPasswordSetAlert(result.email);
+
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken
+    };
+  };
+
+  changeEmail = async (userId: number, newEmail: string, origin: string): Promise<void> => {
+    const email = newEmail.trim().toLowerCase();
+
+    return this.tm.transaction(async (trx) => {
+      const user = await this.repo.findUserById(userId, trx);
+
+      if (!user) {
+        throw AppError.unauthorized();
+      }
+
+      if (user.email === email) {
+        throw AppError.badRequest("Email is already your current email");
+      }
+
+      const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
+
+      if (existingUser) {
+        throw AppError.conflict("Email already registered");
+      }
+
+      // delete old pending change email
+      await this.repo.deletePendingByUserAndType(trx, userId, "CHANGE_EMAIL");
+
+      const rawToken = generateRefreshToken();
+      const tokenHash = hashRefreshToken(rawToken);
+
+      const expiresAt = this.getShortExpiry(15);
+
+      await this.repo.insertPendingVerification(trx, {
+        userId,
+        email,
+        tokenHash,
+        type: "CHANGE_EMAIL",
+        expiresAt
+      });
+
+      const confirmUrl = `${origin}/confirm-email-change?token=${rawToken}`;
+
+      console.log("CHANGE EMAIL URL:", confirmUrl);
+
+      // todo
+      // await mailer.sendChangeEmail(email, confirmUrl)
+    });
+  };
+
+  confirmEmailChange = async (
+    token: string
+  ): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  }> => {
+    const tokenHash = hashRefreshToken(token);
+
+    const result = await this.tm.transaction(async (trx) => {
+      const pending = await this.repo.findPendingVerification(trx, tokenHash, "CHANGE_EMAIL");
+
+      if (!pending) {
+        throw AppError.badRequest("Invalid or expired token");
+      }
+
+      if (pending.used_at) {
+        throw AppError.badRequest("Token already used");
+      }
+
+      if (new Date(pending.expires_at) < new Date()) {
+        throw AppError.badRequest("Token expired");
+      }
+
+      if (!pending.user_id || !pending.email) {
+        throw AppError.badRequest("Invalid token");
+      }
+
+      const user = await this.repo.findUserById(pending.user_id, trx);
+
+      if (!user) {
+        throw AppError.unauthorized();
+      }
+
+      const oldEmail = user.email;
+
+      // update email
+      await this.repo.updateUserEmail(trx, user.id, pending.email);
+
+      // mark verification used
+      await this.repo.markPendingVerificationUsed(trx, pending.id);
+
+      // revoke all sessions
+      await this.repo.revokeAllUserRefreshTokens(trx, user.id);
+
+      const freshUser = await this.repo.findUserById(user.id, trx);
+
+      if (!freshUser) {
+        throw AppError.internal();
+      }
+
+      const accessToken = this.issueAccessToken(freshUser);
+      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
+
+      return {
+        oldEmail,
+        newEmail: pending.email,
+        accessToken,
+        refreshToken
+      };
+    });
+
+    // TODO: send security notification to old email
+    // await mailer.sendEmailChangeAlert(result.oldEmail, result.newEmail);
+
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken
+    };
   };
 
   me = async (userId: number): Promise<AuthUser> => {
@@ -389,7 +618,8 @@ export class AuthService {
       id: String(user.id),
       email: user.email,
       role: user.role,
-      displayName: user.display_name
+      displayName: user.display_name,
+      hasPassword: !!user.password_hash
     };
   }
 

@@ -98,6 +98,17 @@ export class AuthRepo {
     );
   }
 
+  async updateUserEmail(trx: Knex.Transaction, userId: number, email: string) {
+    await trx.raw(
+      `
+    UPDATE users
+    SET email = :email
+    WHERE id = :userId
+    `,
+      { userId, email }
+    );
+  }
+
   async updateLastLoginAt(trx: Knex.Transaction, userId: number) {
     await trx.raw(
       `
@@ -182,6 +193,18 @@ export class AuthRepo {
       AND used_at IS NULL
     `,
       { email, type }
+    );
+  }
+
+  async deletePendingByUserAndType(trx: Knex.Transaction, userId: number, type: VerificationType) {
+    await trx.raw(
+      `
+    DELETE FROM pending_verifications
+    WHERE user_id = :userId
+      AND type = :type
+      AND used_at IS NULL
+    `,
+      { userId, type }
     );
   }
 
