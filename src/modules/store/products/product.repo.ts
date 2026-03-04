@@ -2,14 +2,12 @@ import { db } from "@/infra/db/knex";
 import { BaseQueryParams, ProductByCategoryQueryParams, ProductByCollectionQueryParams, ProductBySearchQueryParams } from "./product.schema";
 import { AppError } from "@/errors/app-error";
 import { decodeCursor, encodeCursor } from "@/utils/pagination-cursor";
-import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, VariantDetailRow, VariantRow } from "./product.types";
+import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, ProductFilterRow, VariantDetailRow, VariantRow } from "./product.types";
 import { buildProductCardJoins } from "./sql/product-card.sql";
 
 export class ProductRepo {
   async getProductDetailBySlug(slug: string) {
-    // =========================
-    // 1️⃣ Product Basic
-    // =========================
+    // Product Basic
     const { rows } = await db.raw<{
       rows: ProductBasicRow[];
     }>(
@@ -38,9 +36,7 @@ export class ProductRepo {
       throw AppError.notFound("Product not found");
     }
 
-    // =========================
-    // 2️⃣ Variants + Options
-    // =========================
+    // Variants + Options
     const { rows: variantRows } = await db.raw<{
       rows: VariantRow[];
     }>(
@@ -62,9 +58,7 @@ export class ProductRepo {
       { productId: product.id }
     );
 
-    // =========================
-    // 3️⃣ Dimensions
-    // =========================
+    // Dimensions
     const { rows: dimensionRows } = await db.raw<{
       rows: DimensionRow[];
     }>(
@@ -84,9 +78,7 @@ export class ProductRepo {
       { productId: product.id }
     );
 
-    // =========================
-    // 4️⃣ Images
-    // =========================
+    // Images
     const { rows: imageRows } = await db.raw<{
       rows: ImageRow[];
     }>(
@@ -286,6 +278,91 @@ export class ProductRepo {
     };
   }
 
+  async getSearchFilters(q: string) {
+    if (!q) {
+      throw AppError.badRequest("Search query is required");
+    }
+
+    // FILTER VALUES
+    const { rows } = await db.raw<{
+      rows: ProductFilterRow[];
+    }>(
+      `
+    SELECT
+      t.dimension_name,
+      t.dimension_display_name,
+      t.value_normalized,
+      t.value_display,
+      t.hex_color,
+      COUNT(*)::int AS product_count
+    FROM (
+      SELECT DISTINCT
+        p.id AS product_id,
+        d.normalized_name AS dimension_name,
+        d.display_name AS dimension_display_name,
+        dv.normalized_value AS value_normalized,
+        dv.display_value AS value_display,
+        dv.hex_color
+      FROM products p
+      JOIN product_variants v
+        ON v.product_id = p.id
+       AND v.status = 'ACTIVE'
+      JOIN product_variant_option_values pov
+        ON pov.variant_id = v.id
+      JOIN product_variant_dimensions d
+        ON d.id = pov.dimension_id
+      JOIN product_variant_dimension_values dv
+        ON dv.id = pov.value_id
+      WHERE
+        p.status = 'ACTIVE'
+        AND to_tsvector('simple', p.name)
+          @@ plainto_tsquery('simple', :searchQuery)
+    ) t
+    GROUP BY
+      t.dimension_name,
+      t.dimension_display_name,
+      t.value_normalized,
+      t.value_display,
+      t.hex_color
+    ORDER BY
+      t.dimension_name,
+      t.value_display
+    `,
+      {
+        searchQuery: q
+      }
+    );
+
+    // ETAG
+    const { rows: metaRows } = await db.raw<{
+      rows: { max_updated_at: Date | null }[];
+    }>(
+      `
+    SELECT MAX(v.updated_at) AS max_updated_at
+    FROM products p
+    JOIN product_variants v
+      ON v.product_id = p.id
+     AND v.status = 'ACTIVE'
+    WHERE
+      p.status = 'ACTIVE'
+      AND to_tsvector('simple', p.name)
+          @@ plainto_tsquery('simple', :searchQuery)
+    `,
+      {
+        searchQuery: q
+      }
+    );
+
+    const meta = metaRows[0];
+
+    const etagSeed = `search-filters:${q}:${meta?.max_updated_at?.toISOString() ?? "none"}:${rows.length}`;
+
+    return {
+      rows,
+      etagSeed
+    };
+  }
+
   async getIdPathBySlugPath(slugPath: string) {
     const { rows } = await db.raw<{ rows: { id_path: string }[] }>(
       `
@@ -416,14 +493,10 @@ export class ProductRepo {
 
     const { limit, sortBy, sortDir, cursor } = qParams;
 
-    // ===============================
     // BASE PRODUCT FILTERS
-    // ===============================
     const { conditions: productConditions, bindings: productBindings } = this.buildProductFilters(qParams);
 
-    // ===============================
     // DIMENSION FILTERS (OPTIONAL)
-    // ===============================
     let dimensionConditions: string[] = [];
     let dimensionBindings: Record<string, unknown> = {};
 
@@ -444,9 +517,7 @@ export class ProductRepo {
       ...dimensionBindings
     };
 
-    // ===============================
     // SEARCH RANK + BOOST
-    // ===============================
     const rankSelect = withRank
       ? `
       (
@@ -468,9 +539,7 @@ export class ProductRepo {
     `
       : "";
 
-    // ===============================
     // SORTING
-    // ===============================
     let sortColumn = "p.created_at";
 
     if (withRank) {
@@ -479,14 +548,10 @@ export class ProductRepo {
       sortColumn = "v.price";
     }
 
-    // ===============================
     // CURSOR
-    // ===============================
     const cursorCondition = this.buildCursorCondition(sortColumn, sortDir, cursor, bindings);
 
-    // ===============================
     // MAIN QUERY
-    // ===============================
     const { rows } = await db.raw<{ rows: ProductCardRow[] }>(
       `
     SELECT

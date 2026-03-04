@@ -72,3 +72,16 @@ export interface ProductDetailDTO {
       }
   )[];
 }
+
+export type ProductFilterValueDTO = {
+  value: string; // normalized_value
+  label: string; // display_value
+  count: number; // distinct product count
+  hexColor: string | null;
+};
+
+export type ProductFilterDimensionDTO = {
+  name: string; // normalized_name
+  label: string; // display_name
+  values: ProductFilterValueDTO[];
+};

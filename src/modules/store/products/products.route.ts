@@ -12,6 +12,7 @@ const controller = new ProductController(service);
 router.get("/by-category", controller.getByCategory);
 router.get("/by-collection", controller.getByCollection);
 router.get("/by-search", controller.getBySearch);
+router.get("/filters", controller.getSearchFilters);
 router.get("/:slug", controller.getProductDetail);
 router.get("/:productSlug/variants/:variantId", controller.getVariantDetail);
 

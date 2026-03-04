@@ -32,9 +32,16 @@ export const productByCollectionQueryParams = baseQueryParams.extend({
   slug: z.string().min(1)
 });
 
-export const productBySearchQueryParams = baseQueryParams.extend({
-  q: z.string().min(1)
-});
+export const productBySearchQueryParams = z
+  .looseObject({
+    ...baseQueryParams.shape,
+    q: z.string().min(1)
+  })
+  .refine((data) => data.priceMin === undefined || data.priceMax === undefined || data.priceMin <= data.priceMax, {
+    message: "priceMin must be less than or equal to priceMax"
+  });
+
+export const productFilterQueryParams = z.object({ q: z.string().min(1) });
 
 export const productSlugParams = z.object({
   slug: z.string().trim().min(1)

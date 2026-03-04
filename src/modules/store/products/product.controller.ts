@@ -4,6 +4,7 @@ import {
   productByCategoryQueryParams,
   productByCollectionQueryParams,
   productBySearchQueryParams,
+  productFilterQueryParams,
   productSlugParams,
   productVariantIdParams
 } from "./product.schema";
@@ -72,6 +73,20 @@ export class ProductController {
     const qParams = productBySearchQueryParams.parse(req.query);
 
     const { dto, etag } = await this.service.getBySearch(qParams);
+
+    sendStoreResponse({
+      req,
+      res,
+      data: dto,
+      etag,
+      maxAge: 60
+    });
+  };
+
+  getSearchFilters = async (req: Request, res: Response) => {
+    const qParams = productFilterQueryParams.parse(req.query);
+
+    const { dto, etag } = await this.service.getSearchFilters(qParams.q);
 
     sendStoreResponse({
       req,

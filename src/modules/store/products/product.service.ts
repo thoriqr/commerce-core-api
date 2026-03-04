@@ -1,7 +1,7 @@
 import { generateETag } from "@/utils/generate-etag";
 import { ProductRepo } from "./product.repo";
 import { ProductByCategoryQueryParams, ProductByCollectionQueryParams, ProductBySearchQueryParams } from "./product.schema";
-import { mapProductDetail, mapProductListing, mapVariantDetail } from "./product.mapper";
+import { mapProductDetail, mapProductFilters, mapProductListing, mapVariantDetail } from "./product.mapper";
 
 export class ProductService {
   constructor(private readonly repo: ProductRepo) {}
@@ -51,5 +51,18 @@ export class ProductService {
     const etag = generateETag(etagSeed);
 
     return { dto, etag };
+  };
+
+  getSearchFilters = async (q: string) => {
+    const { rows, etagSeed } = await this.repo.getSearchFilters(q);
+
+    const dto = mapProductFilters(rows);
+
+    const etag = generateETag(etagSeed);
+
+    return {
+      dto,
+      etag
+    };
   };
 }

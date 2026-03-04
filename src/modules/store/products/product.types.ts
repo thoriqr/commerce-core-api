@@ -55,3 +55,12 @@ export type VariantDetailRow = {
   product_status: "ACTIVE" | "INACTIVE";
   updated_at: Date;
 };
+
+export type ProductFilterRow = {
+  dimension_name: string;
+  dimension_display_name: string;
+  value_normalized: string;
+  value_display: string;
+  product_count: number;
+  hex_color: string | null;
+};

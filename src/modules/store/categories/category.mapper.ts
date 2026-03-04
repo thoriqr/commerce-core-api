@@ -74,14 +74,14 @@ function isSizeDimension(name: string) {
 }
 
 function sortSizeValues(values: CategoryFilterDimensionDTO["values"]) {
-  // 🔢 Numeric size (38, 39, 40)
+  // Numeric size (38, 39, 40)
   const isNumeric = values.every((v) => /^\d+$/.test(v.value));
 
   if (isNumeric) {
     return values.sort((a, b) => Number(a.value) - Number(b.value));
   }
 
-  // 🔤 Alpha size (XS, S, M, etc)
+  // Alpha size (XS, S, M, etc)
   return values.sort((a, b) => {
     const aIndex = SIZE_ORDER.indexOf(a.value.toLowerCase());
     const bIndex = SIZE_ORDER.indexOf(b.value.toLowerCase());

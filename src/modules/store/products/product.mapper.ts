@@ -1,5 +1,12 @@
-import { ProductCardDTO, ProductDetailDTO, ProductListingDTO, VariantDetailDTO } from "./product.dto";
-import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, VariantDetailRow, VariantRow } from "./product.types";
+import {
+  ProductCardDTO,
+  ProductDetailDTO,
+  ProductFilterDimensionDTO,
+  ProductFilterValueDTO,
+  ProductListingDTO,
+  VariantDetailDTO
+} from "./product.dto";
+import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, ProductFilterRow, VariantDetailRow, VariantRow } from "./product.types";
 
 export function mapProductListing(rows: ProductCardRow[], nextCursor: string | null, hasMore: boolean): ProductListingDTO {
   return {
@@ -131,4 +138,68 @@ export function mapVariantDetail(row: VariantDetailRow): VariantDetailDTO {
     weightUnit: row.weight_unit,
     isAvailable
   };
+}
+
+const SIZE_ORDER = ["xxs", "xs", "s", "m", "l", "xl", "xxl", "xxxl"];
+
+function isSizeDimension(name: string) {
+  return name.toLowerCase().includes("size");
+}
+
+function sortSizeValues(values: ProductFilterValueDTO[]) {
+  // Numeric size (38, 39, 40)
+  const isNumeric = values.every((v) => /^\d+$/.test(v.value));
+
+  if (isNumeric) {
+    return values.sort((a, b) => Number(a.value) - Number(b.value));
+  }
+
+  // Alpha size (XS, S, M, etc)
+  return values.sort((a, b) => {
+    const aIndex = SIZE_ORDER.indexOf(a.value.toLowerCase());
+    const bIndex = SIZE_ORDER.indexOf(b.value.toLowerCase());
+
+    if (aIndex === -1 && bIndex === -1) {
+      return a.label.localeCompare(b.label);
+    }
+
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+
+    return aIndex - bIndex;
+  });
+}
+
+export function mapProductFilters(rows: ProductFilterRow[]): ProductFilterDimensionDTO[] {
+  const map = new Map<string, ProductFilterDimensionDTO>();
+
+  for (const r of rows) {
+    if (!map.has(r.dimension_name)) {
+      map.set(r.dimension_name, {
+        name: r.dimension_name,
+        label: r.dimension_display_name,
+        values: []
+      });
+    }
+
+    map.get(r.dimension_name)!.values.push({
+      value: r.value_normalized,
+      label: r.value_display,
+      count: Number(r.product_count),
+      hexColor: r.hex_color
+    });
+  }
+
+  const result = Array.from(map.values());
+
+  // 🔥 SORT PER DIMENSION
+  for (const dimension of result) {
+    if (isSizeDimension(dimension.name)) {
+      dimension.values = sortSizeValues(dimension.values);
+    } else {
+      dimension.values.sort((a, b) => a.label.localeCompare(b.label));
+    }
+  }
+
+  return result;
 }

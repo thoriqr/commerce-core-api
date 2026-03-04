@@ -63,7 +63,7 @@ export class CategoryRepo {
   }
 
   async getCategoryDetail(slugPath: string) {
-    // 1️⃣ current category
+    // current category
     const { rows } = await db.raw<{ rows: CategoryDetailRow[] }>(
       `
       SELECT id, name, description, slug, slug_path, id_path, updated_at
@@ -80,7 +80,7 @@ export class CategoryRepo {
       throw AppError.notFound("Category not found");
     }
 
-    // 2️⃣ breadcrumb chain
+    // breadcrumb chain
     const { rows: breadcrumbRows } = await db.raw<{
       rows: CategoryBreadcrumbRow[];
     }>(
@@ -94,7 +94,7 @@ export class CategoryRepo {
       { idPath: current.id_path }
     );
 
-    // 3️⃣ children
+    // children
     const { rows: childrenRows } = await db.raw<{
       rows: CategoryChildRow[];
     }>(
@@ -108,7 +108,7 @@ export class CategoryRepo {
       { parentId: current.id }
     );
 
-    // 4️⃣ ETag seed
+    // ETag seed
     const maxUpdatedAt = [current.updated_at, ...breadcrumbRows.map((b) => b.updated_at)].reduce(
       (acc, d) => (!acc || d > acc ? d : acc),
       null as Date | null
@@ -125,7 +125,7 @@ export class CategoryRepo {
   }
 
   async getCategoryFilters(slugPath: string) {
-    // 1️⃣ Resolve category
+    // Resolve category
     const { rows: targetRows } = await db.raw<{
       rows: { id_path: string }[];
     }>(
@@ -144,7 +144,7 @@ export class CategoryRepo {
       throw AppError.notFound("Category not found");
     }
 
-    // 2️⃣ DISTINCT first (important)
+    // DISTINCT first (important)
     const { rows } = await db.raw<{ rows: CategoryFilterRow[] }>(
       `
     SELECT
@@ -192,7 +192,7 @@ export class CategoryRepo {
       }
     );
 
-    // 3️⃣ ETag (consistent subtree logic)
+    // ETag (consistent subtree logic)
     const { rows: metaRows } = await db.raw<{
       rows: { max_updated_at: string | null }[];
     }>(
