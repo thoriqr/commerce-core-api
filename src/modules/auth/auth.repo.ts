@@ -166,6 +166,7 @@ export class AuthRepo {
       FROM pending_verifications
     WHERE token_hash = :tokenHash
       AND type = :type
+    FOR UPDATE
     `,
       { tokenHash, type }
     );

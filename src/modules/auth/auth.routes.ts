@@ -17,13 +17,17 @@ const requireAuth = createRequireAuth(service);
 
 router.post("/register", controller.register);
 router.post("/verify-email", controller.verifyEmail);
+
 router.post("/login", controller.login);
 router.post("/refresh", controller.refresh);
 router.post("/logout", controller.logout);
+
 router.post("/request-password-reset", controller.requestPasswordReset);
 router.post("/reset-password", controller.resetPassword);
+
 router.post("/change-password", requireAuth, controller.changePassword);
 router.post("/set-password", requireAuth, controller.setPassword);
+
 router.post("/change-email", requireAuth, controller.changeEmail);
 router.post("/confirm-email-change", controller.confirmEmailChange);
 

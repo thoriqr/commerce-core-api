@@ -48,7 +48,7 @@ export class AuthService {
     });
   };
 
-  register = async (input: RegisterInput): Promise<void> => {
+  register = async (input: RegisterInput, origin: string): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
     return this.tm.transaction(async (trx) => {
@@ -66,8 +66,6 @@ export class AuthService {
       const rawToken = generateRefreshToken(); // reuse util
       const tokenHash = hashRefreshToken(rawToken);
 
-      console.log("REGISTER RAW TOKEN:", rawToken);
-
       const expiresAt = this.getShortExpiry(15);
 
       // insert pending verification
@@ -78,9 +76,11 @@ export class AuthService {
         expiresAt
       });
 
-      // 5️⃣ TODO: Send magic link via mailer
+      // TODO: Send magic link via mailer
       // link example:
-      // `${FRONTEND_URL}/verify?token=${rawToken}`
+      const verifyUrl = `${origin}/verify?token=${rawToken}`;
+
+      console.log("VERIFY URL:", verifyUrl);
     });
   };
 

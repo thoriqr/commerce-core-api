@@ -34,7 +34,9 @@ export class AuthController {
   register = async (req: Request, res: Response) => {
     const payload = registerSchema.parse(req.body);
 
-    await this.service.register(payload);
+    const origin = getSafeOrigin(req);
+
+    await this.service.register(payload, origin);
 
     sendSuccess(res, 200, {
       message: "Verification email sent"
