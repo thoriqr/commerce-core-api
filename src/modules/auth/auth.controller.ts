@@ -208,8 +208,21 @@ export class AuthController {
       throw AppError.unauthorized();
     }
 
+    const origin = getSafeOrigin(req);
+
     const user = await this.service.me(Number(req.user.id));
 
-    sendSuccess(res, 200, { data: user });
+    // Admin panel
+    if (origin === env.ADMIN_ORIGIN) {
+      return sendSuccess(res, 200, {
+        data: user
+      });
+    }
+
+    // Storefront
+    const { role, ...userNoRole } = user;
+    return sendSuccess(res, 200, {
+      data: userNoRole
+    });
   };
 }
