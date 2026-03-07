@@ -2,7 +2,7 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { UserDetailRow, VerificationType } from "./auth.repo.types";
-import { UserRole, UserStatus } from "@/shared/user/user.types";
+import { UserProvider, UserRole, UserStatus } from "@/shared/user/user.types";
 import { logger } from "@/libs/logger";
 
 export class AuthRepo {
@@ -33,6 +33,39 @@ export class AuthRepo {
     WHERE email = :email
     `,
       { email }
+    );
+
+    return rows[0] ?? null;
+  }
+
+  async findProvidersByUserId(userId: number) {
+    const { rows } = await db.raw<{
+      rows: { provider: UserProvider }[];
+    }>(
+      `
+    SELECT provider
+    FROM user_providers
+    WHERE user_id = :userId
+    `,
+      { userId }
+    );
+
+    return rows.map((r) => r.provider);
+  }
+
+  async findUserByProvider(provider: "GOOGLE", providerUserId: string, trx?: Knex.Transaction) {
+    const executor = trx ?? db;
+    const { rows } = await executor.raw<{
+      rows: UserDetailRow[];
+    }>(
+      `
+    SELECT u.id, u.email, u.password_hash, u.role, u.status, u.display_name
+    FROM user_providers p
+    JOIN users u ON u.id = p.user_id
+    WHERE p.provider = :provider
+      AND p.provider_user_id = :providerUserId
+    `,
+      { provider, providerUserId }
     );
 
     return rows[0] ?? null;
@@ -311,7 +344,6 @@ export class AuthRepo {
       userId: number;
       provider: "GOOGLE";
       providerUserId: string;
-      email: string;
     }
   ) {
     await trx.raw(
@@ -319,14 +351,12 @@ export class AuthRepo {
     INSERT INTO user_providers (
       user_id,
       provider,
-      provider_user_id,
-      email
+      provider_user_id
     )
     VALUES (
       :userId,
       :provider,
-      :providerUserId,
-      :email
+      :providerUserId
     )
     ON CONFLICT (provider, provider_user_id)
     DO NOTHING

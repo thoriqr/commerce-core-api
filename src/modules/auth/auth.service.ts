@@ -10,6 +10,7 @@ import { verifyGoogleIdToken } from "@/shared/google/google.util";
 import { UserDetailRow } from "./auth.repo.types";
 import { Knex } from "knex";
 import { logger } from "@/libs/logger";
+import { UserProvider } from "@/shared/user/user.types";
 
 export class AuthService {
   constructor(
@@ -172,27 +173,34 @@ export class AuthService {
     const email = google.email.toLowerCase();
 
     return this.tm.transaction(async (trx) => {
-      let user = await this.repo.findUserByEmailOrNull(email, trx);
+      // check provider first
+      let user = await this.repo.findUserByProvider("GOOGLE", google.sub, trx);
 
       if (!user) {
-        user = await this.repo.insertUserWithRole(trx, {
-          email,
-          passwordHash: null,
-          displayName: google.name ?? null,
-          role: "USER",
-          status: "ACTIVE"
-        });
+        // fallback to email
+        user = await this.repo.findUserByEmailOrNull(email, trx);
+
+        if (!user) {
+          // create user if not exists
+          user = await this.repo.insertUserWithRole(trx, {
+            email,
+            passwordHash: null,
+            displayName: google.name ?? null,
+            role: "USER",
+            status: "ACTIVE"
+          });
+        }
       }
 
       if (user.status === "SUSPENDED") {
         throw AppError.forbidden("Account suspended");
       }
 
+      // always ensure provider link exists
       await this.repo.insertUserProviderIfNotExists(trx, {
         userId: user.id,
         provider: "GOOGLE",
-        providerUserId: google.sub,
-        email
+        providerUserId: google.sub
       });
 
       const accessToken = this.issueAccessToken(user);
@@ -610,16 +618,19 @@ export class AuthService {
       throw AppError.unauthorized();
     }
 
-    return this.buildAuthUser(user);
+    const providers = await this.repo.findProvidersByUserId(userId);
+
+    return this.buildAuthUser(user, providers);
   };
 
-  private buildAuthUser(user: UserDetailRow): AuthUser {
+  private buildAuthUser(user: UserDetailRow, providers: UserProvider[] = []): AuthUser {
     return {
       id: String(user.id),
       email: user.email,
       role: user.role,
       displayName: user.display_name,
-      hasPassword: !!user.password_hash
+      hasPassword: !!user.password_hash,
+      providers
     };
   }
 

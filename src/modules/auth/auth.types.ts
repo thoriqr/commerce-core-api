@@ -1,4 +1,4 @@
-import { UserRole } from "@/shared/user/user.types";
+import { UserProvider, UserRole } from "@/shared/user/user.types";
 
 export type AuthUser = {
   id: string;
@@ -6,6 +6,7 @@ export type AuthUser = {
   role: UserRole;
   displayName: string | null;
   hasPassword: boolean;
+  providers: UserProvider[];
 };
 
 export type LoginResponse = {
