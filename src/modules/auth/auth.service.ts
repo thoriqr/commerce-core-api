@@ -200,7 +200,10 @@ export class AuthService {
       await this.repo.insertUserProviderIfNotExists(trx, {
         userId: user.id,
         provider: "GOOGLE",
-        providerUserId: google.sub
+        providerUserId: google.sub,
+        providerEmail: google.email,
+        providerDisplayName: google.name ?? null,
+        providerAvatarUrl: google.picture ?? null
       });
 
       const accessToken = this.issueAccessToken(user);

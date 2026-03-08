@@ -2,7 +2,7 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { UserDetailRow, VerificationType } from "./auth.repo.types";
-import { UserProvider, UserRole, UserStatus } from "@/shared/user/user.types";
+import { Provider, UserProvider, UserRole, UserStatus } from "@/shared/user/user.types";
 import { logger } from "@/libs/logger";
 
 export class AuthRepo {
@@ -40,20 +40,34 @@ export class AuthRepo {
 
   async findProvidersByUserId(userId: number) {
     const { rows } = await db.raw<{
-      rows: { provider: UserProvider }[];
+      rows: {
+        provider: Provider;
+        provider_email: string | null;
+        provider_display_name: string | null;
+        provider_avatar_url: string | null;
+      }[];
     }>(
       `
-    SELECT provider
+    SELECT
+      provider,
+      provider_email,
+      provider_display_name,
+      provider_avatar_url
     FROM user_providers
     WHERE user_id = :userId
     `,
       { userId }
     );
 
-    return rows.map((r) => r.provider);
+    return rows.map((p) => ({
+      provider: p.provider,
+      email: p.provider_email,
+      displayName: p.provider_display_name,
+      avatarUrl: p.provider_avatar_url
+    }));
   }
 
-  async findUserByProvider(provider: "GOOGLE", providerUserId: string, trx?: Knex.Transaction) {
+  async findUserByProvider(provider: Provider, providerUserId: string, trx?: Knex.Transaction) {
     const executor = trx ?? db;
     const { rows } = await executor.raw<{
       rows: UserDetailRow[];
@@ -344,6 +358,9 @@ export class AuthRepo {
       userId: number;
       provider: "GOOGLE";
       providerUserId: string;
+      providerEmail: string | null;
+      providerDisplayName: string | null;
+      providerAvatarUrl: string | null;
     }
   ) {
     await trx.raw(
@@ -351,15 +368,28 @@ export class AuthRepo {
     INSERT INTO user_providers (
       user_id,
       provider,
-      provider_user_id
+      provider_user_id,
+      provider_email,
+      provider_display_name,
+      provider_avatar_url
     )
     VALUES (
       :userId,
       :provider,
-      :providerUserId
+      :providerUserId,
+      :providerEmail,
+      :providerDisplayName,
+      :providerAvatarUrl
     )
     ON CONFLICT (provider, provider_user_id)
-    DO NOTHING
+    DO UPDATE SET
+      provider_email = EXCLUDED.provider_email,
+      provider_display_name = EXCLUDED.provider_display_name,
+      provider_avatar_url = EXCLUDED.provider_avatar_url
+    WHERE
+      user_providers.provider_email IS DISTINCT FROM EXCLUDED.provider_email
+      OR user_providers.provider_display_name IS DISTINCT FROM EXCLUDED.provider_display_name
+      OR user_providers.provider_avatar_url IS DISTINCT FROM EXCLUDED.provider_avatar_url
     `,
       data
     );
