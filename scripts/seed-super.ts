@@ -1,4 +1,3 @@
-import "dotenv/config";
 import bcrypt from "bcrypt";
 import { db } from "@/infra/db/knex";
 import { env } from "@/config/env";

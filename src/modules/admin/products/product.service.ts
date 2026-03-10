@@ -20,6 +20,8 @@ import {
 import { CategoryRepo } from "../categories/category.repo";
 import { CollectionRepo } from "../collections/collection.repo";
 import { VariantPresetRepo } from "../variant-presets/variant-preset.repo";
+import { redis } from "@/libs/redis";
+import { REDIS_KEYS } from "@/shared/cache/redis-keys";
 
 export class ProductService {
   constructor(
@@ -80,13 +82,16 @@ export class ProductService {
       throw AppError.badRequest("Product must have at least one image");
     }
 
-    return this.withSlugRetry(() =>
+    await this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
         const slug = await generateUniqueSlug(trx, input.name);
 
         await this.productRepo.create(trx, input, finalIsVariant, slug, productImageFilesMap, variantImageFilesMap);
       })
     );
+
+    // invalidate variant whitelist cache
+    await this.invalidateVariantCache();
   };
 
   update = async (id: number, input: ProductUpsertSchema, productImgs: Express.Multer.File[], variantImgs: Express.Multer.File[]) => {
@@ -98,7 +103,7 @@ export class ProductService {
     productImageFilesMap = await this.prepareProductImages(input.images, productImgs);
     variantImageFilesMap = await this.prepareVariantImages(input.variantDimension, variantImgs);
 
-    return this.withSlugRetry(() =>
+    await this.withSlugRetry(() =>
       this.tm.transaction(async (trx) => {
         const product = await this.productRepo.findBaseById(id, trx);
 
@@ -107,6 +112,9 @@ export class ProductService {
         await this.productRepo.update(trx, id, input, finalIsVariant, finalSlug, productImageFilesMap, variantImageFilesMap);
       })
     );
+
+    // invalidate variant whitelist cache AFTER transaction commit
+    await this.invalidateVariantCache();
   };
 
   updateStatus = async (input: UpdateProductStatusSchema) => {
@@ -287,5 +295,9 @@ export class ProductService {
       }
       throw err;
     }
+  }
+
+  private async invalidateVariantCache() {
+    await redis.del([REDIS_KEYS.VARIANT_DIMENSIONS, REDIS_KEYS.VARIANT_VALUES]);
   }
 }

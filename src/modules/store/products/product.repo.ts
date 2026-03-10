@@ -4,6 +4,7 @@ import { AppError } from "@/errors/app-error";
 import { decodeCursor, encodeCursor } from "@/utils/pagination-cursor";
 import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, ProductFilterRow, VariantDetailRow, VariantRow } from "./product.types";
 import { buildProductCardJoins } from "./sql/product-card.sql";
+import { getVariantDimensions, getVariantValues } from "@/cache/variant-filter.cache";
 
 export class ProductRepo {
   async getProductDetailBySlug(slug: string) {
@@ -501,8 +502,12 @@ export class ProductRepo {
     let dimensionBindings: Record<string, unknown> = {};
 
     if (withDimension) {
-      const dimensionFilters = this.extractDimensionFilters(qParams);
-      const dim = this.buildDimensionConditions(dimensionFilters);
+      const extracted = this.extractDimensionFilters(qParams);
+
+      const validated = await this.validateDimensionFilters(extracted);
+
+      const dim = this.buildDimensionConditions(validated);
+
       dimensionConditions = dim.conditions;
       dimensionBindings = dim.bindings;
     }
@@ -654,5 +659,30 @@ ${JSON.stringify({
   sortDir: qParams.sortDir
 })}
 `;
+  }
+
+  private async validateDimensionFilters(filters: { dimensionName: string; values: string[] }[]) {
+    const dimensionSet = new Set(await getVariantDimensions());
+    const valueMap = await getVariantValues();
+
+    const result: { dimensionName: string; values: string[] }[] = [];
+
+    for (const filter of filters) {
+      if (!dimensionSet.has(filter.dimensionName)) {
+        throw AppError.badRequest(`Invalid dimension filter: ${filter.dimensionName}`);
+      }
+
+      const allowedValues = new Set(valueMap[filter.dimensionName] ?? []);
+
+      const invalidValue = filter.values.find((v) => !allowedValues.has(v));
+
+      if (invalidValue) {
+        throw AppError.badRequest(`Invalid value '${invalidValue}' for dimension '${filter.dimensionName}'`);
+      }
+
+      result.push(filter);
+    }
+
+    return result;
   }
 }
