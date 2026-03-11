@@ -1,52 +1,55 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "@/libs/redis-bullmq";
-import { jobRegistry } from "./jobs";
+import { jobRegistry } from "./job-registry";
+import { registerJobs } from "./scheduler";
 
-console.log("Worker starting...");
+async function startWorker() {
+  console.log("Starting worker...");
 
-export const appWorker = new Worker(
-  "app-queue",
-  async (job) => {
-    const handler = jobRegistry.get(job.name);
+  await registerJobs();
 
-    if (!handler) {
-      throw new Error(`Unknown job: ${job.name}`);
+  const worker = new Worker(
+    "app-queue",
+    async (job) => {
+      const handler = jobRegistry.get(job.name);
+
+      if (!handler) {
+        throw new Error(`Unknown job: ${job.name}`);
+      }
+
+      console.log(`Processing job: ${job.name}`);
+
+      return handler(job.data);
+    },
+    {
+      connection: redisConnection,
+      concurrency: 1
     }
+  );
 
-    const start = Date.now();
+  worker.on("ready", () => {
+    console.log("🟢 Worker connected to Redis");
+  });
 
-    console.log(`Processing job: ${job.name}`);
+  worker.on("completed", (job) => {
+    console.log(`✅ Job ${job.name} completed`);
+  });
 
-    const result = await handler(job.data);
+  worker.on("failed", (job, err) => {
+    console.error(`❌ Job ${job?.name} failed`, err);
+  });
 
-    console.log(`Job ${job.name} finished in ${Date.now() - start}ms`);
+  process.on("SIGINT", async () => {
+    console.log("Worker shutting down...");
+    await worker.close();
+    process.exit(0);
+  });
 
-    return result;
-  },
-  {
-    connection: redisConnection,
-    concurrency: 1
-  }
-);
+  process.on("SIGTERM", async () => {
+    console.log("Worker shutting down...");
+    await worker.close();
+    process.exit(0);
+  });
+}
 
-appWorker.on("ready", () => {
-  console.log("🟢 Worker connected to Redis");
-});
-
-appWorker.on("completed", (job) => {
-  console.log(`✅ Job ${job.name} completed`);
-});
-
-appWorker.on("failed", (job, err) => {
-  console.error(`❌ Job ${job?.name} failed`, err);
-});
-
-appWorker.on("error", (err) => {
-  console.error("Worker error:", err);
-});
-
-process.on("SIGINT", async () => {
-  console.log("Worker shutting down...");
-  await appWorker.close();
-  process.exit(0);
-});
+startWorker();
