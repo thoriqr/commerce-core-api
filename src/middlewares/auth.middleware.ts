@@ -3,6 +3,7 @@ import { verifyAccessToken } from "@/shared/jwt/jwt.util";
 import { AppError } from "@/errors/app-error";
 import { setAuthCookies } from "@/utils/set-auth-cookie";
 import { AuthService } from "@/modules/auth/auth.service";
+import { AuthContext } from "@/modules/auth/auth.types";
 
 export function createRequireAuth(service: AuthService) {
   return async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -10,7 +11,7 @@ export function createRequireAuth(service: AuthService) {
       const accessToken = req.cookies?.access_token;
       const refreshToken = req.cookies?.refresh_token;
 
-      // Try access token
+      // 1️⃣ try access token
       const accessUser = tryVerifyAccessToken(accessToken);
 
       if (accessUser) {
@@ -18,7 +19,7 @@ export function createRequireAuth(service: AuthService) {
         return next();
       }
 
-      // Access missing or expired → try refresh
+      // 2️⃣ access expired → try refresh
       if (!refreshToken) {
         throw AppError.unauthorized("Session expired");
       }
@@ -34,35 +35,77 @@ export function createRequireAuth(service: AuthService) {
   };
 }
 
-function tryVerifyAccessToken(token?: string) {
+export function createOptionalAuth(service: AuthService) {
+  return async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+    try {
+      const accessToken = req.cookies?.access_token;
+      const refreshToken = req.cookies?.refresh_token;
+
+      const accessUser = tryVerifyAccessToken(accessToken);
+
+      if (accessUser) {
+        req.user = accessUser;
+        return next();
+      }
+
+      // guest request
+      if (!refreshToken) {
+        return next();
+      }
+
+      try {
+        const user = await attemptRefresh(service, refreshToken, res);
+        req.user = user;
+      } catch {
+        // guest
+      }
+
+      return next();
+    } catch (err) {
+      return next(err);
+    }
+  };
+}
+
+function tryVerifyAccessToken(token?: string): AuthContext | null {
   if (!token) return null;
 
   try {
     const payload = verifyAccessToken(token);
 
+    const id = Number(payload.sub);
+
+    if (!Number.isInteger(id)) {
+      throw AppError.unauthorized("Invalid token payload");
+    }
+
     return {
-      id: payload.sub,
+      id,
       role: payload.role
     };
   } catch (err: any) {
-    // expired token → allow refresh
     if (err?.name === "TokenExpiredError") {
       return null;
     }
 
-    // invalid token
     throw AppError.unauthorized("Invalid access token");
   }
 }
 
-async function attemptRefresh(service: AuthService, refreshToken: string, res: Response) {
+async function attemptRefresh(service: AuthService, refreshToken: string, res: Response): Promise<AuthContext> {
   try {
     const { user, accessToken, refreshToken: newRefresh } = await service.refresh(refreshToken);
 
     setAuthCookies(res, accessToken, newRefresh);
 
+    const id = Number(user.id);
+
+    if (!Number.isInteger(id)) {
+      throw AppError.unauthorized("Invalid user id");
+    }
+
     return {
-      id: user.id,
+      id,
       role: user.role
     };
   } catch {

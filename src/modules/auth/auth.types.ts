@@ -1,7 +1,7 @@
 import { UserProvider, UserRole } from "@/shared/user/user.types";
 
 export type AuthUser = {
-  id: string;
+  id: number;
   email: string;
   role: UserRole;
   displayName: string | null;
@@ -14,7 +14,7 @@ export type LoginResponse = {
 };
 
 export type AuthContext = {
-  id: string;
+  id: number;
   role: UserRole;
 };
 

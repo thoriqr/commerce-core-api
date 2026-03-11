@@ -628,7 +628,7 @@ export class AuthService {
 
   private buildAuthUser(user: UserDetailRow, providers: UserProvider[] = []): AuthUser {
     return {
-      id: String(user.id),
+      id: user.id,
       email: user.email,
       role: user.role,
       displayName: user.display_name,

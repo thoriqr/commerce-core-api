@@ -128,7 +128,7 @@ export class AuthController {
 
     const payload = setPasswordSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.setPassword(Number(req.user.id), payload.password);
+    const { accessToken, refreshToken } = await this.service.setPassword(req.user.id, payload.password);
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -144,7 +144,7 @@ export class AuthController {
 
     const payload = changePasswordSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.changePassword(Number(req.user.id), payload.currentPassword, payload.newPassword);
+    const { accessToken, refreshToken } = await this.service.changePassword(req.user.id, payload.currentPassword, payload.newPassword);
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -162,7 +162,7 @@ export class AuthController {
 
     const origin = getSafeOrigin(req);
 
-    await this.service.changeEmail(Number(req.user.id), payload.email, origin);
+    await this.service.changeEmail(req.user.id, payload.email, origin);
 
     sendSuccess(res, 200, {
       message: "Verification email sent"
@@ -210,7 +210,7 @@ export class AuthController {
 
     const origin = getSafeOrigin(req);
 
-    const user = await this.service.me(Number(req.user.id));
+    const user = await this.service.me(req.user.id);
 
     // Admin panel
     if (origin === env.ADMIN_ORIGIN) {
