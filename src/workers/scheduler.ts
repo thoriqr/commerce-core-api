@@ -18,6 +18,10 @@ export async function registerJobs() {
     {
       name: JOB_NAMES.CLEANUP_PENDING_VERIFICATIONS,
       pattern: "*/30 * * * *" // every 30 minutes
+    },
+    {
+      name: JOB_NAMES.CLEANUP_ABANDONED_GUEST_CARTS,
+      pattern: "0 */6 * * *" // every 6 hours
     }
   ];
 

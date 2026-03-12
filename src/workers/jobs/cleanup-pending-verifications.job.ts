@@ -8,16 +8,16 @@ export const cleanupPendingVerificationsJob = {
     const { rows } = await db.raw<{
       rows: { id: number }[];
     }>(`
-    DELETE FROM pending_verifications
-    WHERE id IN (
-      SELECT id
-      FROM pending_verifications
-      WHERE used_at IS NOT NULL
-         OR expires_at < NOW()
-      LIMIT 500
-    )
-    RETURNING id
-  `);
+      DELETE FROM pending_verifications
+      WHERE id IN (
+        SELECT id
+        FROM pending_verifications
+        WHERE used_at IS NULL
+          AND expires_at < NOW()
+        LIMIT 500
+      )
+      RETURNING id
+    `);
 
     console.log(`Cleanup pending verifications: deleted ${rows.length}`);
 
