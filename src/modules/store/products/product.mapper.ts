@@ -42,9 +42,7 @@ export function mapProductDetail(data: {
 
   const initialVariantId = firstVariant.variant_id;
 
-  // =========================
   // Variants
-  // =========================
   const variantsMap = new Map<number, any>();
 
   for (const row of variantRows) {
@@ -63,9 +61,7 @@ export function mapProductDetail(data: {
     }
   }
 
-  // =========================
   // Dimensions
-  // =========================
   const dimensionMap = new Map<string, any>();
 
   for (const row of dimensionRows) {
@@ -84,9 +80,7 @@ export function mapProductDetail(data: {
     });
   }
 
-  // =========================
   // Images
-  // =========================
   const images = imageRows.map((r) => {
     if (r.image_type === "product") {
       return {
@@ -112,7 +106,7 @@ export function mapProductDetail(data: {
     name: product.name,
     slug: product.slug,
     description: product.description,
-    status: product.status,
+    isAvailable: product.status === "ACTIVE",
     isVariant: product.is_variant,
     initialVariantId,
     category: {
@@ -192,7 +186,7 @@ export function mapProductFilters(rows: ProductFilterRow[]): ProductFilterDimens
 
   const result = Array.from(map.values());
 
-  // 🔥 SORT PER DIMENSION
+  // SORT PER DIMENSION
   for (const dimension of result) {
     if (isSizeDimension(dimension.name)) {
       dimension.values = sortSizeValues(dimension.values);

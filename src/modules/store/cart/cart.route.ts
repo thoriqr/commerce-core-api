@@ -10,18 +10,22 @@ import { createOptionalAuth } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
+const tm = new KnexTransactionManager(db);
+
 // Cart
 const cartRepo = new CartRepo();
-const cartService = new CartService(cartRepo);
+const cartService = new CartService(tm, cartRepo);
 const cartController = new CartController(cartService);
 
 // AUTH (for optionalAuth)
-const tm = new KnexTransactionManager(db);
 const authRepo = new AuthRepo();
 const authService = new AuthService(tm, authRepo);
 
 const optionalAuth = createOptionalAuth(authService);
 
 router.get("/", optionalAuth, cartController.getCart);
+router.post("/items", optionalAuth, cartController.addItem);
+router.patch("/items/:variantId", optionalAuth, cartController.updateItem);
+router.delete("/items/:variantId", optionalAuth, cartController.deleteItem);
 
 export default router;

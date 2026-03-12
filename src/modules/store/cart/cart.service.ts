@@ -3,6 +3,7 @@ import { CartRepo } from "./cart.repo";
 import { ResolveCartResult } from "./cart.types";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { MAX_CART_ITEM_QTY } from "./cart.constants";
+import { mapCartItems } from "./cart.mapper";
 
 export class CartService {
   constructor(
@@ -55,7 +56,9 @@ export class CartService {
   };
 
   getCart = async (cartId: string) => {
-    const items = await this.repo.findCartItems(cartId);
+    const rows = await this.repo.findCartItems(cartId);
+
+    const items = mapCartItems(rows);
 
     let totalItems = 0;
     let subtotal = 0;
@@ -88,8 +91,18 @@ export class CartService {
     const safeQty = this.clampQuantity(quantity);
 
     await this.repo.upsertCartItem(cartId, variantId, safeQty);
+  };
 
-    return this.getCart(cartId);
+  updateItem = async (cartId: string, variantId: number, quantity: number) => {
+    const updated = await this.repo.updateCartItemQuantity(cartId, variantId, quantity);
+
+    if (!updated && quantity > 0) {
+      throw AppError.notFound("Cart item not found");
+    }
+  };
+
+  deleteItem = async (cartId: string, variantId: number) => {
+    await this.repo.deleteCartItem(cartId, variantId);
   };
 
   private mergeGuestCart = async (guestCartId: string, userCartId: string) => {

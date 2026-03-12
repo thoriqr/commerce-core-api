@@ -1,3 +1,5 @@
+import { ProductStatus, ProductVariantStatus } from "@/shared/product/product.types";
+
 export type ProductCardRow = {
   id: number;
   name: string;
@@ -12,7 +14,7 @@ export type ProductBasicRow = {
   name: string;
   slug: string;
   description: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: ProductStatus;
   is_variant: boolean;
   category_name: string;
   category_slug_path: string;
@@ -51,8 +53,8 @@ export type VariantDetailRow = {
   currency: string;
   weight: number;
   weight_unit: string;
-  variant_status: "ACTIVE" | "INACTIVE" | "ARCHIVED";
-  product_status: "ACTIVE" | "INACTIVE";
+  variant_status: ProductVariantStatus;
+  product_status: ProductStatus;
   updated_at: Date;
 };
 

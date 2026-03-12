@@ -1,3 +1,5 @@
+import { ProductStatus } from "@/shared/product/product.types";
+
 export interface ProductCardDTO {
   id: number;
   name: string;
@@ -28,10 +30,9 @@ export interface ProductDetailDTO {
   name: string;
   slug: string;
   description: string;
-  status: "ACTIVE" | "INACTIVE";
   isVariant: boolean;
   initialVariantId: number;
-
+  isAvailable: boolean;
   category: {
     name: string;
     slugPath: string;

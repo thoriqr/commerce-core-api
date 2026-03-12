@@ -2,7 +2,7 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { logger } from "@/libs/logger";
 import { Knex } from "knex";
-import { CartRow } from "./cart.types";
+import { CartItemRow, CartRow } from "./cart.types";
 import { MAX_CART_ITEM_QTY } from "./cart.constants";
 
 export class CartRepo {
@@ -68,15 +68,7 @@ export class CartRepo {
     const executor = trx ?? db;
 
     const { rows } = await executor.raw<{
-      rows: {
-        variant_id: number;
-        product_id: number;
-        name: string;
-        slug: string;
-        price: number;
-        quantity: number;
-        image_key: string | null;
-      }[];
+      rows: CartItemRow[];
     }>(
       `
     SELECT
@@ -85,8 +77,12 @@ export class CartRepo {
       p.name,
       p.slug,
       v.price,
+      v.stock,
       ci.quantity,
-      im.image_key
+      COALESCE(vim.image_key, pim.image_key) AS image_key,
+      v.option_snapshot,
+      p.status AS product_status,
+      v.status AS variant_status
 
     FROM cart_items ci
 
@@ -96,16 +92,34 @@ export class CartRepo {
     JOIN products p
       ON p.id = v.product_id
 
-    LEFT JOIN product_images pi
-      ON pi.product_id = p.id
-     AND pi.sort_order = 1
-     AND pi.is_orphan = false
+    -- Variant image (priority)
+    LEFT JOIN (
+      SELECT DISTINCT ON (pvi.product_id)
+        pvi.product_id,
+        im.image_key
+      FROM product_variant_images pvi
+      JOIN images_metadata im
+        ON im.id = pvi.image_id
+      WHERE pvi.is_orphan = false
+      ORDER BY pvi.product_id, pvi.id ASC
+    ) vim
+      ON vim.product_id = p.id
 
-    LEFT JOIN images_metadata im
-      ON im.id = pi.image_id
+    -- Product fallback image
+    LEFT JOIN (
+      SELECT DISTINCT ON (pi.product_id)
+        pi.product_id,
+        im.image_key
+      FROM product_images pi
+      JOIN images_metadata im
+        ON im.id = pi.image_id
+      WHERE pi.is_orphan = false
+      ORDER BY pi.product_id, pi.sort_order ASC, pi.id ASC
+    ) pim
+      ON pim.product_id = p.id
 
     WHERE ci.cart_id = :cartId
-    `,
+        `,
       { cartId }
     );
 
@@ -171,25 +185,17 @@ export class CartRepo {
     const executor = trx ?? db;
 
     if (quantity <= 0) {
-      await executor.raw(
-        `
-      DELETE FROM cart_items
-      WHERE cart_id = :cartId
-        AND variant_id = :variantId
-      `,
-        { cartId, variantId }
-      );
-
+      await this.deleteCartItem(cartId, variantId, trx);
       return;
     }
 
-    await executor.raw(
+    const { rows } = await executor.raw<{ rows: { variant_id: number }[] }>(
       `
     UPDATE cart_items
-    SET quantity = :quantity,
-        updated_at = NOW()
+    SET quantity = :quantity
     WHERE cart_id = :cartId
       AND variant_id = :variantId
+    RETURNING variant_id
     `,
       {
         cartId,
@@ -197,6 +203,8 @@ export class CartRepo {
         quantity
       }
     );
+
+    return rows[0] ?? null;
   }
 
   async deleteCartItem(cartId: string, variantId: number, trx?: Knex.Transaction) {
