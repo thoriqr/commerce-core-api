@@ -4,6 +4,7 @@ import { AppError } from "@/errors/app-error";
 import { setAuthCookies } from "@/utils/set-auth-cookie";
 import { AuthService } from "@/modules/auth/auth.service";
 import { AuthContext } from "@/modules/auth/auth.types";
+import { TokenExpiredError } from "jsonwebtoken";
 
 export function createRequireAuth(service: AuthService) {
   return async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -11,7 +12,7 @@ export function createRequireAuth(service: AuthService) {
       const accessToken = req.cookies?.access_token;
       const refreshToken = req.cookies?.refresh_token;
 
-      // 1️⃣ try access token
+      // try access token
       const accessUser = tryVerifyAccessToken(accessToken);
 
       if (accessUser) {
@@ -19,7 +20,7 @@ export function createRequireAuth(service: AuthService) {
         return next();
       }
 
-      // 2️⃣ access expired → try refresh
+      // access expired → try refresh
       if (!refreshToken) {
         throw AppError.unauthorized("Session expired");
       }
@@ -84,7 +85,7 @@ function tryVerifyAccessToken(token?: string): AuthContext | null {
       role: payload.role
     };
   } catch (err: any) {
-    if (err?.name === "TokenExpiredError") {
+    if (err instanceof TokenExpiredError) {
       return null;
     }
 

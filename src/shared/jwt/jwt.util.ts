@@ -1,6 +1,5 @@
-import jwt, { JsonWebTokenError, SignOptions, TokenExpiredError } from "jsonwebtoken";
-import { env } from "@/config/env"; // sesuaikan path kamu
-import { AppError } from "@/errors/app-error";
+import jwt, { JsonWebTokenError, SignOptions } from "jsonwebtoken";
+import { env } from "@/config/env";
 import { AccessTokenPayload } from "@/modules/auth/auth.types";
 
 const ACCESS_TOKEN_EXPIRES_IN = "15m"; // bisa nanti ambil dari env

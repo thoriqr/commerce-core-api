@@ -13,7 +13,7 @@ export const logger = winston.createLogger({
   transports: [
     new winston.transports.Console({
       handleExceptions: true
-      // You can add more options here if desired
+      // add more options here
     })
   ]
 });
