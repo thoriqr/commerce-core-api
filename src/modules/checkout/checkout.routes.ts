@@ -26,14 +26,14 @@ const authService = new AuthService(tm, authRepo);
 
 const requireAuth = createRequireAuth(authService);
 
-router.post("/checkout-sessions", requireAuth, controller.createCheckoutSession);
+router.post("/", requireAuth, controller.createCheckoutSession);
 
-router.get("/checkout-sessions/:sessionId", requireAuth, controller.getCheckoutSession);
+router.get("/:sessionId", requireAuth, controller.getCheckoutSession);
 
-router.patch("/checkout-sessions/:sessionId/address", requireAuth, controller.setAddress);
+router.patch("/:sessionId/address", requireAuth, controller.setAddress);
 
-router.post("/checkout-sessions/:sessionId/shipping-cost", requireAuth, controller.calculateShippingCost);
+router.post("/:sessionId/shipping-cost", requireAuth, controller.calculateShippingCost);
 
-router.patch("/checkout-sessions/:sessionId/shipping-method", requireAuth, controller.setShippingMethod);
+router.patch("/:sessionId/shipping-method", requireAuth, controller.setShippingMethod);
 
 export default router;

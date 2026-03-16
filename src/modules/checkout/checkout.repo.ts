@@ -40,7 +40,11 @@ export class CheckoutRepo {
       expires_at,
       address_id,
       courier_code,
-      courier_service
+      courier_service,
+      courier_description,
+      courier_name,
+      shipping_cost,
+      shipping_etd
     FROM checkout_sessions
     WHERE id = :sessionId
     AND user_id = :userId
@@ -141,21 +145,36 @@ export class CheckoutRepo {
     return rows;
   };
 
-  setShippingMethod = async (sessionId: number, courierCode: string, courierService: string, shippingCost: number, trx: Knex.Transaction) => {
+  setShippingMethod = async (
+    sessionId: number,
+    courierCode: string,
+    courierName: string,
+    courierService: string,
+    courierDescription: string,
+    shippingCost: number,
+    shippingEtd: string,
+    trx: Knex.Transaction
+  ) => {
     await trx.raw(
       `
     UPDATE checkout_sessions
     SET
       courier_code = :courierCode,
+      courier_name = :courierName,
       courier_service = :courierService,
-      shipping_cost = :shippingCost
+      courier_description = :courierDescription,
+      shipping_cost = :shippingCost,
+      shipping_etd = :shippingEtd
     WHERE id = :sessionId
     `,
       {
         sessionId,
         courierCode,
+        courierName,
         courierService,
-        shippingCost
+        courierDescription,
+        shippingCost,
+        shippingEtd
       }
     );
   };

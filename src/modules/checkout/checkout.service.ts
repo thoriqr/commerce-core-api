@@ -50,14 +50,26 @@ export class CheckoutService {
 
     const totalWeight = mappedItems.reduce((acc, item) => acc + item.weight * item.quantity, 0);
 
+    const shippingCost = session.shipping_cost ?? 0;
+
+    const total = subtotal + shippingCost;
+
     return {
       sessionId: session.id,
       expiresAt: session.expires_at,
+
       subtotal,
+      shippingCost,
+      total,
+
       totalWeight,
+
       addressId: session.address_id,
       courierCode: session.courier_code,
+      courierName: session.courier_name,
       courierService: session.courier_service,
+      shippingEtd: session.shipping_etd,
+
       items: mappedItems
     };
   };
@@ -147,7 +159,16 @@ export class CheckoutService {
     }
 
     await this.tm.transaction(async (trx) => {
-      await this.repo.setShippingMethod(sessionId, courierCode, courierService, selected.cost, trx);
+      await this.repo.setShippingMethod(
+        sessionId,
+        courierCode,
+        selected.name,
+        courierService,
+        selected.description,
+        selected.cost,
+        selected.etd,
+        trx
+      );
     });
   };
 }

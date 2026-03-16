@@ -27,4 +27,8 @@ export type SessionRow = {
   address_id: number | null;
   courier_code: string | null;
   courier_service: string | null;
+  courier_description: string | null;
+  courier_name: string | null;
+  shipping_cost: number;
+  shipping_etd: string | null;
 };
