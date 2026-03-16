@@ -1,6 +1,7 @@
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { CreateAddressRepoInput, UpdateAddressRepoInput, UserAddressRow } from "./user.repo.types";
+import { UpdateProfileInput } from "./user.schema";
 
 export class UserRepo {
   getUserAddress = async (userId: number) => {
@@ -216,5 +217,21 @@ export class UserRepo {
     );
 
     return rows[0]?.count ?? 0;
+  };
+
+  updateProfile = async (userId: number, input: UpdateProfileInput) => {
+    const { displayName } = input;
+    await db.raw(
+      `
+    UPDATE users
+    SET display_name = :displayName,
+        updated_at = NOW()
+    WHERE id = :userId
+    `,
+      {
+        userId,
+        displayName
+      }
+    );
   };
 }

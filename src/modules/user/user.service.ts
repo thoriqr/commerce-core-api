@@ -1,6 +1,6 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { UserRepo } from "./user.repo";
-import { UpsertAddressInput } from "./user.schema";
+import { UpdateProfileInput, UpsertAddressInput } from "./user.schema";
 import { ShippingService } from "../shipping/shipping.service";
 import { AppError } from "@/errors/app-error";
 import { MAX_USER_ADDRESSES } from "./user.constants";
@@ -152,6 +152,10 @@ export class UserService {
         trx
       );
     });
+  };
+
+  updateProfile = async (userId: number, input: UpdateProfileInput) => {
+    await this.userRepo.updateProfile(userId, input);
   };
 
   setDefaultAddress = async (userId: number, addressId: number) => {

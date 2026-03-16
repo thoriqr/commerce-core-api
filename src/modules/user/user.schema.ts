@@ -13,8 +13,13 @@ export const upsertAddressSchema = z.object({
   isDefault: z.boolean().optional()
 });
 
+export const updateProfileSchema = z.object({
+  displayName: z.string().trim().min(2).max(120)
+});
+
 export const addressIdParamsSchema = z.object({
   addressId: z.coerce.number().int().positive()
 });
 
 export type UpsertAddressInput = z.infer<typeof upsertAddressSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

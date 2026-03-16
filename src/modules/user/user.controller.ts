@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { UserService } from "./user.service";
 import { sendSuccess } from "@/utils/send-success";
-import { addressIdParamsSchema, upsertAddressSchema } from "./user.schema";
+import { addressIdParamsSchema, updateProfileSchema, upsertAddressSchema } from "./user.schema";
 
 export class UserController {
   constructor(private readonly service: UserService) {}
@@ -41,6 +41,18 @@ export class UserController {
     await this.service.updateAddress(userId, params.addressId, payload);
 
     sendSuccess(res, 200, { message: "Address updated" });
+  };
+
+  updateProfile = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+
+    const input = updateProfileSchema.parse(req.body);
+
+    await this.service.updateProfile(userId, input);
+
+    sendSuccess(res, 200, {
+      message: "Profile updated"
+    });
   };
 
   setDefaultAddress = async (req: Request, res: Response) => {

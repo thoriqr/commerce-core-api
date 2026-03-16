@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { sendSuccess } from "@/utils/send-success";
 import { ShippingService } from "./shipping.service";
-import { getCitiesParamsSchema, getDistrictsParamsSchema } from "./shipping.schema";
+import { calculateDomesticCostSchema, getCitiesParamsSchema, getDistrictsParamsSchema } from "./shipping.schema";
 
 export class ShippingController {
   constructor(private readonly service: ShippingService) {}
@@ -28,5 +28,13 @@ export class ShippingController {
     const districts = await this.service.getDistricts(cityId);
 
     return sendSuccess(res, 200, { data: districts });
+  };
+
+  calculateDomesticCost = async (req: Request, res: Response) => {
+    const input = calculateDomesticCostSchema.parse(req.body);
+
+    const result = await this.service.calculateDomesticCost(input.destinationId, input.weight, input.courier);
+
+    sendSuccess(res, 200, { data: result });
   };
 }

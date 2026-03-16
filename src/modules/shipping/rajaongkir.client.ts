@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { AppError } from "@/errors/app-error";
-import { City, District, Province } from "./shipping.types";
+import { City, District, Province, ShippingCost } from "./shipping.types";
 import { RAJAONGKIR_BASE_URL } from "./shipping.constants";
 
 export class RajaOngkirClient {
@@ -17,7 +17,11 @@ export class RajaOngkirClient {
       throw AppError.serviceUnavailable("Shipping service unavailable");
     }
 
-    const json = (await res.json()) as { data: Province[] };
+    const json = (await res.json()) as { data: Province[] | null };
+
+    if (!json.data) {
+      return [];
+    }
 
     return json.data;
   }
@@ -35,7 +39,11 @@ export class RajaOngkirClient {
       throw AppError.serviceUnavailable("Shipping service unavailable");
     }
 
-    const json = (await res.json()) as { data: City[] };
+    const json = (await res.json()) as { data: City[] | null };
+
+    if (!json.data) {
+      return [];
+    }
 
     return json.data;
   }
@@ -53,7 +61,45 @@ export class RajaOngkirClient {
       throw AppError.serviceUnavailable("Shipping service unavailable");
     }
 
-    const json = (await res.json()) as { data: District[] };
+    const json = (await res.json()) as { data: District[] | null };
+
+    if (!json.data) {
+      return [];
+    }
+
+    return json.data;
+  }
+
+  async calculateDomesticCost(input: { origin: number; destination: number; weight: number; courier: string }): Promise<ShippingCost[]> {
+    const body = new URLSearchParams({
+      origin: String(input.origin),
+      destination: String(input.destination),
+      weight: String(input.weight),
+      courier: input.courier,
+      price: "lowest"
+    });
+
+    const res = await fetch(`${RAJAONGKIR_BASE_URL}/calculate/domestic-cost`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        key: env.RAJAONGKIR_API_KEY,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body
+    });
+
+    if (!res.ok) {
+      throw AppError.serviceUnavailable("Shipping cost service unavailable");
+    }
+
+    const json = (await res.json()) as {
+      data: ShippingCost[] | null;
+    };
+
+    if (!json.data) {
+      return [];
+    }
 
     return json.data;
   }

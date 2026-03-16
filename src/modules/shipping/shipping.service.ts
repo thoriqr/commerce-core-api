@@ -1,7 +1,7 @@
 import { redis } from "@/libs/redis";
 import { RajaOngkirClient } from "./rajaongkir.client";
-import { SHIPPING_CACHE_KEY, SHIPPING_CACHE_TTL } from "./shipping.constants";
-import { City, District, Province } from "./shipping.types";
+import { SHIPPING_CACHE_KEY, SHIPPING_CACHE_TTL, SHIPPING_ORIGIN_CITY_ID } from "./shipping.constants";
+import { City, District, Province, ShippingCost } from "./shipping.types";
 
 export class ShippingService {
   constructor(private readonly client: RajaOngkirClient) {}
@@ -73,5 +73,34 @@ export class ShippingService {
     });
 
     return districts;
+  }
+
+  async calculateDomesticCost(destination: number, weight: number, courier: string): Promise<ShippingCost[]> {
+    const origin = SHIPPING_ORIGIN_CITY_ID;
+
+    const cacheKey = SHIPPING_CACHE_KEY.COST(origin, destination, weight, courier);
+
+    const raw = await redis.get(cacheKey);
+
+    if (raw) {
+      try {
+        return JSON.parse(raw) as ShippingCost[];
+      } catch {
+        await redis.del(cacheKey);
+      }
+    }
+
+    const result = await this.client.calculateDomesticCost({
+      origin,
+      destination,
+      weight,
+      courier
+    });
+
+    await redis.set(cacheKey, JSON.stringify(result), {
+      EX: SHIPPING_CACHE_TTL.COST
+    });
+
+    return result;
   }
 }

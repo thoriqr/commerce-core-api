@@ -26,6 +26,8 @@ const authService = new AuthService(tm, authRepo);
 
 const requireAuth = createRequireAuth(authService);
 
+router.put("/profile", requireAuth, controller.updateProfile);
+
 router.get("/addresses", requireAuth, controller.getAddresses);
 
 router.get("/addresses/:addressId", requireAuth, controller.getAddressDetail);
