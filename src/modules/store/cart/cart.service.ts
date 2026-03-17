@@ -4,11 +4,14 @@ import { ResolveCartResult } from "./cart.types";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { MAX_CART_ITEM_QTY } from "./cart.constants";
 import { mapCartItems } from "./cart.mapper";
+import { ProductImageService } from "@/modules/product/product-image.service";
+import { findBestImage } from "@/shared/variant-image/resolver";
 
 export class CartService {
   constructor(
     private tm: TransactionManager,
-    private readonly repo: CartRepo
+    private readonly repo: CartRepo,
+    private readonly productImageService: ProductImageService
   ) {}
 
   resolveCart = async (cartIdFromCookie: string | null, userId: number | null): Promise<ResolveCartResult> => {
@@ -58,8 +61,22 @@ export class CartService {
   getCart = async (cartId: string) => {
     const rows = await this.repo.findCartItems(cartId);
 
-    const items = mapCartItems(rows);
+    if (rows.length === 0) {
+      return {
+        items: [],
+        summary: { totalItems: 0, subtotal: 0 }
+      };
+    }
 
+    const productIds = [...new Set(rows.map((r) => r.product_id))];
+
+    // 2. image map (cache + DB)
+    const imageMap = await this.productImageService.getVariantImagesBulk(productIds);
+
+    // 3. map items + resolve image
+    const items = mapCartItems(rows, imageMap);
+
+    // 4. summary
     let totalItems = 0;
     let subtotal = 0;
 

@@ -7,14 +7,20 @@ import { db } from "@/infra/db/knex";
 import { AuthRepo } from "@/modules/auth/auth.repo";
 import { AuthService } from "@/modules/auth/auth.service";
 import { createOptionalAuth } from "@/middlewares/auth.middleware";
+import { ProductImageRepo } from "@/modules/product/product-image.repo";
+import { ProductImageService } from "@/modules/product/product-image.service";
 
 const router = Router();
 
 const tm = new KnexTransactionManager(db);
 
+// variant image
+const imageRepo = new ProductImageRepo();
+const imageService = new ProductImageService(imageRepo);
+
 // Cart
 const cartRepo = new CartRepo();
-const cartService = new CartService(tm, cartRepo);
+const cartService = new CartService(tm, cartRepo, imageService);
 const cartController = new CartController(cartService);
 
 // AUTH (for optionalAuth)

@@ -4,7 +4,7 @@ import { AppError } from "@/errors/app-error";
 import { decodeCursor, encodeCursor } from "@/utils/pagination-cursor";
 import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, ProductFilterRow, VariantDetailRow, VariantRow } from "./product.types";
 import { buildProductCardJoins } from "./sql/product-card.sql";
-import { getVariantDimensions, getVariantValues } from "@/cache/variant-filter.cache";
+import { getVariantDimensions, getVariantValues } from "@/shared/cache/variant-filter/variant-filter.cache";
 
 export class ProductRepo {
   async getProductDetailBySlug(slug: string) {

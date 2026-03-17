@@ -115,6 +115,8 @@ export class ProductService {
 
     // invalidate variant whitelist cache AFTER transaction commit
     await this.invalidateVariantCache();
+    // invalidate variant images for storefront
+    await this.invalidateVariantImageCache(id);
   };
 
   updateStatus = async (input: UpdateProductStatusSchema) => {
@@ -299,5 +301,9 @@ export class ProductService {
 
   private async invalidateVariantCache() {
     await redis.del([REDIS_KEYS.VARIANT_DIMENSIONS, REDIS_KEYS.VARIANT_VALUES]);
+  }
+
+  private async invalidateVariantImageCache(productId: number) {
+    await redis.del(REDIS_KEYS.VARIANT_IMAGES(productId));
   }
 }

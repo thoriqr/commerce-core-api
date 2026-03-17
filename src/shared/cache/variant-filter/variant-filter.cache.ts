@@ -1,13 +1,18 @@
 import { db } from "@/infra/db/knex";
 import { redis } from "@/libs/redis";
 import { REDIS_KEYS } from "@/shared/cache/redis-keys";
+import { REDIS_TTL } from "@/shared/cache/redis.ttl";
 
 export async function getVariantDimensions(): Promise<string[]> {
   const key = REDIS_KEYS.VARIANT_DIMENSIONS;
   const cached = await redis.get(key);
 
   if (cached) {
-    return JSON.parse(cached);
+    try {
+      return JSON.parse(cached);
+    } catch {
+      await redis.del(key);
+    }
   }
 
   const { rows } = await db.raw<{ rows: { normalized_name: string }[] }>(`
@@ -17,7 +22,7 @@ export async function getVariantDimensions(): Promise<string[]> {
 
   const dimensions = rows.map((r) => r.normalized_name);
 
-  await redis.set(key, JSON.stringify(dimensions), { EX: 3600 });
+  await redis.set(key, JSON.stringify(dimensions), { EX: REDIS_TTL.VARIANT_DIMENSIONS });
 
   return dimensions;
 }
@@ -27,7 +32,11 @@ export async function getVariantValues(): Promise<Record<string, string[]>> {
   const cached = await redis.get(key);
 
   if (cached) {
-    return JSON.parse(cached);
+    try {
+      return JSON.parse(cached);
+    } catch {
+      await redis.del(key);
+    }
   }
 
   const { rows } = await db.raw<{
@@ -48,7 +57,7 @@ export async function getVariantValues(): Promise<Record<string, string[]>> {
     map[normalized_name]!.push(normalized_value);
   }
 
-  await redis.set(key, JSON.stringify(map), { EX: 3600 });
+  await redis.set(key, JSON.stringify(map), { EX: REDIS_TTL.VARIANT_VALUES });
 
   return map;
 }

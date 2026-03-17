@@ -79,7 +79,6 @@ export class CartRepo {
       v.price,
       v.stock,
       ci.quantity,
-      COALESCE(vim.image_key, pim.image_key) AS image_key,
       v.option_snapshot,
       p.status AS product_status,
       v.status AS variant_status
@@ -92,34 +91,8 @@ export class CartRepo {
     JOIN products p
       ON p.id = v.product_id
 
-    -- Variant image (priority)
-    LEFT JOIN (
-      SELECT DISTINCT ON (pvi.product_id)
-        pvi.product_id,
-        im.image_key
-      FROM product_variant_images pvi
-      JOIN images_metadata im
-        ON im.id = pvi.image_id
-      WHERE pvi.is_orphan = false
-      ORDER BY pvi.product_id, pvi.id ASC
-    ) vim
-      ON vim.product_id = p.id
-
-    -- Product fallback image
-    LEFT JOIN (
-      SELECT DISTINCT ON (pi.product_id)
-        pi.product_id,
-        im.image_key
-      FROM product_images pi
-      JOIN images_metadata im
-        ON im.id = pi.image_id
-      WHERE pi.is_orphan = false
-      ORDER BY pi.product_id, pi.sort_order ASC, pi.id ASC
-    ) pim
-      ON pim.product_id = p.id
-
     WHERE ci.cart_id = :cartId
-        `,
+    `,
       { cartId }
     );
 

@@ -2,13 +2,15 @@ import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CheckoutRepo } from "./checkout.repo";
 import { ShippingService } from "../shipping/shipping.service";
 import { AppError } from "@/errors/app-error";
-import { mapSessionItem } from "./checkout.mapper";
+import { mapCheckoutSession, mapSessionItem } from "./checkout.mapper";
+import { ProductImageService } from "../product/product-image.service";
 
 export class CheckoutService {
   constructor(
     private tm: TransactionManager,
     private readonly repo: CheckoutRepo,
-    private readonly shippingService: ShippingService
+    private readonly shippingService: ShippingService,
+    private readonly productImageService: ProductImageService
   ) {}
 
   createCheckoutSession = async (userId: number) => {
@@ -21,9 +23,14 @@ export class CheckoutService {
         throw AppError.badRequest("Cart is empty");
       }
 
+      // default address
+      const defaultAddress = await this.repo.getDefaultAddress(userId, trx);
+
+      const addressId = defaultAddress ? defaultAddress.id : null;
+
       await this.repo.deleteActiveSessions(userId, trx);
 
-      const sessionId = await this.repo.createCheckoutSession(userId, expiresAt, trx);
+      const sessionId = await this.repo.createCheckoutSession(userId, expiresAt, addressId, trx);
 
       await this.repo.insertCheckoutSessionItems(sessionId, items, trx);
 
@@ -44,34 +51,14 @@ export class CheckoutService {
 
     const items = await this.repo.getCheckoutSessionItems(sessionId);
 
-    const mappedItems = mapSessionItem(items);
+    const productIds = [...new Set(items.map((r) => r.product_id))];
 
-    const subtotal = mappedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    // image map (cache + DB)
+    const imageMap = await this.productImageService.getVariantImagesBulk(productIds);
 
-    const totalWeight = mappedItems.reduce((acc, item) => acc + item.weight * item.quantity, 0);
+    const dto = mapCheckoutSession(session, items, imageMap);
 
-    const shippingCost = session.shipping_cost ?? 0;
-
-    const total = subtotal + shippingCost;
-
-    return {
-      sessionId: session.id,
-      expiresAt: session.expires_at,
-
-      subtotal,
-      shippingCost,
-      total,
-
-      totalWeight,
-
-      addressId: session.address_id,
-      courierCode: session.courier_code,
-      courierName: session.courier_name,
-      courierService: session.courier_service,
-      shippingEtd: session.shipping_etd,
-
-      items: mappedItems
-    };
+    return dto;
   };
 
   setCheckoutAddress = async (userId: number, sessionId: number, addressId: number) => {

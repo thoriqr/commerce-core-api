@@ -1,4 +1,5 @@
 import { ProductStatus, ProductVariantStatus } from "@/shared/product/product.types";
+import { OptionSnapshot } from "@/shared/variant-image/types";
 
 export type ResolveCartResult = {
   cartId: string;
@@ -10,8 +11,6 @@ export type CartRow = {
   user_id: number | null;
 };
 
-export type OptionSnapshot = { dimension: string; value: string };
-
 export type CartItemRow = {
   variant_id: number;
   product_id: number;
@@ -20,7 +19,6 @@ export type CartItemRow = {
   price: number;
   stock: number;
   quantity: number;
-  image_key: string | null;
   option_snapshot: OptionSnapshot[] | null;
   product_status: ProductStatus;
   variant_status: ProductVariantStatus;

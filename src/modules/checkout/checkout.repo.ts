@@ -36,18 +36,30 @@ export class CheckoutRepo {
     }>(
       `
     SELECT
-      id,
-      expires_at,
-      address_id,
-      courier_code,
-      courier_service,
-      courier_description,
-      courier_name,
-      shipping_cost,
-      shipping_etd
-    FROM checkout_sessions
-    WHERE id = :sessionId
-    AND user_id = :userId
+      cs.id,
+      cs.expires_at,
+      cs.address_id,
+
+      cs.courier_code,
+      cs.courier_service,
+      cs.courier_description,
+      cs.courier_name,
+      cs.shipping_cost,
+      cs.shipping_etd,
+
+      ua.recipient_name,
+      ua.phone,
+      ua.address_line,
+      ua.province_name,
+      ua.city_name,
+      ua.district_name,
+      ua.postal_code
+
+    FROM checkout_sessions cs
+    LEFT JOIN user_addresses ua ON ua.id = cs.address_id
+
+    WHERE cs.id = :sessionId
+    AND cs.user_id = :userId
     `,
       { sessionId, userId }
     );
@@ -69,9 +81,12 @@ export class CheckoutRepo {
 
       pv.stock,
       pv.status AS variant_status,
-      p.status AS product_status,
+      pv.option_snapshot,
+      pv.product_id,
 
+      p.status AS product_status,
       p.slug
+
     FROM checkout_session_items csi
     JOIN product_variants pv ON pv.id = csi.variant_id
     JOIN products p ON p.id = pv.product_id
@@ -81,6 +96,23 @@ export class CheckoutRepo {
     );
 
     return rows;
+  };
+
+  getDefaultAddress = async (userId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{
+      rows: Array<{ id: number }>;
+    }>(
+      `
+    SELECT id
+    FROM user_addresses
+    WHERE user_id = :userId
+      AND is_default = true
+    LIMIT 1
+    `,
+      { userId }
+    );
+
+    return rows[0] ?? null;
   };
 
   getUserAddress = async (userId: number, addressId: number) => {
@@ -215,14 +247,18 @@ export class CheckoutRepo {
     );
   };
 
-  createCheckoutSession = async (userId: number, expiresAt: Date, trx: Knex.Transaction) => {
+  createCheckoutSession = async (userId: number, expiresAt: Date, addressId: number | null, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: Array<{ id: number }> }>(
       `
-    INSERT INTO checkout_sessions (user_id, expires_at)
-    VALUES (:userId, :expiresAt)
+    INSERT INTO checkout_sessions (user_id, expires_at, address_id)
+    VALUES (:userId, :expiresAt, :addressId)
     RETURNING id
     `,
-      { userId, expiresAt }
+      {
+        userId,
+        expiresAt,
+        addressId
+      }
     );
 
     const row = rows[0];

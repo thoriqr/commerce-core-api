@@ -9,16 +9,22 @@ import { ShippingService } from "../shipping/shipping.service";
 import { CheckoutRepo } from "./checkout.repo";
 import { CheckoutService } from "./checkout.service";
 import { CheckoutController } from "./checkout.controller";
+import { ProductImageRepo } from "../product/product-image.repo";
+import { ProductImageService } from "../product/product-image.service";
 
 const router = Router();
 
 const tm = new KnexTransactionManager(db);
 
+// variant image
+const imageRepo = new ProductImageRepo();
+const imageService = new ProductImageService(imageRepo);
+
 const rajaOngkirClient = new RajaOngkirClient();
 const shippingService = new ShippingService(rajaOngkirClient);
 
 const checkoutRepo = new CheckoutRepo();
-const checkoutService = new CheckoutService(tm, checkoutRepo, shippingService);
+const checkoutService = new CheckoutService(tm, checkoutRepo, shippingService, imageService);
 const controller = new CheckoutController(checkoutService);
 
 const authRepo = new AuthRepo();
