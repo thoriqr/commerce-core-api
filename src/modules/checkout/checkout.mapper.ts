@@ -38,13 +38,18 @@ export function mapSessionItem(
     number,
     {
       images: ImageSignature[];
-      fallback: string | null;
+      fallback: {
+        imageId: number;
+        imageKey: string;
+      } | null;
     }
   >
 ) {
   return rows.map((r) => {
     const productImages = imageMap.get(r.product_id);
-    const imageKey = productImages ? (findBestImage(productImages.images, r.option_snapshot) ?? productImages.fallback) : null;
+    const best = productImages ? (findBestImage(productImages.images, r.option_snapshot) ?? productImages.fallback) : null;
+
+    const imageKey = best?.imageKey ?? null;
 
     const variantActive = r.variant_status === "ACTIVE";
     const productActive = r.product_status === "ACTIVE";
@@ -94,7 +99,10 @@ export function mapCheckoutSession(
     number,
     {
       images: ImageSignature[];
-      fallback: string | null;
+      fallback: {
+        imageId: number;
+        imageKey: string;
+      } | null;
     }
   >
 ): CheckoutSessionDTO {

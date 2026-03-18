@@ -15,14 +15,15 @@ export class ProductImageService {
       number,
       {
         images: ImageSignature[];
-        fallback: string | null;
+        fallback: {
+          imageId: number;
+          imageKey: string;
+        } | null;
       }
     >();
 
-    // 1. BUILD KEYS
     const keys = uniqueIds.map((id) => REDIS_KEYS.VARIANT_IMAGES(id));
 
-    // 2. MGET (1 roundtrip)
     const cacheResults = await redis.mGet(keys);
 
     const missingIds: number[] = [];
@@ -32,8 +33,15 @@ export class ProductImageService {
 
       if (cached) {
         try {
-          result.set(productId, JSON.parse(cached));
+          const parsed = JSON.parse(cached) as {
+            images: ImageSignature[];
+            fallback: { imageId: number; imageKey: string } | null;
+          };
+
+          result.set(productId, parsed);
         } catch {
+          // optional cleanup
+          redis.del(REDIS_KEYS.VARIANT_IMAGES(productId));
           missingIds.push(productId);
         }
       } else {
@@ -41,16 +49,22 @@ export class ProductImageService {
       }
     });
 
-    // 3. FETCH DB (MISS ONLY)
     if (missingIds.length > 0) {
       const imageRows = await this.repo.getProductImagesWithSignatures(missingIds);
       const fallbackRows = await this.repo.getFallbackImages(missingIds);
 
       const imageMap = buildImageMap(imageRows);
 
-      const fallbackMap = new Map(fallbackRows.map((r) => [r.product_id, r.image_key]));
+      const fallbackMap = new Map(
+        fallbackRows.map((r) => [
+          r.product_id,
+          {
+            imageId: r.image_id,
+            imageKey: r.image_key
+          }
+        ])
+      );
 
-      // 4. STORE CACHE (PARALLEL)
       await Promise.all(
         missingIds.map(async (productId) => {
           const data = {

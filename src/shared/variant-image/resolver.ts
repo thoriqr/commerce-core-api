@@ -3,6 +3,7 @@ import { ImageSignature, OptionSnapshot } from "./types";
 export function buildImageMap(
   rows: {
     product_id: number;
+    image_id: number;
     image_key: string;
     dimension_key: string;
     value_key: string;
@@ -21,6 +22,7 @@ export function buildImageMap(
 
     if (!img) {
       img = {
+        imageId: r.image_id,
         imageKey: r.image_key,
         signatures: {}
       };
@@ -41,12 +43,12 @@ export function normalizeSnapshot(snapshot: OptionSnapshot[]) {
 }
 
 // FIND BEST IMAGE (CORE)
-export function findBestImage(images: ImageSignature[], snapshot: OptionSnapshot[] | null): string | null {
+export function findBestImage(images: ImageSignature[], snapshot: OptionSnapshot[] | null): { imageId: number; imageKey: string } | null {
   if (!images || images.length === 0) return null;
 
   const normalized = normalizeSnapshot(snapshot ?? []);
 
-  let bestMatch: { score: number; imageKey: string } | null = null;
+  let bestMatch: { score: number; image: ImageSignature } | null = null;
 
   for (const img of images) {
     let match = true;
@@ -61,15 +63,19 @@ export function findBestImage(images: ImageSignature[], snapshot: OptionSnapshot
     }
 
     if (match) {
-      // pilih yang paling spesifik (signature paling banyak match)
       if (!bestMatch || score > bestMatch.score) {
         bestMatch = {
           score,
-          imageKey: img.imageKey
+          image: img
         };
       }
     }
   }
 
-  return bestMatch?.imageKey ?? null;
+  if (!bestMatch) return null;
+
+  return {
+    imageId: bestMatch.image.imageId,
+    imageKey: bestMatch.image.imageKey
+  };
 }

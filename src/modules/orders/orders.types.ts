@@ -1,10 +1,14 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
 import { ProductStatus, ProductVariantStatus } from "../admin/products/product.types";
 
+export type UpdateResult = {
+  rowCount: number;
+};
+
 export type CheckoutSessionRow = {
   id: number;
   user_id: number;
-  address_id: number;
+  address_id: number | null;
   courier_code: string | null;
   courier_service: string | null;
   courier_description: string | null;
@@ -14,9 +18,18 @@ export type CheckoutSessionRow = {
   total_weight: number | null;
   total: number | null;
   expires_at: Date;
+  converted_at: Date | null;
+  revoked_at: Date | null;
   created_at: Date;
   updated_at: Date | null;
-  courier_name: number | null;
+  courier_name: string | null;
+  recipient_name: string;
+  phone: string;
+  address_line: string;
+  province_name: string;
+  city_name: string;
+  district_name: string | null;
+  postal_code: string | null;
 };
 
 export type CheckoutSessionItemRow = {
@@ -31,5 +44,55 @@ export type CheckoutSessionItemRow = {
   product_status: ProductStatus;
   slug: string;
   option_snapshot: OptionSnapshot[] | null;
+};
+
+export type CreateOrderInput = {
+  userId: number;
+  subtotal: number;
+  shippingCost: number;
+  total: number;
+
+  recipientName: string;
+  phone: string;
+  addressLine: string;
+  provinceName: string;
+  cityName: string;
+  districtName: string | null;
+  postalCode: string | null;
+
+  note: null;
+
+  expiresAt: Date;
+};
+
+export type ShipmentInput = {
+  orderId: number;
+  courierCode: string;
+  courierName: string;
+  courierService: string;
+  courierDescription: string | null;
+  shippingEtd: string;
+};
+
+export type InsertOrderItemInput = CheckoutSessionItemRow & {
+  image_id: number | null;
   image_key: string | null;
+};
+
+export type ReadyCheckoutSession = CheckoutSessionRow & {
+  // totals
+  subtotal: number;
+  shipping_cost: number;
+  total: number;
+
+  // shipping
+  shipping_etd: string;
+  courier_code: string;
+  courier_name: string;
+  courier_service: string;
+
+  // address
+  recipient_name: string;
+  phone: string;
+  address_line: string;
 };

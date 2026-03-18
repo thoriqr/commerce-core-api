@@ -1,14 +1,32 @@
 import { Knex } from "knex";
-import { CheckoutSessionItemRow, CheckoutSessionRow } from "./orders.types";
+import { CheckoutSessionItemRow, CheckoutSessionRow, CreateOrderInput, InsertOrderItemInput, ShipmentInput, UpdateResult } from "./orders.types";
+import { logger } from "@/libs/logger";
+import { AppError } from "@/errors/app-error";
 
 export class OrdersRepo {
   getCheckoutSessionForUpdate = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: CheckoutSessionRow[] }>(
       `
-    SELECT *
-    FROM checkout_sessions
-    WHERE id = :sessionId
-    AND user_id = :userId
+    SELECT
+      cs.*,
+
+      ua.recipient_name,
+      ua.phone,
+      ua.address_line,
+      ua.province_name,
+      ua.city_name,
+      ua.district_name,
+      ua.postal_code
+
+    FROM checkout_sessions cs
+    LEFT JOIN user_addresses ua
+      ON ua.id = cs.address_id
+
+    WHERE cs.id = :sessionId
+    AND cs.user_id = :userId
+    AND cs.converted_at IS NULL
+    AND cs.revoked_at IS NULL
+
     FOR UPDATE
     `,
       { sessionId, userId }
@@ -17,7 +35,7 @@ export class OrdersRepo {
     return rows[0] ?? null;
   };
 
-  getCheckoutItemsForUpdate = async (sessionId: number, trx: Knex.Transaction) => {
+  getCheckoutSessionItemsForUpdate = async (sessionId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: CheckoutSessionItemRow[] }>(
       `
     SELECT
@@ -62,7 +80,8 @@ export class OrdersRepo {
       city_name,
       district_name,
       postal_code,
-      note
+      note,
+      expires_at
     )
     VALUES (
       :userId,
@@ -76,30 +95,44 @@ export class OrdersRepo {
       :cityName,
       :districtName,
       :postalCode,
-      :note
+      :note,
+      :expiresAt
     )
     RETURNING id
     `,
       input
     );
 
-    return rows[0].id;
+    const row = rows[0];
+
+    if (!row) {
+      logger.error("insert orders returning no rows");
+      throw AppError.internal();
+    }
+
+    return row.id;
   };
 
-  insertOrderItems = async (orderId: number, items: CheckoutSessionItemRow[], trx: Knex.Transaction) => {
+  insertOrderItems = async (orderId: number, items: InsertOrderItemInput[], trx: Knex.Transaction) => {
     const values = items
-      .map((_, i) => `(:orderId, :variantId${i}, :productName${i}, :price${i}, :qty${i}, :imageKey${i}, :optionSnapshot${i})`)
+      .map(
+        (_, i) =>
+          `(:orderId, :variantId${i}, :productId${i}, :productName${i}, :price${i}, :qty${i}, :weight${i}, :imageId${i}, :imageKey${i}, :optionSnapshot${i})`
+      )
       .join(",");
 
     const bindings: any = { orderId };
 
     items.forEach((item, i) => {
       bindings[`variantId${i}`] = item.variant_id;
+      bindings[`productId${i}`] = item.product_id;
       bindings[`productName${i}`] = item.product_name;
       bindings[`price${i}`] = item.price;
       bindings[`qty${i}`] = item.quantity;
+      bindings[`weight${i}`] = item.weight;
 
-      bindings[`imageKey${i}`] = item.image_key ?? null;
+      bindings[`imageId${i}`] = item.image_id;
+      bindings[`imageKey${i}`] = item.image_key;
 
       bindings[`optionSnapshot${i}`] = JSON.stringify(item.option_snapshot ?? []);
     });
@@ -109,9 +142,12 @@ export class OrdersRepo {
     INSERT INTO order_items (
       order_id,
       variant_id,
+      product_id,
       product_name,
       price,
       quantity,
+      weight,
+      image_id,
       image_key,
       option_snapshot
     )
@@ -129,16 +165,16 @@ export class OrdersRepo {
       courier_code,
       courier_name,
       courier_service,
-      shipping_cost,
-      etd
+      courier_description,
+      shipping_etd
     )
     VALUES (
       :orderId,
       :courierCode,
       :courierName,
       :courierService,
-      :shippingCost,
-      :etd
+      :courierDescription,
+      :shippingEtd
     )
     `,
       input
@@ -147,28 +183,41 @@ export class OrdersRepo {
 
   reduceStock = async (items: CheckoutSessionItemRow[], trx: Knex.Transaction) => {
     for (const item of items) {
-      await trx.raw(
+      const result = await trx.raw<UpdateResult>(
         `
       UPDATE product_variants
       SET stock = stock - :qty
       WHERE id = :variantId
+      AND stock >= :qty
       `,
         {
           variantId: item.variant_id,
           qty: item.quantity
         }
       );
+
+      if (result.rowCount === 0) {
+        throw AppError.badRequest("Stock changed, please retry checkout");
+      }
     }
   };
 
-  deleteCheckoutSession = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
-    await trx.raw(
+  markSessionConverted = async (sessionId: number, trx: Knex.Transaction) => {
+    const { rowCount } = await trx.raw(
       `
-    DELETE FROM checkout_sessions
-    WHERE id = :sessionId
-    AND user_id = :userId
-    `,
-      { sessionId, userId }
+    UPDATE checkout_sessions
+      SET 
+      converted_at = NOW(),
+      updated_at = NOW()
+      WHERE id = :sessionId
+      AND converted_at IS NULL
+      AND revoked_at IS NULL
+  `,
+      { sessionId }
     );
+
+    if (rowCount === 0) {
+      throw AppError.badRequest("Session already used or invalid");
+    }
   };
 }

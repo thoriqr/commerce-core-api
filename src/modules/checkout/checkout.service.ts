@@ -2,8 +2,9 @@ import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CheckoutRepo } from "./checkout.repo";
 import { ShippingService } from "../shipping/shipping.service";
 import { AppError } from "@/errors/app-error";
-import { mapCheckoutSession, mapSessionItem } from "./checkout.mapper";
+import { mapCheckoutSession } from "./checkout.mapper";
 import { ProductImageService } from "../product/product-image.service";
+import { assertSessionActive } from "./checkout.util";
 
 export class CheckoutService {
   constructor(
@@ -17,21 +18,32 @@ export class CheckoutService {
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
     return this.tm.transaction(async (trx) => {
+      // 1. revoke expired → IMPORTANT (state fix)
+      await this.repo.revokeExpiredSessions(userId, trx);
+
+      // 2. cart
       const items = await this.repo.getCartItems(userId, trx);
 
       if (items.length === 0) {
         throw AppError.badRequest("Cart is empty");
       }
 
-      // default address
-      const defaultAddress = await this.repo.getDefaultAddress(userId, trx);
+      // 3. existing active session
+      const existing = await this.repo.getActiveSession(userId, trx);
 
+      if (existing) {
+        await this.repo.replaceSessionItems(existing.id, items, trx);
+        return { sessionId: existing.id };
+      }
+
+      // 4. default address
+      const defaultAddress = await this.repo.getDefaultAddress(userId, trx);
       const addressId = defaultAddress ? defaultAddress.id : null;
 
-      await this.repo.deleteActiveSessions(userId, trx);
-
+      // 5. create session (NOW SAFE)
       const sessionId = await this.repo.createCheckoutSession(userId, expiresAt, addressId, trx);
 
+      // 6. insert items
       await this.repo.insertCheckoutSessionItems(sessionId, items, trx);
 
       return { sessionId };
@@ -45,9 +57,7 @@ export class CheckoutService {
       throw AppError.notFound("Checkout session not found");
     }
 
-    if (session.expires_at < new Date()) {
-      throw AppError.badRequest("Checkout session expired");
-    }
+    assertSessionActive(session);
 
     const items = await this.repo.getCheckoutSessionItems(sessionId);
 
@@ -67,10 +77,7 @@ export class CheckoutService {
     if (!session) {
       throw AppError.notFound("Checkout session not found");
     }
-
-    if (session.expires_at < new Date()) {
-      throw AppError.badRequest("Checkout session expired");
-    }
+    assertSessionActive(session);
 
     const address = await this.repo.getUserAddress(userId, addressId);
 
@@ -90,9 +97,7 @@ export class CheckoutService {
       throw AppError.notFound("Checkout session not found");
     }
 
-    if (session.expires_at < new Date()) {
-      throw AppError.badRequest("Checkout session expired");
-    }
+    assertSessionActive(session);
 
     const address = await this.repo.getCheckoutAddress(sessionId, userId);
 
@@ -121,9 +126,7 @@ export class CheckoutService {
       throw AppError.notFound("Checkout session not found");
     }
 
-    if (session.expires_at < new Date()) {
-      throw AppError.badRequest("Checkout session expired");
-    }
+    assertSessionActive(session);
 
     const address = await this.repo.getCheckoutAddress(sessionId, userId);
 

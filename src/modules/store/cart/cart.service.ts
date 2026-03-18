@@ -5,7 +5,6 @@ import { TransactionManager } from "@/infra/db/transaction-manager";
 import { MAX_CART_ITEM_QTY } from "./cart.constants";
 import { mapCartItems } from "./cart.mapper";
 import { ProductImageService } from "@/modules/product/product-image.service";
-import { findBestImage } from "@/shared/variant-image/resolver";
 
 export class CartService {
   constructor(

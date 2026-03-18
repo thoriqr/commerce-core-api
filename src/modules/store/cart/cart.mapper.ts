@@ -9,14 +9,19 @@ export function mapCartItems(
     number,
     {
       images: ImageSignature[];
-      fallback: string | null;
+      fallback: {
+        imageId: number;
+        imageKey: string;
+      } | null;
     }
   >
 ): CartItemDTO[] {
   return rows.map((row) => {
     const productImages = imageMap.get(row.product_id);
 
-    const imageKey = productImages ? (findBestImage(productImages.images, row.option_snapshot) ?? productImages.fallback) : null;
+    const best = productImages ? (findBestImage(productImages.images, row.option_snapshot) ?? productImages.fallback) : null;
+
+    const imageKey = best?.imageKey ?? null;
 
     const isAvailable = row.product_status === "ACTIVE" && row.variant_status === "ACTIVE";
 

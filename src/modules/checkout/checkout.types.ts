@@ -27,6 +27,8 @@ export type SessionItemRow = {
 export type SessionRow = {
   id: number;
   expires_at: Date;
+  converted_at: Date | null;
+  revoked_at: Date | null;
   address_id: number | null;
 
   courier_code: string | null;

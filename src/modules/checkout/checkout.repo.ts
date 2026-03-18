@@ -46,6 +46,8 @@ export class CheckoutRepo {
       cs.courier_name,
       cs.shipping_cost,
       cs.shipping_etd,
+      cs.revoked_at,
+      cs.converted_at,
 
       ua.recipient_name,
       ua.phone,
@@ -247,6 +249,20 @@ export class CheckoutRepo {
     );
   };
 
+  replaceSessionItems = async (sessionId: number, items: CartItemRow[], trx: Knex.Transaction) => {
+    // 1. delete old
+    await trx.raw(
+      `
+    DELETE FROM checkout_session_items
+    WHERE checkout_session_id = :sessionId
+    `,
+      { sessionId }
+    );
+
+    // 2. re-insert
+    await this.insertCheckoutSessionItems(sessionId, items, trx);
+  };
+
   createCheckoutSession = async (userId: number, expiresAt: Date, addressId: number | null, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: Array<{ id: number }> }>(
       `
@@ -270,11 +286,31 @@ export class CheckoutRepo {
     return row.id;
   };
 
-  deleteActiveSessions = async (userId: number, trx: Knex.Transaction) => {
+  getActiveSession = async (userId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+      `
+     SELECT id
+      FROM checkout_sessions
+      WHERE user_id = :userId
+      AND converted_at IS NULL
+      AND revoked_at IS NULL
+      LIMIT 1
+    `,
+      { userId }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  revokeExpiredSessions = async (userId: number, trx: Knex.Transaction) => {
     await trx.raw(
       `
-    DELETE FROM checkout_sessions
+    UPDATE checkout_sessions
+    SET revoked_at = NOW()
     WHERE user_id = :userId
+    AND converted_at IS NULL
+    AND revoked_at IS NULL
+    AND expires_at <= NOW()
     `,
       { userId }
     );
