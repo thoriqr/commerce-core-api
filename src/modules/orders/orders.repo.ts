@@ -70,6 +70,7 @@ export class OrdersRepo {
       `
     INSERT INTO orders (
       user_id,
+      order_code,
       subtotal,
       shipping_cost,
       total,
@@ -85,6 +86,7 @@ export class OrdersRepo {
     )
     VALUES (
       :userId,
+      :orderCode,
       :subtotal,
       :shippingCost,
       :total,
@@ -219,5 +221,61 @@ export class OrdersRepo {
     if (rowCount === 0) {
       throw AppError.badRequest("Session already used or invalid");
     }
+  };
+
+  getOrderByCodeForUpdate = async (orderCode: string, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{
+      rows: { id: number; payment_status: string }[];
+    }>(
+      `
+    SELECT id, payment_status
+    FROM orders
+    WHERE order_code = :orderCode
+    FOR UPDATE
+    `,
+      { orderCode }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  markOrderPaid = async (orderId: number, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+    UPDATE orders
+    SET 
+      payment_status = 'PAID',
+      paid_at = NOW(),
+      updated_at = NOW()
+    WHERE id = :orderId
+    `,
+      { orderId }
+    );
+  };
+
+  markOrderExpired = async (orderId: number, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+    UPDATE orders
+    SET 
+      payment_status = 'EXPIRED',
+      updated_at = NOW()
+    WHERE id = :orderId
+    `,
+      { orderId }
+    );
+  };
+
+  markOrderFailed = async (orderId: number, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+    UPDATE orders
+    SET 
+      payment_status = 'FAILED',
+      updated_at = NOW()
+    WHERE id = :orderId
+    `,
+      { orderId }
+    );
   };
 }

@@ -1,17 +1,21 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { OrdersRepo } from "./orders.repo";
 import { AppError } from "@/errors/app-error";
-import { assertCheckoutReady, assertItemsValid } from "./orders.util";
+import { assertCheckoutReady, assertItemsValid, generateOrderCode } from "./orders.util";
 import { ProductImageService } from "../product/product-image.service";
-import { CheckoutSessionItemRow } from "./orders.types";
+import { CheckoutSessionItemRow, CreateOrderInput } from "./orders.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
 import { mapSessionToCreateOrderInput } from "./orders.mapper";
+import { OrderPaymentsRepo } from "./order-payments/order-payments.repo";
+import { MidtransWebhookPayload } from "./webhooks/webhook.types";
+import { mapMidtransWebhookToPayment } from "./webhooks/webhook.mapper";
 
 export class OrdersService {
   constructor(
     private readonly tm: TransactionManager,
     private readonly repo: OrdersRepo,
-    private readonly productImageService: ProductImageService
+    private readonly productImageService: ProductImageService,
+    private readonly orderPaymentsRepo: OrderPaymentsRepo
   ) {}
 
   confirmCheckout = async (userId: number, sessionId: number) => {
@@ -55,9 +59,12 @@ export class OrdersService {
 
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
-      const input = {
-        ...mapSessionToCreateOrderInput(session, userId),
-        expiresAt
+      const base = mapSessionToCreateOrderInput(session, userId);
+
+      const input: CreateOrderInput = {
+        ...base,
+        expiresAt,
+        orderCode: generateOrderCode()
       };
 
       // 7. CREATE ORDER
@@ -83,6 +90,49 @@ export class OrdersService {
       await this.repo.reduceStock(items, trx);
 
       return { orderId };
+    });
+  };
+
+  handleMidtransWebhook = async (payload: MidtransWebhookPayload) => {
+    return this.tm.transaction(async (trx) => {
+      // 1. FIND ORDER
+      const order = await this.repo.getOrderByCodeForUpdate(payload.order_id, trx);
+
+      if (!order) {
+        throw AppError.notFound("Order not found");
+      }
+
+      // 2. MAP → payment input
+      const paymentInput = mapMidtransWebhookToPayment(payload, order.id);
+
+      // 3. INSERT PAYMENT (idempotent safe)
+      await this.orderPaymentsRepo.insertPayment(paymentInput, trx);
+
+      // 4. MAP STATUS
+      const status = payload.transaction_status;
+
+      // ⚠️ penting: jangan overwrite kalau sudah PAID
+      if (order.payment_status === "PAID") {
+        return;
+      }
+
+      // 5. UPDATE ORDER
+      if (status === "settlement" || status === "capture") {
+        await this.repo.markOrderPaid(order.id, trx);
+        return;
+      }
+
+      if (status === "expire") {
+        await this.repo.markOrderExpired(order.id, trx);
+        return;
+      }
+
+      if (status === "cancel" || status === "deny" || status === "failure") {
+        await this.repo.markOrderFailed(order.id, trx);
+        return;
+      }
+
+      // pending / authorize → tidak perlu update
     });
   };
 

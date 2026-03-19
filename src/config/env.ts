@@ -29,7 +29,8 @@ const envSchema = z.object({
   SUPER_EMAIL: z.string().min(1),
   SUPER_PASSWORD: z.string().min(1),
 
-  RAJAONGKIR_API_KEY: z.string().min(1)
+  RAJAONGKIR_API_KEY: z.string().min(1),
+  MIDTRANS_SERVER_KEY: z.string().min(1)
 });
 
 const parsed = envSchema.safeParse(process.env);

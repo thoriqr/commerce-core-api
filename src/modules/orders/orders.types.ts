@@ -46,7 +46,7 @@ export type CheckoutSessionItemRow = {
   option_snapshot: OptionSnapshot[] | null;
 };
 
-export type CreateOrderInput = {
+export type CreateOrderBaseInput = {
   userId: number;
   subtotal: number;
   shippingCost: number;
@@ -61,8 +61,11 @@ export type CreateOrderInput = {
   postalCode: string | null;
 
   note: null;
+};
 
+export type CreateOrderInput = CreateOrderBaseInput & {
   expiresAt: Date;
+  orderCode: string;
 };
 
 export type ShipmentInput = {

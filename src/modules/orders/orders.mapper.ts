@@ -1,6 +1,6 @@
-import { CheckoutSessionRow, CreateOrderInput, ReadyCheckoutSession } from "./orders.types";
+import { CreateOrderBaseInput, ReadyCheckoutSession } from "./orders.types";
 
-export function mapSessionToCreateOrderInput(session: ReadyCheckoutSession, userId: number): CreateOrderInput {
+export function mapSessionToCreateOrderInput(session: ReadyCheckoutSession, userId: number): CreateOrderBaseInput {
   return {
     userId,
     subtotal: session.subtotal,
