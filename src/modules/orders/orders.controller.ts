@@ -1,16 +1,39 @@
 import { Request, Response } from "express";
 import { OrdersService } from "./orders.service";
-import { verifyMidtransSignature } from "./webhooks/midtrans.util";
 import { sendSuccess } from "@/utils/send-success";
+import { verifyMidtransSignature } from "./integrations/midtrans/midtrans.signature";
+import { midtransWebhookSchema } from "./order-payments/order-payments.schema";
+import { env } from "@/config/env";
+import { orderCodeParams, sessionIdParams } from "./orders.schema";
 
 export class OrdersController {
   constructor(private readonly service: OrdersService) {}
 
+  confirmCheckout = async (req: Request, res: Response) => {
+    const userId = req.user?.id!;
+    const params = sessionIdParams.parse(req.params);
+    const orderCode = await this.service.confirmCheckout(userId, params.sessionId);
+
+    return sendSuccess(res, 200, {
+      data: orderCode
+    });
+  };
+
   handleMidtransWebhook = async (req: Request, res: Response) => {
     try {
-      const payload = req.body;
+      const parsed = midtransWebhookSchema.safeParse(req.body);
 
-      const isValid = verifyMidtransSignature(payload, process.env.MIDTRANS_SERVER_KEY!);
+      if (!parsed.success) {
+        console.warn("Invalid webhook payload");
+
+        return sendSuccess(res, 200, {
+          message: "ignored"
+        });
+      }
+
+      const payload = parsed.data;
+
+      const isValid = verifyMidtransSignature(payload, env.MIDTRANS_SERVER_KEY!);
 
       if (!isValid) {
         console.warn("Invalid Midtrans signature");
@@ -32,5 +55,14 @@ export class OrdersController {
         message: "error_handled"
       });
     }
+  };
+
+  createSnapToken = async (req: Request, res: Response) => {
+    const userId = req.user?.id!;
+    const { orderCode } = orderCodeParams.parse(req.params);
+
+    const result = await this.service.createSnapToken(userId, orderCode);
+
+    return sendSuccess(res, 200, { data: result });
   };
 }

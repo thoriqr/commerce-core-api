@@ -1,5 +1,14 @@
 import { Knex } from "knex";
-import { CheckoutSessionItemRow, CheckoutSessionRow, CreateOrderInput, InsertOrderItemInput, ShipmentInput, UpdateResult } from "./orders.types";
+import {
+  CheckoutSessionItemRow,
+  CheckoutSessionRow,
+  CreateOrderInput,
+  InsertOrderItemInput,
+  OrderForPaymentRow,
+  OrderItemForPaymentRow,
+  ShipmentInput,
+  UpdateResult
+} from "./orders.types";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
 
@@ -27,7 +36,7 @@ export class OrdersRepo {
     AND cs.converted_at IS NULL
     AND cs.revoked_at IS NULL
 
-    FOR UPDATE
+    FOR UPDATE OF cs
     `,
       { sessionId, userId }
     );
@@ -38,27 +47,28 @@ export class OrdersRepo {
   getCheckoutSessionItemsForUpdate = async (sessionId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: CheckoutSessionItemRow[] }>(
       `
-    SELECT
-      csi.variant_id,
-      csi.product_name,
-      csi.price,
-      csi.quantity,
-      csi.weight,
+  SELECT
+    csi.variant_id,
+    csi.product_id,
+    csi.slug,
+    csi.product_name,
+    csi.price,
+    csi.quantity,
+    csi.weight,
+    csi.option_snapshot,
 
-      pv.stock,
-      pv.status AS variant_status,
-      pv.option_snapshot,
-      pv.product_id,
+    pv.stock,
+    pv.status AS variant_status,
 
-      p.status AS product_status
+    p.status AS product_status
 
-    FROM checkout_session_items csi
-    JOIN product_variants pv ON pv.id = csi.variant_id
-    JOIN products p ON p.id = pv.product_id
+  FROM checkout_session_items csi
+  JOIN product_variants pv ON pv.id = csi.variant_id
+  JOIN products p ON p.id = csi.product_id
 
-    WHERE csi.checkout_session_id = :sessionId
-    FOR UPDATE
-    `,
+  WHERE csi.checkout_session_id = :sessionId
+  FOR UPDATE OF pv
+  `,
       { sessionId }
     );
 
@@ -66,7 +76,7 @@ export class OrdersRepo {
   };
 
   createOrder = async (input: CreateOrderInput, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
+    const { rows } = await trx.raw<{ rows: { id: number; order_code: string }[] }>(
       `
     INSERT INTO orders (
       user_id,
@@ -100,7 +110,7 @@ export class OrdersRepo {
       :note,
       :expiresAt
     )
-    RETURNING id
+    RETURNING id, order_code
     `,
       input
     );
@@ -112,14 +122,14 @@ export class OrdersRepo {
       throw AppError.internal();
     }
 
-    return row.id;
+    return row;
   };
 
   insertOrderItems = async (orderId: number, items: InsertOrderItemInput[], trx: Knex.Transaction) => {
     const values = items
       .map(
         (_, i) =>
-          `(:orderId, :variantId${i}, :productId${i}, :productName${i}, :price${i}, :qty${i}, :weight${i}, :imageId${i}, :imageKey${i}, :optionSnapshot${i})`
+          `(:orderId, :variantId${i}, :productId${i}, :productName${i}, :slug${i}, :price${i}, :qty${i}, :weight${i}, :imageId${i}, :imageKey${i}, :optionSnapshot${i})`
       )
       .join(",");
 
@@ -129,6 +139,7 @@ export class OrdersRepo {
       bindings[`variantId${i}`] = item.variant_id;
       bindings[`productId${i}`] = item.product_id;
       bindings[`productName${i}`] = item.product_name;
+      bindings[`slug${i}`] = item.slug;
       bindings[`price${i}`] = item.price;
       bindings[`qty${i}`] = item.quantity;
       bindings[`weight${i}`] = item.weight;
@@ -146,6 +157,7 @@ export class OrdersRepo {
       variant_id,
       product_id,
       product_name,
+      slug,
       price,
       quantity,
       weight,
@@ -277,5 +289,45 @@ export class OrdersRepo {
     `,
       { orderId }
     );
+  };
+
+  getOrderByCode = async (orderCode: string, userId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{ rows: OrderForPaymentRow[] }>(
+      `
+    SELECT
+      id,
+      order_code,
+      total,
+      shipping_cost,
+      payment_status,
+      expires_at,
+      recipient_name,
+      phone
+    FROM orders
+    WHERE order_code = :orderCode
+    AND user_id = :userId
+    LIMIT 1
+    `,
+      { orderCode, userId }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  getOrderItems = async (orderId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{ rows: OrderItemForPaymentRow[] }>(
+      `
+    SELECT
+      product_id,
+      product_name,
+      price,
+      quantity
+    FROM order_items
+    WHERE order_id = :orderId
+    `,
+      { orderId }
+    );
+
+    return rows;
   };
 }

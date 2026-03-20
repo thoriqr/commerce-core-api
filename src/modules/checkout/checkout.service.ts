@@ -148,6 +148,12 @@ export class CheckoutService {
       throw AppError.badRequest("Invalid shipping service");
     }
 
+    const fullItems = await this.repo.getCheckoutSessionItems(sessionId);
+
+    const subtotal = fullItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+    const total = subtotal + selected.cost;
+
     await this.tm.transaction(async (trx) => {
       await this.repo.setShippingMethod(
         sessionId,
@@ -157,6 +163,8 @@ export class CheckoutService {
         selected.description,
         selected.cost,
         selected.etd,
+        subtotal,
+        total,
         trx
       );
     });

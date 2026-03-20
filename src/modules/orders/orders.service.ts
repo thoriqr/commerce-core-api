@@ -7,8 +7,10 @@ import { CheckoutSessionItemRow, CreateOrderInput } from "./orders.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
 import { mapSessionToCreateOrderInput } from "./orders.mapper";
 import { OrderPaymentsRepo } from "./order-payments/order-payments.repo";
-import { MidtransWebhookPayload } from "./webhooks/webhook.types";
-import { mapMidtransWebhookToPayment } from "./webhooks/webhook.mapper";
+import { mapMidtransWebhookToPayment } from "./order-payments/order-payments.mapper";
+import { createSnapTransaction } from "./integrations/midtrans/midtrans.client";
+import { buildMidtransPayload } from "./integrations/midtrans/midtrans.builder";
+import { MidtransWebhookPayload } from "./order-payments/order-payments.schema";
 
 export class OrdersService {
   constructor(
@@ -68,15 +70,15 @@ export class OrdersService {
       };
 
       // 7. CREATE ORDER
-      const orderId = await this.repo.createOrder(input, trx);
+      const order = await this.repo.createOrder(input, trx);
 
       // 8. INSERT ITEMS
-      await this.repo.insertOrderItems(orderId, enrichedItems, trx);
+      await this.repo.insertOrderItems(order.id, enrichedItems, trx);
 
       // 9. SHIPMENT
       await this.repo.insertShipment(
         {
-          orderId,
+          orderId: order.id,
           courierCode: session.courier_code,
           courierName: session.courier_name,
           courierService: session.courier_service,
@@ -89,12 +91,24 @@ export class OrdersService {
       // LAST
       await this.repo.reduceStock(items, trx);
 
-      return { orderId };
+      return order.order_code;
     });
   };
 
   handleMidtransWebhook = async (payload: MidtransWebhookPayload) => {
     return this.tm.transaction(async (trx) => {
+      // 0. CHECK EXISTING PAYMENT
+      const existing = await this.orderPaymentsRepo.findByTransactionId(payload.transaction_id, trx);
+
+      const isFirstTime = !existing;
+      const isDuplicate = existing && existing.transaction_status === payload.transaction_status;
+      const isProgression = existing && existing.transaction_status !== payload.transaction_status;
+
+      // DUPLICATE → STOP
+      if (isDuplicate) {
+        return;
+      }
+
       // 1. FIND ORDER
       const order = await this.repo.getOrderByCodeForUpdate(payload.order_id, trx);
 
@@ -102,37 +116,77 @@ export class OrdersService {
         throw AppError.notFound("Order not found");
       }
 
-      // 2. MAP → payment input
-      const paymentInput = mapMidtransWebhookToPayment(payload, order.id);
+      // 2. INSERT PAYMENT (FIRST TIME / PROGRESSION)
+      if (isFirstTime || isProgression) {
+        const paymentInput = mapMidtransWebhookToPayment(payload, order.id);
+        await this.orderPaymentsRepo.insertPayment(paymentInput, trx);
+      }
 
-      // 3. INSERT PAYMENT (idempotent safe)
-      await this.orderPaymentsRepo.insertPayment(paymentInput, trx);
-
-      // 4. MAP STATUS
       const status = payload.transaction_status;
 
-      // ⚠️ penting: jangan overwrite kalau sudah PAID
+      // 3. STATUS GUARD (jangan overwrite kalau sudah PAID)
       if (order.payment_status === "PAID") {
         return;
       }
 
-      // 5. UPDATE ORDER
-      if (status === "settlement" || status === "capture") {
+      // 4. UPDATE ORDER STATUS
+
+      // FINAL STATE
+      if (status === "settlement") {
         await this.repo.markOrderPaid(order.id, trx);
         return;
       }
 
+      // CREDIT CARD SAFE CASE
+      if (status === "capture" && payload.fraud_status === "accept") {
+        await this.repo.markOrderPaid(order.id, trx);
+        return;
+      }
+
+      // EXPIRED
       if (status === "expire") {
         await this.repo.markOrderExpired(order.id, trx);
         return;
       }
 
+      // FAILED
       if (status === "cancel" || status === "deny" || status === "failure") {
         await this.repo.markOrderFailed(order.id, trx);
         return;
       }
 
-      // pending / authorize → tidak perlu update
+      // pending / authorize → no action
+    });
+  };
+
+  createSnapToken = async (userId: number, orderCode: string) => {
+    return this.tm.transaction(async (trx) => {
+      const order = await this.repo.getOrderByCode(orderCode, userId, trx);
+
+      if (!order) {
+        throw AppError.notFound("Order not found");
+      }
+
+      if (order.payment_status === "PAID") {
+        throw AppError.badRequest("Order already paid");
+      }
+
+      if (order.expires_at < new Date()) {
+        throw AppError.badRequest("Order expired");
+      }
+
+      const items = await this.repo.getOrderItems(order.id, trx);
+
+      const payload = buildMidtransPayload(order, items);
+
+      console.log("PAYLOAD SNAP:", payload);
+
+      const result = await createSnapTransaction(payload);
+
+      return {
+        token: result.token,
+        redirect_url: result.redirect_url
+      };
     });
   };
 

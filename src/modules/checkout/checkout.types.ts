@@ -3,10 +3,14 @@ import { OptionSnapshot } from "@/shared/variant-image/types";
 
 export type CartItemRow = {
   variant_id: number;
+  product_id: number;
+  slug: string;
+
   quantity: number;
   price: number;
   weight: number;
   product_name: string;
+  option_snapshot: OptionSnapshot[] | null;
   stock: number;
 };
 
@@ -30,6 +34,8 @@ export type SessionRow = {
   converted_at: Date | null;
   revoked_at: Date | null;
   address_id: number | null;
+  total: number | null;
+  subtotal: number | null;
 
   courier_code: string | null;
   courier_service: string | null;

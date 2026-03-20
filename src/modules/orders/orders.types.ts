@@ -15,7 +15,6 @@ export type CheckoutSessionRow = {
   shipping_cost: number | null;
   shipping_etd: string | null;
   subtotal: number | null;
-  total_weight: number | null;
   total: number | null;
   expires_at: Date;
   converted_at: Date | null;
@@ -98,4 +97,23 @@ export type ReadyCheckoutSession = CheckoutSessionRow & {
   recipient_name: string;
   phone: string;
   address_line: string;
+};
+
+export type OrderItemForPaymentRow = {
+  product_id: number;
+  product_name: string;
+  price: number;
+  quantity: number;
+};
+
+export type OrderForPaymentRow = {
+  id: number;
+  order_code: string;
+  total: number;
+  shipping_cost: number;
+  payment_status: string;
+  expires_at: Date;
+
+  recipient_name: string;
+  phone: string;
 };

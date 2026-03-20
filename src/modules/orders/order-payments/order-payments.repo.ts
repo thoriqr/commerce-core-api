@@ -57,4 +57,20 @@ export class OrderPaymentsRepo {
       }
     );
   };
+
+  findByTransactionId = async (transactionId: string, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{
+      rows: { id: number; transaction_status: string }[];
+    }>(
+      `
+    SELECT id, transaction_status
+    FROM order_payments
+    WHERE transaction_id = :transactionId
+    LIMIT 1
+    `,
+      { transactionId }
+    );
+
+    return rows[0] ?? null;
+  };
 }

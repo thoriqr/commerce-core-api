@@ -10,19 +10,22 @@ export class CheckoutRepo {
       rows: CartItemRow[];
     }>(
       `
-    SELECT
-      ci.variant_id,
-      ci.quantity,
-      pv.price,
-      pv.weight,
-      p.name AS product_name,
-      pv.stock
-    FROM cart_items ci
-    JOIN product_variants pv ON pv.id = ci.variant_id
-    JOIN products p ON p.id = pv.product_id
-    JOIN carts c ON c.id = ci.cart_id
-    WHERE c.user_id = :userId
-    FOR UPDATE
+      SELECT
+        ci.variant_id,
+        ci.quantity,
+        pv.price,
+        pv.weight,
+        p.id AS product_id,
+        p.slug,
+        p.name AS product_name,
+        pv.stock,
+        pv.option_snapshot
+      FROM cart_items ci
+      JOIN product_variants pv ON pv.id = ci.variant_id
+      JOIN products p ON p.id = pv.product_id
+      JOIN carts c ON c.id = ci.cart_id
+      WHERE c.user_id = :userId
+        FOR UPDATE
     `,
       { userId }
     );
@@ -40,6 +43,8 @@ export class CheckoutRepo {
       cs.expires_at,
       cs.address_id,
 
+      cs.subtotal,
+      cs.total,
       cs.courier_code,
       cs.courier_service,
       cs.courier_description,
@@ -75,24 +80,24 @@ export class CheckoutRepo {
     }>(
       `
     SELECT
-      csi.variant_id,
-      csi.product_name,
-      csi.price,
-      csi.quantity,
-      csi.weight,
+        csi.variant_id,
+        csi.product_id,
+        csi.slug,
+        csi.product_name,
+        csi.price,
+        csi.quantity,
+        csi.weight,
+        csi.option_snapshot,
 
-      pv.stock,
-      pv.status AS variant_status,
-      pv.option_snapshot,
-      pv.product_id,
+        pv.stock,
+        pv.status AS variant_status,
 
-      p.status AS product_status,
-      p.slug
+        p.status AS product_status
 
-    FROM checkout_session_items csi
-    JOIN product_variants pv ON pv.id = csi.variant_id
-    JOIN products p ON p.id = pv.product_id
-    WHERE csi.checkout_session_id = :sessionId
+      FROM checkout_session_items csi
+      JOIN product_variants pv ON pv.id = csi.variant_id
+      JOIN products p ON p.id = csi.product_id
+      WHERE csi.checkout_session_id = :sessionId
     `,
       { sessionId }
     );
@@ -187,6 +192,8 @@ export class CheckoutRepo {
     courierDescription: string,
     shippingCost: number,
     shippingEtd: string,
+    subtotal: number,
+    total: number,
     trx: Knex.Transaction
   ) => {
     await trx.raw(
@@ -198,7 +205,9 @@ export class CheckoutRepo {
       courier_service = :courierService,
       courier_description = :courierDescription,
       shipping_cost = :shippingCost,
-      shipping_etd = :shippingEtd
+      shipping_etd = :shippingEtd,
+      subtotal = :subtotal,
+      total = :total
     WHERE id = :sessionId
     `,
       {
@@ -208,7 +217,9 @@ export class CheckoutRepo {
         courierService,
         courierDescription,
         shippingCost,
-        shippingEtd
+        shippingEtd,
+        subtotal,
+        total
       }
     );
   };
@@ -226,23 +237,29 @@ export class CheckoutRepo {
 
   insertCheckoutSessionItems = async (sessionId: number, items: CartItemRow[], trx: Knex.Transaction) => {
     const values = items
-      .map((i, idx) => `(:sessionId, :variantId${idx}, :productName${idx}, :price${idx}, :quantity${idx}, :weight${idx})`)
+      .map(
+        (i, idx) =>
+          `(:sessionId, :variantId${idx}, :productId${idx}, :slug${idx}, :productName${idx}, :price${idx}, :quantity${idx}, :weight${idx}, :optionSnapshot${idx})`
+      )
       .join(",");
 
     const bindings: any = { sessionId };
 
     items.forEach((item, i) => {
       bindings[`variantId${i}`] = item.variant_id;
+      bindings[`productId${i}`] = item.product_id;
+      bindings[`slug${i}`] = item.slug;
       bindings[`productName${i}`] = item.product_name;
       bindings[`price${i}`] = item.price;
       bindings[`quantity${i}`] = item.quantity;
       bindings[`weight${i}`] = item.weight;
+      bindings[`optionSnapshot${i}`] = item.option_snapshot ? JSON.stringify(item.option_snapshot) : null;
     });
 
     await trx.raw(
       `
     INSERT INTO checkout_session_items
-    (checkout_session_id, variant_id, product_name, price, quantity, weight)
+    (checkout_session_id, variant_id, product_id, slug, product_name, price, quantity, weight, option_snapshot)
     VALUES ${values}
     `,
       bindings

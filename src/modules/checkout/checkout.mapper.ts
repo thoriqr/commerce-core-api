@@ -66,6 +66,7 @@ export function mapSessionItem(
 
     return {
       variantId: r.variant_id,
+      productId: r.product_id,
       productName: r.product_name,
       imageKey,
       slug: r.slug,
@@ -73,6 +74,7 @@ export function mapSessionItem(
       quantity: r.quantity,
       stock: r.stock,
       weight: r.weight,
+      options: r.option_snapshot,
       isAvailable,
       warning
     };
@@ -108,13 +110,11 @@ export function mapCheckoutSession(
 ): CheckoutSessionDTO {
   const mappedItems = mapSessionItem(sessionItemRow, imageMap);
 
-  const subtotal = mappedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
   const totalWeight = mappedItems.reduce((acc, item) => acc + item.weight * item.quantity, 0);
 
+  const subtotal = sessionRow.subtotal ?? 0;
   const shippingCost = sessionRow.shipping_cost ?? 0;
-
-  const total = subtotal + shippingCost;
+  const total = sessionRow.total ?? 0;
 
   const address = sessionRow.address_id && sessionRow.recipient_name ? mapUserAddress(sessionRow) : null;
 

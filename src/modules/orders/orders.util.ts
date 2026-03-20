@@ -42,6 +42,10 @@ export function assertItemsValid(items: CheckoutSessionItemRow[]) {
       throw AppError.badRequest("Product unavailable");
     }
 
+    if (item.price < 0) {
+      throw AppError.badRequest("Invalid price");
+    }
+
     if (item.quantity > item.stock) {
       throw AppError.badRequest("Insufficient stock");
     }

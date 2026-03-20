@@ -1,3 +1,4 @@
+import { OptionSnapshot } from "@/shared/variant-image/types";
 import { CheckoutBlockReason } from "./checkout.types";
 
 export interface CheckoutSessionDTO {
@@ -23,6 +24,7 @@ export interface CheckoutSessionDTO {
   shippingEtd: string | null;
   items: {
     variantId: number;
+    productId: number;
     productName: string;
     slug: string;
     price: number;
@@ -32,6 +34,7 @@ export interface CheckoutSessionDTO {
     isAvailable: boolean;
     imageKey: string | null;
     warning: string | null;
+    options: OptionSnapshot[] | null;
   }[];
   canPlaceOrder: boolean;
   reason: CheckoutBlockReason | null;
