@@ -5,7 +5,7 @@ import { assertCheckoutReady, assertItemsValid, generateOrderCode } from "./orde
 import { ProductImageService } from "../product/product-image.service";
 import { CheckoutSessionItemRow, CreateOrderInput } from "./orders.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
-import { mapSessionToCreateOrderInput } from "./orders.mapper";
+import { mapOrder, mapSessionToCreateOrderInput } from "./orders.mapper";
 import { OrderPaymentsRepo } from "./order-payments/order-payments.repo";
 import { mapMidtransWebhookToPayment } from "./order-payments/order-payments.mapper";
 import { createSnapTransaction } from "./integrations/midtrans/midtrans.client";
@@ -19,6 +19,24 @@ export class OrdersService {
     private readonly productImageService: ProductImageService,
     private readonly orderPaymentsRepo: OrderPaymentsRepo
   ) {}
+
+  getOrder = async (userId: number, orderCode: string) => {
+    const order = await this.repo.getOrderByCodeDetail(orderCode, userId);
+
+    if (!order) {
+      throw AppError.notFound("Order not found");
+    }
+
+    const items = await this.repo.getOrderItemsDetail(order.id);
+
+    // optional safety
+    if (items.length === 0) {
+      throw AppError.badRequest("Order has no items");
+    }
+
+    // mapping → DTO
+    return mapOrder(order, items);
+  };
 
   confirmCheckout = async (userId: number, sessionId: number) => {
     return this.tm.transaction(async (trx) => {
@@ -124,7 +142,7 @@ export class OrdersService {
 
       const status = payload.transaction_status;
 
-      // 3. STATUS GUARD (jangan overwrite kalau sudah PAID)
+      // 3. STATUS GUARD (don't overwrite if PAID)
       if (order.payment_status === "PAID") {
         return;
       }
@@ -178,8 +196,6 @@ export class OrdersService {
       const items = await this.repo.getOrderItems(order.id, trx);
 
       const payload = buildMidtransPayload(order, items);
-
-      console.log("PAYLOAD SNAP:", payload);
 
       const result = await createSnapTransaction(payload);
 

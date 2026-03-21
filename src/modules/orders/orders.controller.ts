@@ -9,6 +9,16 @@ import { orderCodeParams, sessionIdParams } from "./orders.schema";
 export class OrdersController {
   constructor(private readonly service: OrdersService) {}
 
+  getOrder = async (req: Request, res: Response) => {
+    const userId = req.user?.id!;
+    const { orderCode } = orderCodeParams.parse(req.params);
+    const result = await this.service.getOrder(userId, orderCode);
+
+    return sendSuccess(res, 200, {
+      data: result
+    });
+  };
+
   confirmCheckout = async (req: Request, res: Response) => {
     const userId = req.user?.id!;
     const params = sessionIdParams.parse(req.params);

@@ -104,6 +104,7 @@ export type OrderItemForPaymentRow = {
   product_name: string;
   price: number;
   quantity: number;
+  option_snapshot: OptionSnapshot[] | null;
 };
 
 export type OrderForPaymentRow = {
@@ -116,4 +117,40 @@ export type OrderForPaymentRow = {
 
   recipient_name: string;
   phone: string;
+};
+
+export type OrderDetailRow = {
+  id: number;
+  order_code: string;
+  total: number;
+  subtotal: number;
+  shipping_cost: number;
+  payment_status: string;
+  expires_at: Date;
+  paid_at: Date | null;
+  recipient_name: string;
+  phone: string;
+  address_line: string;
+  courier_code: string;
+  courier_name: string;
+  courier_service: string;
+  courier_description: string | null;
+  shipping_etd: string;
+  tracking_number: string;
+  shipment_status: string;
+  shipped_at: Date | null;
+  delivered_at: Date | null;
+};
+
+export type OrderItemDetailRow = {
+  product_id: number;
+  variant_id: number;
+  product_name: string;
+  slug: string;
+  price: number;
+  quantity: number;
+  weight: number;
+  image_key: string | null;
+  image_id: number | null;
+  option_snapshot: OptionSnapshot[] | null;
 };

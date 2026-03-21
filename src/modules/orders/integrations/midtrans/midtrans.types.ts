@@ -22,4 +22,9 @@ export type MidtransPayload = {
   };
 
   notification_url: string;
+  expiry: {
+    start_time: string;
+    unit: string;
+    duration: number;
+  };
 };

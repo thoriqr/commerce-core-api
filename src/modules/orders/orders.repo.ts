@@ -4,13 +4,16 @@ import {
   CheckoutSessionRow,
   CreateOrderInput,
   InsertOrderItemInput,
+  OrderDetailRow,
   OrderForPaymentRow,
+  OrderItemDetailRow,
   OrderItemForPaymentRow,
   ShipmentInput,
   UpdateResult
 } from "./orders.types";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
+import { db } from "@/infra/db/knex";
 
 export class OrdersRepo {
   getCheckoutSessionForUpdate = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
@@ -321,7 +324,75 @@ export class OrdersRepo {
       product_id,
       product_name,
       price,
-      quantity
+      quantity,
+      option_snapshot
+    FROM order_items
+    WHERE order_id = :orderId
+    `,
+      { orderId }
+    );
+
+    return rows;
+  };
+
+  getOrderByCodeDetail = async (orderCode: string, userId: number) => {
+    const { rows } = await db.raw<{
+      rows: OrderDetailRow[];
+    }>(
+      `
+    SELECT
+      o.id,
+      o.order_code,
+      o.total,
+      o.subtotal,
+      o.shipping_cost,
+      o.payment_status,
+      o.expires_at,
+      o.paid_at,
+
+      o.recipient_name,
+      o.phone,
+      o.address_line,
+
+      os.courier_code,
+      os.courier_name,
+      os.courier_service,
+      os.courier_description,
+      os.shipping_etd,
+      os.tracking_number,
+      os.status AS shipment_status,
+      os.shipped_at,
+      os.delivered_at
+
+    FROM orders o
+    JOIN order_shipments os ON os.order_id = o.id
+
+    WHERE o.order_code = :orderCode
+    AND o.user_id = :userId
+    LIMIT 1
+    `,
+      { orderCode, userId }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  getOrderItemsDetail = async (orderId: number) => {
+    const { rows } = await db.raw<{
+      rows: OrderItemDetailRow[];
+    }>(
+      `
+    SELECT
+      product_id,
+      variant_id,
+      product_name,
+      slug,
+      price,
+      quantity,
+      weight,
+      image_key,
+      image_id,
+      option_snapshot
     FROM order_items
     WHERE order_id = :orderId
     `,
