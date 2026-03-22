@@ -3,6 +3,8 @@ import { cleanupOrphanVariantImagesJob } from "./jobs/cleanup-orphan-variant-ima
 import { cleanupExpiredRefreshTokensJob } from "./jobs/cleanup-expired-refresh-tokens.job";
 import { cleanupPendingVerificationsJob } from "./jobs/cleanup-pending-verifications.job";
 import { cleanupAbandonedGuestCartsJob } from "./jobs/cleanup-abandoned-guest-carts.job";
+import { cleanupCheckoutSessionsJob } from "./jobs/cleanup-checkout-sessions.job";
+import { expireOrdersJob } from "./jobs/expire-orders.job";
 
 type JobHandler = (data?: unknown) => Promise<unknown>;
 
@@ -11,7 +13,9 @@ const jobs = [
   cleanupOrphanVariantImagesJob,
   cleanupExpiredRefreshTokensJob,
   cleanupPendingVerificationsJob,
-  cleanupAbandonedGuestCartsJob
+  cleanupAbandonedGuestCartsJob,
+  cleanupCheckoutSessionsJob,
+  expireOrdersJob
 ];
 
 export const jobRegistry = new Map<string, JobHandler>(jobs.map((job) => [job.name, job.handler]));

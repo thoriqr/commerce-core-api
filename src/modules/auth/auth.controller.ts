@@ -5,6 +5,7 @@ import { AppError } from "@/errors/app-error";
 import {
   changeEmailSchema,
   changePasswordSchema,
+  checkVerificationTokenSchema,
   confirmEmailChangeSchema,
   googleLoginSchema,
   loginSchema,
@@ -40,6 +41,18 @@ export class AuthController {
 
     sendSuccess(res, 200, {
       message: "Verification email sent"
+    });
+  };
+
+  checkVerificationToken = async (req: Request, res: Response) => {
+    const payload = checkVerificationTokenSchema.parse(req.body);
+
+    const result = await this.service.checkVerificationToken(payload);
+
+    return sendSuccess(res, 200, {
+      data: {
+        expiresAt: result.expiresAt
+      }
     });
   };
 

@@ -114,7 +114,7 @@ export type OrderForPaymentRow = {
   shipping_cost: number;
   payment_status: string;
   expires_at: Date;
-
+  status: string;
   recipient_name: string;
   phone: string;
 };
@@ -126,8 +126,10 @@ export type OrderDetailRow = {
   subtotal: number;
   shipping_cost: number;
   payment_status: string;
+  status: string;
   expires_at: Date;
   paid_at: Date | null;
+  cancelled_at: Date | null;
   recipient_name: string;
   phone: string;
   address_line: string;

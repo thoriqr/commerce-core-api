@@ -13,8 +13,15 @@ export const cleanupExpiredRefreshTokensJob = {
         SELECT id
         FROM refresh_tokens
         WHERE
+          -- DEV: delete immediately to keep table clean
+          -- TODO(PROD): use interval (e.g. NOW() - INTERVAL '1 day')
           expires_at < NOW()
-          OR (revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '7 days')
+
+          OR (
+            revoked_at IS NOT NULL
+            AND revoked_at < NOW() - INTERVAL '7 days'
+          )
+
         LIMIT 500
       )
       RETURNING id

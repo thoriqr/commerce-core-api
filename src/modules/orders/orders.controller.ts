@@ -29,6 +29,16 @@ export class OrdersController {
     });
   };
 
+  cancelOrder = async (req: Request, res: Response) => {
+    const userId = req.user?.id!;
+    const { orderCode } = orderCodeParams.parse(req.params);
+    await this.service.cancelOrder(userId, orderCode);
+
+    return sendSuccess(res, 200, {
+      message: "Order cancelled"
+    });
+  };
+
   handleMidtransWebhook = async (req: Request, res: Response) => {
     try {
       const parsed = midtransWebhookSchema.safeParse(req.body);

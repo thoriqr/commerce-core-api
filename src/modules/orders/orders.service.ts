@@ -113,6 +113,30 @@ export class OrdersService {
     });
   };
 
+  cancelOrder = async (userId: number, orderCode: string) => {
+    return this.tm.transaction(async (trx) => {
+      const order = await this.repo.getOrderByCodeForUpdate(orderCode, trx);
+
+      if (!order) {
+        throw AppError.notFound("Order not found");
+      }
+
+      if (order.user_id !== userId) {
+        throw AppError.forbidden();
+      }
+
+      if (order.payment_status === "PAID") {
+        throw AppError.badRequest("Order already paid");
+      }
+
+      if (order.status === "CANCELLED" || order.status === "COMPLETED") {
+        return; // idempotent / ignore
+      }
+
+      await this.repo.markOrderCancelled(order.id, trx);
+    });
+  };
+
   handleMidtransWebhook = async (payload: MidtransWebhookPayload) => {
     return this.tm.transaction(async (trx) => {
       // 0. CHECK EXISTING PAYMENT
@@ -145,6 +169,10 @@ export class OrdersService {
       // 3. STATUS GUARD (don't overwrite if PAID)
       if (order.payment_status === "PAID") {
         return;
+      }
+
+      if (order.status === "CANCELLED" || order.status === "COMPLETED") {
+        return; // ignore webhook
       }
 
       // 4. UPDATE ORDER STATUS
@@ -183,6 +211,10 @@ export class OrdersService {
 
       if (!order) {
         throw AppError.notFound("Order not found");
+      }
+
+      if (order.status === "CANCELLED" || order.status === "COMPLETED") {
+        throw AppError.badRequest("Order is not payable");
       }
 
       if (order.payment_status === "PAID") {

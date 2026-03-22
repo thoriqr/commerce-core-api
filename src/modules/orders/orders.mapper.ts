@@ -40,7 +40,10 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
   }));
 
   const isExpired = order.expires_at < new Date();
-  const canPay = order.payment_status === "UNPAID" && !isExpired;
+  const isFinalState =
+    order.status === "CANCELLED" || order.status === "COMPLETED" || order.payment_status === "FAILED" || order.payment_status === "EXPIRED";
+
+  const canPay = order.payment_status === "UNPAID" && !isFinalState && !isExpired;
 
   return {
     orderCode: order.order_code,
@@ -48,7 +51,7 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
     subtotal: order.subtotal,
     shippingCost: order.shipping_cost,
     total: order.total,
-
+    status: order.status,
     paymentStatus: order.payment_status,
 
     expiresAt: order.expires_at,

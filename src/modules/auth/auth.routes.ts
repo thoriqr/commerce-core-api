@@ -16,6 +16,7 @@ const controller = new AuthController(service);
 const requireAuth = createRequireAuth(service);
 
 router.post("/register", controller.register);
+router.post("/check-verification-token", controller.checkVerificationToken);
 router.post("/verify-email", controller.verifyEmail);
 
 router.post("/login", controller.login);

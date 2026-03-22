@@ -240,10 +240,10 @@ export class OrdersRepo {
 
   getOrderByCodeForUpdate = async (orderCode: string, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{
-      rows: { id: number; payment_status: string }[];
+      rows: { id: number; payment_status: string; user_id: number; status: string }[];
     }>(
       `
-    SELECT id, payment_status
+    SELECT id, payment_status, user_id, status
     FROM orders
     WHERE order_code = :orderCode
     FOR UPDATE
@@ -260,8 +260,7 @@ export class OrdersRepo {
     UPDATE orders
     SET 
       payment_status = 'PAID',
-      paid_at = NOW(),
-      updated_at = NOW()
+      paid_at = NOW()
     WHERE id = :orderId
     `,
       { orderId }
@@ -273,8 +272,7 @@ export class OrdersRepo {
       `
     UPDATE orders
     SET 
-      payment_status = 'EXPIRED',
-      updated_at = NOW()
+      payment_status = 'EXPIRED'
     WHERE id = :orderId
     `,
       { orderId }
@@ -286,10 +284,23 @@ export class OrdersRepo {
       `
     UPDATE orders
     SET 
-      payment_status = 'FAILED',
-      updated_at = NOW()
+      payment_status = 'FAILED'
     WHERE id = :orderId
     `,
+      { orderId }
+    );
+  };
+
+  markOrderCancelled = async (orderId: number, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+    UPDATE orders
+    SET
+      status = 'CANCELLED',
+      payment_status = 'FAILED',
+      cancelled_at = NOW()
+    WHERE id = :orderId
+  `,
       { orderId }
     );
   };
@@ -305,6 +316,7 @@ export class OrdersRepo {
       payment_status,
       expires_at,
       recipient_name,
+      status,
       phone
     FROM orders
     WHERE order_code = :orderCode
@@ -347,6 +359,8 @@ export class OrdersRepo {
       o.subtotal,
       o.shipping_cost,
       o.payment_status,
+      o.status,
+      o.cancelled_at,
       o.expires_at,
       o.paid_at,
 

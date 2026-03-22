@@ -32,6 +32,7 @@ const controller = new OrdersController(ordersService);
 
 router.post("/checkout-sessions/:sessionId/confirm", requireAuth, controller.confirmCheckout);
 router.post("/orders/:orderCode/snap-token", requireAuth, controller.createSnapToken);
+router.post("/orders/:orderCode/cancel", requireAuth, controller.cancelOrder);
 router.get("/orders/:orderCode", requireAuth, controller.getOrder);
 router.post("/payments/midtrans/webhook", controller.handleMidtransWebhook);
 

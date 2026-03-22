@@ -85,6 +85,28 @@ export class AuthService {
     });
   };
 
+  checkVerificationToken = async (input: { token: string; type: "REGISTER" | "RESET_PASSWORD" }) => {
+    const tokenHash = hashRefreshToken(input.token);
+
+    const verification = await this.repo.checkPendingVerification(tokenHash, input.type);
+
+    if (!verification) {
+      throw AppError.badRequest("Invalid token");
+    }
+
+    if (verification.used_at) {
+      throw AppError.badRequest("Invalid token");
+    }
+
+    if (verification.expires_at < new Date()) {
+      throw AppError.badRequest("Token expired");
+    }
+
+    return {
+      expiresAt: verification.expires_at
+    };
+  };
+
   verifyEmail = async (input: VerifyEmailInput) => {
     const tokenHash = hashRefreshToken(input.token);
 

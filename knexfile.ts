@@ -1,4 +1,3 @@
-import "dotenv/config";
 import type { Knex } from "knex";
 import { env } from "./src/config/env";
 

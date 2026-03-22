@@ -5,15 +5,15 @@ export async function registerJobs() {
   const jobs = [
     {
       name: JOB_NAMES.CLEANUP_ORPHAN_PRODUCT_IMAGES,
-      pattern: "*/10 * * * *" // every 10 minutes
+      pattern: "0 * * * *" // every 1 hour
     },
     {
       name: JOB_NAMES.CLEANUP_ORPHAN_VARIANT_IMAGES,
-      pattern: "*/10 * * * *" // every 10 minutes
+      pattern: "0 * * * *" // every 1 hour
     },
     {
       name: JOB_NAMES.CLEANUP_EXPIRED_REFRESH_TOKENS,
-      pattern: "0 * * * *" // every hour (minute 0)
+      pattern: "0 * * * *" // every 1 hour
     },
     {
       name: JOB_NAMES.CLEANUP_PENDING_VERIFICATIONS,
@@ -22,6 +22,14 @@ export async function registerJobs() {
     {
       name: JOB_NAMES.CLEANUP_ABANDONED_GUEST_CARTS,
       pattern: "0 */6 * * *" // every 6 hours
+    },
+    {
+      name: JOB_NAMES.CLEANUP_CHECKOUT_SESSIONS,
+      pattern: "0 * * * *" // every 1 hour
+    },
+    {
+      name: JOB_NAMES.EXPIRE_ORDERS,
+      pattern: "*/10 * * * *" // every 10 minutes
     }
   ];
 

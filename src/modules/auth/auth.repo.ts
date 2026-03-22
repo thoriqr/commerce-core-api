@@ -167,6 +167,23 @@ export class AuthRepo {
     );
   }
 
+  checkPendingVerification = async (tokenHash: string, type: "REGISTER" | "RESET_PASSWORD") => {
+    const { rows } = await db.raw<{
+      rows: { id: number; expires_at: Date; used_at: Date | null }[];
+    }>(
+      `
+    SELECT id, expires_at, used_at
+    FROM pending_verifications
+    WHERE token_hash = :tokenHash
+    AND type = :type
+    LIMIT 1
+    `,
+      { tokenHash, type }
+    );
+
+    return rows[0] ?? null;
+  };
+
   async insertPendingVerification(
     trx: Knex.Transaction,
     data: {
