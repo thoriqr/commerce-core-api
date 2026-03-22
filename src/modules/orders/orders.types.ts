@@ -65,6 +65,7 @@ export type CreateOrderBaseInput = {
 export type CreateOrderInput = CreateOrderBaseInput & {
   expiresAt: Date;
   orderCode: string;
+  email: string;
 };
 
 export type ShipmentInput = {
@@ -109,13 +110,17 @@ export type OrderItemForPaymentRow = {
 
 export type OrderForPaymentRow = {
   id: number;
+  email: string;
+  recipient_name: string;
+  city_name: string;
+  address_line: string;
+  postal_code: string | null;
   order_code: string;
   total: number;
   shipping_cost: number;
   payment_status: string;
   expires_at: Date;
   status: string;
-  recipient_name: string;
   phone: string;
 };
 

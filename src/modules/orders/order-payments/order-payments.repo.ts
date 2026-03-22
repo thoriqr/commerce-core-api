@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 import { InsertOrderPaymentInput } from "./order-payments.types";
+import { MidtransWebhookPayload } from "./order-payments.schema";
 
 export class OrderPaymentsRepo {
   insertPayment = async (input: InsertOrderPaymentInput, trx: Knex.Transaction) => {
@@ -54,6 +55,25 @@ export class OrderPaymentsRepo {
         transactionTime: input.transaction_time,
         settlementTime: input.settlement_time,
         rawPayload: JSON.stringify(input.raw_payload)
+      }
+    );
+  };
+
+  updatePaymentStatus = async (transactionId: string, payload: MidtransWebhookPayload, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+    UPDATE order_payments
+    SET
+      transaction_status = :transaction_status,
+      fraud_status = :fraud_status,
+      settlement_time = :settlement_time
+    WHERE transaction_id = :transaction_id
+  `,
+      {
+        transaction_id: transactionId,
+        transaction_status: payload.transaction_status,
+        fraud_status: payload.fraud_status ?? null,
+        settlement_time: payload.settlement_time ? new Date(payload.settlement_time) : null
       }
     );
   };

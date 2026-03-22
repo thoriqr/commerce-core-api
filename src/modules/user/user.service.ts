@@ -80,6 +80,7 @@ export class UserService {
           provinceName: province.name,
           cityName: city.name,
           districtName: district.name,
+          postalCode: input.postalCode ?? null,
           shippingProvinceId: province.id,
           shippingCityId: city.id,
           shippingDistrictId: district.id,
@@ -142,7 +143,7 @@ export class UserService {
           provinceName: province.name,
           cityName: city.name,
           districtName: district.name,
-
+          postalCode: input.postalCode ?? null,
           shippingProvinceId: province.id,
           shippingCityId: city.id,
           shippingDistrictId: district.id,

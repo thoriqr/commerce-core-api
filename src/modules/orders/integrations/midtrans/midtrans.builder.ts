@@ -24,12 +24,26 @@ function formatOptionSnapshot(option: OptionSnapshot[] | null): string {
 }
 
 function formatItemName(item: OrderItemForPaymentRow) {
-  const base = item.product_name;
+  const MAX_LENGTH = 50;
+
   const option = formatOptionSnapshot(item.option_snapshot);
+  const optionLength = option.length;
 
-  const full = base + option;
+  // reserve space for options first
+  const remaining = MAX_LENGTH - optionLength;
 
-  return full.length > 50 ? full.slice(0, 47) + "..." : full;
+  let base = item.product_name;
+
+  if (remaining <= 0) {
+    // option too long → fallback
+    return option.slice(0, MAX_LENGTH - 3) + "...";
+  }
+
+  if (base.length > remaining) {
+    base = base.slice(0, remaining - 3) + "...";
+  }
+
+  return base + option;
 }
 
 export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItemForPaymentRow[]): MidtransPayload {
@@ -61,7 +75,24 @@ export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItem
     item_details: itemDetails,
     customer_details: {
       first_name: order.recipient_name,
-      phone: order.phone
+      email: order.email,
+      phone: order.phone,
+
+      billing_address: {
+        first_name: order.recipient_name,
+        phone: order.phone,
+        address: order.address_line,
+        city: order.city_name,
+        postal_code: order.postal_code ?? "-"
+      },
+
+      shipping_address: {
+        first_name: order.recipient_name,
+        phone: order.phone,
+        address: order.address_line,
+        city: order.city_name,
+        postal_code: order.postal_code ?? "-"
+      }
     },
     notification_url: "https://webhook.commerce.web.id/api/payments/midtrans/webhook",
     expiry: {

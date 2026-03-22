@@ -10,6 +10,7 @@ import { OrdersController } from "./orders.controller";
 import { AuthRepo } from "../auth/auth.repo";
 import { AuthService } from "../auth/auth.service";
 import { createRequireAuth } from "@/middlewares/auth.middleware";
+import { UserRepo } from "../user/user.repo";
 
 const router = Router();
 
@@ -25,9 +26,10 @@ const requireAuth = createRequireAuth(authService);
 const imageRepo = new ProductImageRepo();
 const imageService = new ProductImageService(imageRepo);
 
+const userRepo = new UserRepo();
 const paymentsRepo = new OrderPaymentsRepo();
 const ordersRepo = new OrdersRepo();
-const ordersService = new OrdersService(tm, ordersRepo, imageService, paymentsRepo);
+const ordersService = new OrdersService(tm, ordersRepo, imageService, paymentsRepo, userRepo);
 const controller = new OrdersController(ordersService);
 
 router.post("/checkout-sessions/:sessionId/confirm", requireAuth, controller.confirmCheckout);

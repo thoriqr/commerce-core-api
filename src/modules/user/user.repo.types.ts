@@ -8,6 +8,7 @@ export type CreateAddressRepoInput = {
   provinceName: string;
   cityName: string;
   districtName: string;
+  postalCode: string | null;
 
   shippingProvinceId: number;
   shippingCityId: number;
@@ -27,6 +28,7 @@ export type UpdateAddressRepoInput = {
   provinceName: string;
   cityName: string;
   districtName: string;
+  postalCode: string | null;
 
   shippingProvinceId: number;
   shippingCityId: number;

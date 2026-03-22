@@ -9,7 +9,7 @@ export const upsertAddressSchema = z.object({
   shippingProvinceId: z.coerce.number().int().positive(),
   shippingCityId: z.coerce.number().int().positive(),
   shippingDistrictId: z.coerce.number().int().positive(),
-
+  postalCode: z.string().length(5, "Postal code must be exactly 5 digits").regex(/^\d+$/, "Postal code must be numeric").optional(),
   isDefault: z.boolean().optional()
 });
 

@@ -1,5 +1,8 @@
+const DAY = 60 * 60 * 24;
+
 export const REDIS_TTL = {
-  VARIANT_IMAGES: 60 * 30, // 30min
-  VARIANT_DIMENSIONS: 60 * 60 * 24, // 1day
-  VARIANT_VALUES: 60 * 60 * 24
+  VARIANT_IMAGES: 60 * 30, // 30 min
+  VARIANT_DIMENSIONS: DAY,
+  VARIANT_VALUES: DAY,
+  WAREHOUSE_ORIGIN: DAY * 7
 } as const;

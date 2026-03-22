@@ -11,13 +11,16 @@ import { mapMidtransWebhookToPayment } from "./order-payments/order-payments.map
 import { createSnapTransaction } from "./integrations/midtrans/midtrans.client";
 import { buildMidtransPayload } from "./integrations/midtrans/midtrans.builder";
 import { MidtransWebhookPayload } from "./order-payments/order-payments.schema";
+import { PAYMENT_STATUS_RANK } from "./order-payments/order-payments.constants";
+import { UserRepo } from "../user/user.repo";
 
 export class OrdersService {
   constructor(
     private readonly tm: TransactionManager,
     private readonly repo: OrdersRepo,
     private readonly productImageService: ProductImageService,
-    private readonly orderPaymentsRepo: OrderPaymentsRepo
+    private readonly orderPaymentsRepo: OrderPaymentsRepo,
+    private readonly userRepo: UserRepo
   ) {}
 
   getOrder = async (userId: number, orderCode: string) => {
@@ -74,6 +77,12 @@ export class OrdersService {
       // 5. PREPARE DATA
       const enrichedItems = await this.enrichItemsWithImages(items);
 
+      const user = await this.userRepo.getUserById(userId, trx);
+
+      if (!user) {
+        throw AppError.notFound("User not found");
+      }
+
       // 6. LOCK SESSION
       await this.repo.markSessionConverted(sessionId, trx);
 
@@ -83,6 +92,7 @@ export class OrdersService {
 
       const input: CreateOrderInput = {
         ...base,
+        email: user.email,
         expiresAt,
         orderCode: generateOrderCode()
       };
@@ -139,18 +149,6 @@ export class OrdersService {
 
   handleMidtransWebhook = async (payload: MidtransWebhookPayload) => {
     return this.tm.transaction(async (trx) => {
-      // 0. CHECK EXISTING PAYMENT
-      const existing = await this.orderPaymentsRepo.findByTransactionId(payload.transaction_id, trx);
-
-      const isFirstTime = !existing;
-      const isDuplicate = existing && existing.transaction_status === payload.transaction_status;
-      const isProgression = existing && existing.transaction_status !== payload.transaction_status;
-
-      // DUPLICATE → STOP
-      if (isDuplicate) {
-        return;
-      }
-
       // 1. FIND ORDER
       const order = await this.repo.getOrderByCodeForUpdate(payload.order_id, trx);
 
@@ -158,44 +156,66 @@ export class OrdersService {
         throw AppError.notFound("Order not found");
       }
 
-      // 2. INSERT PAYMENT (FIRST TIME / PROGRESSION)
-      if (isFirstTime || isProgression) {
+      // 2. CHECK EXISTING PAYMENT
+      const existing = await this.orderPaymentsRepo.findByTransactionId(payload.transaction_id, trx);
+
+      const isFirstTime = !existing;
+      const isProgression = existing && existing.transaction_status !== payload.transaction_status;
+
+      console.log("webhook payload:", payload);
+
+      // 3. INSERT / UPDATE PAYMENT
+      if (isFirstTime) {
         const paymentInput = mapMidtransWebhookToPayment(payload, order.id);
         await this.orderPaymentsRepo.insertPayment(paymentInput, trx);
+      } else if (isProgression) {
+        const currentRank = PAYMENT_STATUS_RANK[existing.transaction_status] ?? 0;
+        const incomingRank = PAYMENT_STATUS_RANK[payload.transaction_status] ?? 0;
+
+        if (incomingRank < currentRank) {
+          console.log("Ignore downgrade status", {
+            current: existing.transaction_status,
+            incoming: payload.transaction_status
+          });
+        } else {
+          await this.orderPaymentsRepo.updatePaymentStatus(payload.transaction_id, payload, trx);
+        }
       }
+      // duplicate → no-op
 
       const status = payload.transaction_status;
 
-      // 3. STATUS GUARD (don't overwrite if PAID)
+      const isPaidEvent = status === "settlement" || (status === "capture" && payload.fraud_status === "accept");
+
+      // 4. HANDLE PAYMENT FIRST (HIGHEST PRIORITY)
+      if (isPaidEvent) {
+        if (order.payment_status !== "PAID") {
+          await this.repo.markOrderPaid(order.id, trx);
+        }
+        return;
+      }
+
+      // 5. GUARD FINAL STATES
       if (order.payment_status === "PAID") {
         return;
       }
 
       if (order.status === "CANCELLED" || order.status === "COMPLETED") {
-        return; // ignore webhook
-      }
-
-      // 4. UPDATE ORDER STATUS
-
-      // FINAL STATE
-      if (status === "settlement") {
-        await this.repo.markOrderPaid(order.id, trx);
+        console.log("Ignore webhook for final order state", {
+          orderId: order.id,
+          status: order.status,
+          incoming: payload.transaction_status
+        });
         return;
       }
 
-      // CREDIT CARD SAFE CASE
-      if (status === "capture" && payload.fraud_status === "accept") {
-        await this.repo.markOrderPaid(order.id, trx);
-        return;
-      }
+      // 6. OTHER STATES
 
-      // EXPIRED
       if (status === "expire") {
         await this.repo.markOrderExpired(order.id, trx);
         return;
       }
 
-      // FAILED
       if (status === "cancel" || status === "deny" || status === "failure") {
         await this.repo.markOrderFailed(order.id, trx);
         return;

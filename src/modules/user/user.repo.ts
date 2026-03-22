@@ -118,6 +118,7 @@ export class UserRepo {
       province_name,
       city_name,
       district_name,
+      postal_code,
       shipping_province_id,
       shipping_city_id,
       shipping_district_id,
@@ -132,6 +133,7 @@ export class UserRepo {
       :provinceName,
       :cityName,
       :districtName,
+      :postalCode,
       :shippingProvinceId,
       :shippingCityId,
       :shippingDistrictId,
@@ -155,6 +157,7 @@ export class UserRepo {
       province_name = :provinceName,
       city_name = :cityName,
       district_name = :districtName,
+      postal_code = :postalCode,
 
       shipping_province_id = :shippingProvinceId,
       shipping_city_id = :shippingCityId,
@@ -217,6 +220,31 @@ export class UserRepo {
     );
 
     return rows[0]?.count ?? 0;
+  };
+
+  getUserById = async (userId: number, trx?: Knex.Transaction) => {
+    const executor = trx ?? db;
+
+    const { rows } = await executor.raw<{
+      rows: {
+        id: number;
+        email: string;
+        display_name: string | null;
+        role: string;
+        status: string;
+        last_login_at: Date | null;
+      }[];
+    }>(
+      `
+    SELECT id, email, display_name, role, status
+    FROM users
+    WHERE id = :userId
+    LIMIT 1
+  `,
+      { userId }
+    );
+
+    return rows[0] ?? null;
   };
 
   updateProfile = async (userId: number, input: UpdateProfileInput) => {

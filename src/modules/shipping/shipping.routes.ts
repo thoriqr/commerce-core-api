@@ -7,6 +7,7 @@ import { AuthRepo } from "../auth/auth.repo";
 import { AuthService } from "../auth/auth.service";
 import { createRequireAuth } from "@/middlewares/auth.middleware";
 import { db } from "@/infra/db/knex";
+import { WarehousesRepo } from "../admin/warehouses/warehouses.repo";
 
 const router = Router();
 
@@ -18,7 +19,8 @@ const authService = new AuthService(tm, authRepo);
 const requireAuth = createRequireAuth(authService);
 
 const rajaOngkirClient = new RajaOngkirClient();
-const shippingService = new ShippingService(rajaOngkirClient);
+const warehouseRepo = new WarehousesRepo();
+const shippingService = new ShippingService(rajaOngkirClient, warehouseRepo);
 const controller = new ShippingController(shippingService);
 
 router.get("/provinces", requireAuth, controller.getProvinces);

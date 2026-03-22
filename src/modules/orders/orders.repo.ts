@@ -83,6 +83,7 @@ export class OrdersRepo {
       `
     INSERT INTO orders (
       user_id,
+      email,
       order_code,
       subtotal,
       shipping_cost,
@@ -99,6 +100,7 @@ export class OrdersRepo {
     )
     VALUES (
       :userId,
+      :email,
       :orderCode,
       :subtotal,
       :shippingCost,
@@ -310,12 +312,16 @@ export class OrdersRepo {
       `
     SELECT
       id,
+      email,
+      recipient_name,
+      city_name,
+      address_line,
+      postal_code,
       order_code,
       total,
       shipping_cost,
       payment_status,
       expires_at,
-      recipient_name,
       status,
       phone
     FROM orders
