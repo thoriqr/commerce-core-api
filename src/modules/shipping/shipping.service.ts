@@ -1,16 +1,11 @@
 import { redis } from "@/libs/redis";
 import { RajaOngkirClient } from "./rajaongkir.client";
-import { SHIPPING_CACHE_KEY, SHIPPING_CACHE_TTL, SHIPPING_ORIGIN_CITY_ID } from "./shipping.constants";
+import { SHIPPING_CACHE_KEY, SHIPPING_CACHE_TTL } from "./shipping.constants";
 import { City, District, Province, ShippingCost } from "./shipping.types";
-import { WarehousesRepo } from "../admin/warehouses/warehouses.repo";
-import { AppError } from "@/errors/app-error";
 import { getWarehouseOriginCityId } from "@/shared/cache/warehouse";
 
 export class ShippingService {
-  constructor(
-    private readonly client: RajaOngkirClient,
-    private readonly warehouseRepo: WarehousesRepo
-  ) {}
+  constructor(private readonly client: RajaOngkirClient) {}
 
   async getProvinces(): Promise<Province[]> {
     const cacheKey = SHIPPING_CACHE_KEY.PROVINCES;
