@@ -191,6 +191,9 @@ export class OrdersService {
       if (isPaidEvent) {
         if (order.payment_status !== "PAID") {
           await this.repo.markOrderPaid(order.id, trx);
+
+          // increment variant sold in here
+          await this.repo.incrementVariantSold(order.id, trx);
         }
         return;
       }
