@@ -2,7 +2,7 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { UserDetailRow, VerificationType } from "./auth.repo.types";
-import { Provider, UserProvider, UserRole, UserStatus } from "@/shared/user/user.types";
+import { Provider, UserRole, UserStatus } from "@/shared/user/user.types";
 import { logger } from "@/libs/logger";
 
 export class AuthRepo {

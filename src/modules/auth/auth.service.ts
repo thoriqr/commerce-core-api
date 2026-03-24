@@ -643,19 +643,15 @@ export class AuthService {
       throw AppError.unauthorized();
     }
 
-    const providers = await this.repo.findProvidersByUserId(userId);
-
-    return this.buildAuthUser(user, providers);
+    return this.buildAuthUser(user);
   };
 
-  private buildAuthUser(user: UserDetailRow, providers: UserProvider[] = []): AuthUser {
+  private buildAuthUser(user: UserDetailRow): AuthUser {
     return {
       id: user.id,
       email: user.email,
       role: user.role,
-      displayName: user.display_name,
-      hasPassword: !!user.password_hash,
-      providers
+      displayName: user.display_name
     };
   }
 

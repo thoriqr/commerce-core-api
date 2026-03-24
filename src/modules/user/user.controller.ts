@@ -43,6 +43,16 @@ export class UserController {
     sendSuccess(res, 200, { message: "Address updated" });
   };
 
+  getUserProfile = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+
+    const data = await this.service.getUserProfile(userId);
+
+    sendSuccess(res, 200, {
+      data
+    });
+  };
+
   updateProfile = async (req: Request, res: Response) => {
     const userId = req.user!.id;
 

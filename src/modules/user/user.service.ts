@@ -159,6 +159,38 @@ export class UserService {
     await this.userRepo.updateProfile(userId, input);
   };
 
+  getUserProfile = async (userId: number) => {
+    const row = await this.userRepo.getUserProfile(userId);
+
+    if (!row) {
+      throw AppError.unauthorized();
+    }
+
+    return {
+      id: row.id,
+      email: row.email,
+      displayName: row.display_name,
+      role: row.role,
+      status: row.status,
+
+      hasPassword: row.has_password,
+
+      defaultAddress: row.address_id
+        ? {
+            id: row.address_id,
+            recipientName: row.recipient_name,
+            phone: row.phone,
+            addressLine: row.address_line,
+            cityName: row.city_name,
+            provinceName: row.province_name,
+            postalCode: row.postal_code ?? ""
+          }
+        : null,
+
+      providers: row.providers ?? []
+    };
+  };
+
   setDefaultAddress = async (userId: number, addressId: number) => {
     const address = await this.userRepo.getAddressById(userId, addressId);
 

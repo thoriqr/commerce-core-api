@@ -2,6 +2,7 @@ import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
 import { CreateAddressRepoInput, UpdateAddressRepoInput, UserAddressRow } from "./user.repo.types";
 import { UpdateProfileInput } from "./user.schema";
+import { UserProfileRow } from "./user.types";
 
 export class UserRepo {
   getUserAddress = async (userId: number) => {
@@ -241,6 +242,57 @@ export class UserRepo {
     WHERE id = :userId
     LIMIT 1
   `,
+      { userId }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  getUserProfile = async (userId: number) => {
+    const { rows } = await db.raw<{ rows: UserProfileRow[] }>(
+      `
+      SELECT
+      u.id,
+      u.email,
+      u.display_name,
+      u.role,
+      u.status,
+      (u.password_hash IS NOT NULL) AS has_password,
+
+      -- default address
+      ua.id AS address_id,
+      ua.recipient_name,
+      ua.phone,
+      ua.address_line,
+      ua.city_name,
+      ua.province_name,
+      ua.postal_code,
+
+      -- providers (aggregate)
+      COALESCE(
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'provider', up.provider,
+            'provider_email', up.provider_email,
+            'provider_display_name', up.provider_display_name,
+            'provider_avatar_url', up.provider_avatar_url
+          )
+        ) FILTER (WHERE up.id IS NOT NULL),
+        '[]'
+      ) AS providers
+
+    FROM users u
+
+    LEFT JOIN user_addresses ua
+      ON ua.user_id = u.id
+      AND ua.is_default = true
+
+    LEFT JOIN user_providers up
+      ON up.user_id = u.id
+
+    WHERE u.id = :userId
+
+    GROUP BY u.id, ua.id`,
       { userId }
     );
 
