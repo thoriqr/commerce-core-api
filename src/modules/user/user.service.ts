@@ -166,6 +166,15 @@ export class UserService {
       throw AppError.unauthorized();
     }
 
+    const providers = row.providers
+      ? row.providers.map((r) => ({
+          provider: r.provider,
+          providerEmail: r.provider_email,
+          providerDisplayName: r.provider_display_name,
+          providerAvatarUrl: r.provider_avatar_url
+        }))
+      : [];
+
     return {
       id: row.id,
       email: row.email,
@@ -187,7 +196,7 @@ export class UserService {
           }
         : null,
 
-      providers: row.providers ?? []
+      providers
     };
   };
 

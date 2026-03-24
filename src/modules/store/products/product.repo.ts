@@ -669,7 +669,7 @@ ${JSON.stringify({
 
     for (const filter of filters) {
       if (!dimensionSet.has(filter.dimensionName)) {
-        throw AppError.badRequest(`Invalid dimension filter: ${filter.dimensionName}`);
+        throw AppError.badRequest(`Invalid filter: ${filter.dimensionName}`);
       }
 
       const allowedValues = new Set(valueMap[filter.dimensionName] ?? []);
