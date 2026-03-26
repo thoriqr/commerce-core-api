@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-/* =========================
-   Base Validators
-========================= */
-
 const emailSchema = z.email().transform((val) => val.trim().toLowerCase());
 
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(72, "Password is too long"); // bcrypt safe range

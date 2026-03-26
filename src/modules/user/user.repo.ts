@@ -49,13 +49,14 @@ export class UserRepo {
     const { rows } = await db.raw<{
       rows: Array<{
         label: string | null;
-        recipientName: string;
+        recipient_name: string;
         phone: string;
-        addressLine: string;
+        address_line: string;
+        postal_code: string | null;
 
-        shippingProvinceId: number;
-        shippingCityId: number;
-        shippingDistrictId: number;
+        shipping_province_id: number;
+        shipping_city_id: number;
+        shipping_district_id: number | null;
 
         isDefault: boolean;
       }>;
@@ -63,15 +64,16 @@ export class UserRepo {
       `
     SELECT
       label,
-      recipient_name AS "recipientName",
+      recipient_name,
       phone,
-      address_line AS "addressLine",
+      address_line,
+      postal_code,
+      address_line,
+      shipping_province_id,
+      shipping_city_id,
+      shipping_district_id,
 
-      shipping_province_id AS "shippingProvinceId",
-      shipping_city_id AS "shippingCityId",
-      shipping_district_id AS "shippingDistrictId",
-
-      is_default AS "isDefault"
+      is_default
     FROM user_addresses
     WHERE id = :addressId
       AND user_id = :userId

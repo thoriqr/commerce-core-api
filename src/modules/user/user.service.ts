@@ -27,11 +27,15 @@ export class UserService {
     }
 
     return {
-      ...address,
+      recipientName: address.recipient_name,
       label: address.label ?? "",
-      shippingProvinceId: String(address.shippingProvinceId),
-      shippingCityId: String(address.shippingCityId),
-      shippingDistrictId: String(address.shippingDistrictId)
+      phone: address.phone,
+      addressLine: address.address_line,
+      postalCode: address.postal_code ?? "",
+      shippingProvinceId: String(address.shipping_province_id),
+      shippingCityId: String(address.shipping_city_id),
+      shippingDistrictId: String(address.shipping_district_id),
+      isDefault: address.isDefault
     };
   };
 

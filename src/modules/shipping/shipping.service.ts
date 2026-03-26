@@ -3,6 +3,7 @@ import { RajaOngkirClient } from "./rajaongkir.client";
 import { SHIPPING_CACHE_KEY, SHIPPING_CACHE_TTL } from "./shipping.constants";
 import { City, District, Province, ShippingCost } from "./shipping.types";
 import { getWarehouseOriginCityId } from "@/shared/cache/warehouse";
+import { sortByName } from "./shipping.util";
 
 export class ShippingService {
   constructor(private readonly client: RajaOngkirClient) {}
@@ -21,7 +22,7 @@ export class ShippingService {
       }
     }
 
-    const provinces = await this.client.getProvinces();
+    const provinces = sortByName(await this.client.getProvinces());
 
     await redis.set(cacheKey, JSON.stringify(provinces), {
       EX: SHIPPING_CACHE_TTL.PROVINCES
@@ -44,7 +45,7 @@ export class ShippingService {
       }
     }
 
-    const cities = await this.client.getCities(provinceId);
+    const cities = sortByName(await this.client.getCities(provinceId));
 
     await redis.set(cacheKey, JSON.stringify(cities), {
       EX: SHIPPING_CACHE_TTL.CITIES
@@ -67,7 +68,7 @@ export class ShippingService {
       }
     }
 
-    const districts = await this.client.getDistricts(cityId);
+    const districts = sortByName(await this.client.getDistricts(cityId));
 
     await redis.set(cacheKey, JSON.stringify(districts), {
       EX: SHIPPING_CACHE_TTL.DISTRICTS

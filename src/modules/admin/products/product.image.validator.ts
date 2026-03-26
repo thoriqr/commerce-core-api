@@ -2,7 +2,7 @@ import { AppError } from "@/errors/app-error";
 import { ProductImageSchema, VariantDimensionSchema } from "./product.schema";
 
 export function validateAndMapProductImages(images: ProductImageSchema[], files: Express.Multer.File[]): Map<number, Express.Multer.File> {
-  // 1. ambil semua originalFileName
+  // get all originalFileName
   const imageEntries = images
     .filter((img) => img.originalFileName)
     .map((img) => ({
@@ -59,7 +59,7 @@ export function validateAndMapVariantImages(
   variantDimensions: VariantDimensionSchema[],
   variantImgs: Express.Multer.File[]
 ): Map<string, Express.Multer.File> {
-  // 1. ambil semua image entry dari payload
+  // 1. get images entry from payload
   const imageEntries: { optionId: string; originalFileName: string }[] = [];
 
   for (const dim of variantDimensions) {
@@ -74,7 +74,7 @@ export function validateAndMapVariantImages(
     }
   }
 
-  // shortcut: tidak ada image sama sekali
+  // shortcut: empty images
   if (imageEntries.length === 0) {
     if (variantImgs.length > 0) {
       throw AppError.badRequest("Unexpected variant images uploaded");
@@ -82,7 +82,7 @@ export function validateAndMapVariantImages(
     return new Map();
   }
 
-  // 2. duplicate originalFileName di payload
+  // 2. duplicate originalFileName  payload
   const nameSet = new Set<string>();
   for (const e of imageEntries) {
     if (nameSet.has(e.originalFileName)) {
@@ -100,7 +100,7 @@ export function validateAndMapVariantImages(
     uploadedMap.set(file.originalname, file);
   }
 
-  // 4. jumlah harus match
+  // 4. entry must match
   if (uploadedMap.size !== imageEntries.length) {
     throw AppError.badRequest(`Variant image count mismatch. Expected ${imageEntries.length}, got ${uploadedMap.size}`);
   }

@@ -5,9 +5,9 @@ export const upsertAddressSchema = z.object({
     if (val === "") return undefined;
     return val;
   }, z.string().max(50).optional()),
-  recipientName: z.string().min(1).max(120),
-  phone: z.string().min(8).max(30).regex(/^\d+$/, "Phone must contain only numbers"),
-  addressLine: z.string().min(5),
+  recipientName: z.string().min(1, "Recipient name is required").max(120),
+  phone: z.string().min(8, "Phone must be at least 8 digits").max(30).regex(/^\d+$/, "Phone must contain only numbers"),
+  addressLine: z.string().min(5, "Address line must be at least 5 characters").max(255, "Address line too long"),
 
   shippingProvinceId: z.coerce.number().int().positive(),
   shippingCityId: z.coerce.number().int().positive(),
@@ -20,7 +20,7 @@ export const upsertAddressSchema = z.object({
 });
 
 export const updateProfileSchema = z.object({
-  displayName: z.string().trim().min(2).max(120)
+  displayName: z.string().trim().min(2, "Display Name must be at least 2 characters").max(120)
 });
 
 export const addressIdParamsSchema = z.object({
