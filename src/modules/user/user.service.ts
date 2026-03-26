@@ -16,7 +16,7 @@ export class UserService {
   getAddresses = async (userId: number) => {
     const rows = await this.userRepo.getUserAddresses(userId);
     const dto = mapUserAddresses(rows);
-    return dto;
+    return { addresses: dto, limit: MAX_USER_ADDRESSES };
   };
 
   getAddressDetail = async (userId: number, addressId: number) => {
@@ -26,7 +26,13 @@ export class UserService {
       throw AppError.notFound("Address not found");
     }
 
-    return address;
+    return {
+      ...address,
+      label: address.label ?? "",
+      shippingProvinceId: String(address.shippingProvinceId),
+      shippingCityId: String(address.shippingCityId),
+      shippingDistrictId: String(address.shippingDistrictId)
+    };
   };
 
   createAddress = async (userId: number, input: UpsertAddressInput) => {
@@ -123,13 +129,7 @@ export class UserService {
       throw AppError.badRequest("Invalid district");
     }
 
-    let isDefault = input.isDefault ?? false;
-
     await this.tm.transaction(async (trx) => {
-      if (isDefault) {
-        await this.userRepo.clearDefaultAddress(userId, trx);
-      }
-
       await this.userRepo.updateAddress(
         {
           addressId,
@@ -146,9 +146,7 @@ export class UserService {
           postalCode: input.postalCode ?? null,
           shippingProvinceId: province.id,
           shippingCityId: city.id,
-          shippingDistrictId: district.id,
-
-          isDefault
+          shippingDistrictId: district.id
         },
         trx
       );
@@ -169,9 +167,9 @@ export class UserService {
     const providers = row.providers
       ? row.providers.map((r) => ({
           provider: r.provider,
-          providerEmail: r.provider_email,
-          providerDisplayName: r.provider_display_name,
-          providerAvatarUrl: r.provider_avatar_url
+          providerEmail: r.provider_email ?? "",
+          providerDisplayName: r.provider_display_name ?? "",
+          providerAvatarUrl: r.provider_avatar_url ?? ""
         }))
       : [];
 
@@ -187,11 +185,13 @@ export class UserService {
       defaultAddress: row.address_id
         ? {
             id: row.address_id,
-            recipientName: row.recipient_name,
-            phone: row.phone,
-            addressLine: row.address_line,
-            cityName: row.city_name,
-            provinceName: row.province_name,
+            label: row.label ?? "",
+            recipientName: row.recipient_name ?? "",
+            phone: row.phone ?? "",
+            addressLine: row.address_line ?? "",
+            cityName: row.city_name ?? "",
+            provinceName: row.province_name ?? "",
+            districtName: row.district_name ?? "",
             postalCode: row.postal_code ?? ""
           }
         : null,

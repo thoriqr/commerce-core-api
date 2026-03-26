@@ -33,8 +33,6 @@ export type UpdateAddressRepoInput = {
   shippingProvinceId: number;
   shippingCityId: number;
   shippingDistrictId: number;
-
-  isDefault: boolean;
 };
 
 export type UserAddressRow = {

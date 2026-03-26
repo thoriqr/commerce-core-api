@@ -1,1 +1,1 @@
-export const MAX_USER_ADDRESSES = 10;
+export const MAX_USER_ADDRESSES = 5;

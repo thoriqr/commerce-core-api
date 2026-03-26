@@ -162,9 +162,7 @@ export class UserRepo {
 
       shipping_province_id = :shippingProvinceId,
       shipping_city_id = :shippingCityId,
-      shipping_district_id = :shippingDistrictId,
-
-      is_default = :isDefault
+      shipping_district_id = :shippingDistrictId
     WHERE id = :addressId
       AND user_id = :userId
     `,
@@ -261,11 +259,13 @@ export class UserRepo {
 
       -- default address
       ua.id AS address_id,
+      ua.label,
       ua.recipient_name,
       ua.phone,
       ua.address_line,
       ua.city_name,
       ua.province_name,
+      ua.district_name,
       ua.postal_code,
 
       -- providers (aggregate)

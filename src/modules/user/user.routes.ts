@@ -37,7 +37,7 @@ router.post("/addresses", requireAuth, controller.createAddress);
 
 router.patch("/addresses/:addressId/default", requireAuth, controller.setDefaultAddress);
 
-router.patch("/addresses/:addressId", requireAuth, controller.updateAddress);
+router.put("/addresses/:addressId", requireAuth, controller.updateAddress);
 
 router.delete("/addresses/:addressId", requireAuth, controller.deleteAddress);
 

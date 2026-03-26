@@ -7,12 +7,14 @@ export type UserProfileRow = {
   has_password: boolean;
 
   address_id: number | null;
+  label: string | null;
   recipient_name: string | null;
   phone: string | null;
   address_line: string | null;
   city_name: string | null;
   province_name: string | null;
   postal_code: string | null;
+  district_name: string | null;
 
   providers: Array<{
     provider: string;
