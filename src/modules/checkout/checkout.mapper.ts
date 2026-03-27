@@ -112,7 +112,10 @@ export function mapCheckoutSession(
 
   const totalWeight = mappedItems.reduce((acc, item) => acc + item.weight * item.quantity, 0);
 
-  const subtotal = sessionRow.subtotal ?? 0;
+  // temporary subtotal (fallback)
+  const computedSubtotal = mappedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+  const subtotal = sessionRow.subtotal ?? computedSubtotal;
   const shippingCost = sessionRow.shipping_cost ?? 0;
   const total = sessionRow.total ?? 0;
 
