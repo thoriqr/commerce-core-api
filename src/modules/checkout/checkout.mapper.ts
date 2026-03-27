@@ -74,7 +74,7 @@ export function mapSessionItem(
       quantity: r.quantity,
       stock: r.stock,
       weight: r.weight,
-      options: r.option_snapshot,
+      options: r.option_snapshot ?? [],
       isAvailable,
       warning
     };
@@ -89,7 +89,7 @@ export function mapUserAddress(sessionRow: SessionRow) {
     addressLine: sessionRow.address_line,
     provinceName: sessionRow.province_name,
     cityName: sessionRow.city_name,
-    districtName: sessionRow.district_name,
+    districtName: sessionRow.district_name ?? "",
     postalCode: sessionRow.postal_code ?? ""
   };
 }

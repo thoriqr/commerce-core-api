@@ -9,14 +9,14 @@ export interface CheckoutSessionDTO {
   total: number;
   totalWeight: number;
   address: {
-    id: number | null;
-    recipientName: string | null;
-    phone: string | null;
-    addressLine: string | null;
-    provinceName: string | null;
-    cityName: string | null;
-    districtName: string | null;
-    postalCode: string | null;
+    id: number;
+    recipientName: string;
+    phone: string;
+    addressLine: string;
+    provinceName: string;
+    cityName: string;
+    districtName: string;
+    postalCode: string;
   } | null;
   courierCode: string | null;
   courierName: string | null;
@@ -34,7 +34,7 @@ export interface CheckoutSessionDTO {
     isAvailable: boolean;
     imageKey: string | null;
     warning: string | null;
-    options: OptionSnapshot[] | null;
+    options: OptionSnapshot[];
   }[];
   canPlaceOrder: boolean;
   reason: CheckoutBlockReason | null;

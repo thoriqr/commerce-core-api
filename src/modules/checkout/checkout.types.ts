@@ -33,7 +33,7 @@ export type SessionRow = {
   expires_at: Date;
   converted_at: Date | null;
   revoked_at: Date | null;
-  address_id: number | null;
+  address_id: number;
   total: number | null;
   subtotal: number | null;
 
@@ -44,11 +44,11 @@ export type SessionRow = {
   shipping_cost: number | null;
   shipping_etd: string | null;
 
-  recipient_name: string | null;
-  phone: string | null;
-  address_line: string | null;
-  province_name: string | null;
-  city_name: string | null;
+  recipient_name: string;
+  phone: string;
+  address_line: string;
+  province_name: string;
+  city_name: string;
   district_name: string | null;
   postal_code: string | null;
 };
