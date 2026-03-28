@@ -230,7 +230,7 @@ export class OrdersService {
 
   createSnapToken = async (userId: number, orderCode: string) => {
     return this.tm.transaction(async (trx) => {
-      const order = await this.repo.getOrderByCode(orderCode, userId, trx);
+      const order = await this.repo.getOrderForPaymentForUpdate(orderCode, userId, trx);
 
       if (!order) {
         throw AppError.notFound("Order not found");
@@ -248,11 +248,22 @@ export class OrdersService {
         throw AppError.badRequest("Order expired");
       }
 
+      // REUSE TOKEN
+      if (order.snap_token) {
+        return {
+          token: order.snap_token,
+          redirect_url: order.snap_redirect_url
+        };
+      }
+
       const items = await this.repo.getOrderItems(order.id, trx);
 
       const payload = buildMidtransPayload(order, items);
 
       const result = await createSnapTransaction(payload);
+
+      // SAVE TOKEN
+      await this.repo.saveSnapToken(order.id, result.token, result.redirect_url, trx);
 
       return {
         token: result.token,

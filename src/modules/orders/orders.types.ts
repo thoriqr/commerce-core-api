@@ -122,6 +122,8 @@ export type OrderForPaymentRow = {
   expires_at: Date;
   status: string;
   phone: string;
+  snap_token: string | null;
+  snap_redirect_url: string | null;
 };
 
 export type OrderDetailRow = {

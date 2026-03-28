@@ -307,34 +307,6 @@ export class OrdersRepo {
     );
   };
 
-  getOrderByCode = async (orderCode: string, userId: number, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{ rows: OrderForPaymentRow[] }>(
-      `
-    SELECT
-      id,
-      email,
-      recipient_name,
-      city_name,
-      address_line,
-      postal_code,
-      order_code,
-      total,
-      shipping_cost,
-      payment_status,
-      expires_at,
-      status,
-      phone
-    FROM orders
-    WHERE order_code = :orderCode
-    AND user_id = :userId
-    LIMIT 1
-    `,
-      { orderCode, userId }
-    );
-
-    return rows[0] ?? null;
-  };
-
   getOrderItems = async (orderId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: OrderItemForPaymentRow[] }>(
       `
@@ -437,6 +409,53 @@ export class OrdersRepo {
   `,
       {
         orderId
+      }
+    );
+  };
+
+  getOrderForPaymentForUpdate = async (orderCode: string, userId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{ rows: OrderForPaymentRow[] }>(
+      `
+    SELECT
+      id,
+      email,
+      recipient_name,
+      city_name,
+      address_line,
+      postal_code,
+      order_code,
+      total,
+      shipping_cost,
+      payment_status,
+      expires_at,
+      status,
+      phone,
+      snap_token,
+      snap_redirect_url
+    FROM orders
+    WHERE order_code = :orderCode
+    AND user_id = :userId
+    FOR UPDATE
+    `,
+      { orderCode, userId }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  saveSnapToken = async (orderId: number, token: string, redirectUrl: string, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+    UPDATE orders
+    SET
+      snap_token = :token,
+      snap_redirect_url = :redirectUrl
+    WHERE id = :orderId
+    `,
+      {
+        orderId,
+        token,
+        redirectUrl
       }
     );
   };
