@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
-import { CartItemRow, SessionItemRow, SessionRow } from "./checkout.types";
+import { CartItemRow, CheckoutSessionItemRow, CheckoutSessionRow } from "./checkout.types";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
 
@@ -35,24 +35,11 @@ export class CheckoutRepo {
 
   getCheckoutSession = async (sessionId: number, userId: number) => {
     const { rows } = await db.raw<{
-      rows: SessionRow[];
+      rows: CheckoutSessionRow[];
     }>(
       `
     SELECT
-      cs.id,
-      cs.expires_at,
-      cs.address_id,
-
-      cs.subtotal,
-      cs.total,
-      cs.courier_code,
-      cs.courier_service,
-      cs.courier_description,
-      cs.courier_name,
-      cs.shipping_cost,
-      cs.shipping_etd,
-      cs.revoked_at,
-      cs.converted_at,
+      cs.*,
 
       ua.recipient_name,
       ua.phone,
@@ -76,7 +63,7 @@ export class CheckoutRepo {
 
   getCheckoutSessionItems = async (sessionId: number) => {
     const { rows } = await db.raw<{
-      rows: SessionItemRow[];
+      rows: CheckoutSessionItemRow[];
     }>(
       `
     SELECT
@@ -99,6 +86,68 @@ export class CheckoutRepo {
       JOIN products p ON p.id = csi.product_id
       WHERE csi.checkout_session_id = :sessionId
     `,
+      { sessionId }
+    );
+
+    return rows;
+  };
+
+  getCheckoutSessionForUpdate = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{ rows: CheckoutSessionRow[] }>(
+      `
+      SELECT
+      cs.*,
+
+      ua.recipient_name,
+      ua.phone,
+      ua.address_line,
+      ua.province_name,
+      ua.city_name,
+      ua.district_name,
+      ua.postal_code
+
+    FROM checkout_sessions cs
+    LEFT JOIN user_addresses ua
+      ON ua.id = cs.address_id
+
+    WHERE cs.id = :sessionId
+    AND cs.user_id = :userId
+    AND cs.converted_at IS NULL
+    AND cs.revoked_at IS NULL
+
+    FOR UPDATE OF cs
+    `,
+      { sessionId, userId }
+    );
+
+    return rows[0] ?? null;
+  };
+
+  getCheckoutSessionItemsForUpdate = async (sessionId: number, trx: Knex.Transaction) => {
+    const { rows } = await trx.raw<{ rows: CheckoutSessionItemRow[] }>(
+      `
+        SELECT
+          csi.variant_id,
+          csi.product_id,
+          csi.slug,
+          csi.product_name,
+          csi.price,
+          csi.quantity,
+          csi.weight,
+          csi.option_snapshot,
+
+          pv.stock,
+          pv.status AS variant_status,
+
+          p.status AS product_status
+
+        FROM checkout_session_items csi
+        JOIN product_variants pv ON pv.id = csi.variant_id
+        JOIN products p ON p.id = csi.product_id
+
+        WHERE csi.checkout_session_id = :sessionId
+        FOR UPDATE OF pv
+        `,
       { sessionId }
     );
 
@@ -331,5 +380,24 @@ export class CheckoutRepo {
     `,
       { userId }
     );
+  };
+
+  markSessionConverted = async (sessionId: number, trx: Knex.Transaction) => {
+    const { rowCount } = await trx.raw(
+      `
+    UPDATE checkout_sessions
+      SET 
+      converted_at = NOW(),
+      updated_at = NOW()
+      WHERE id = :sessionId
+      AND converted_at IS NULL
+      AND revoked_at IS NULL
+  `,
+      { sessionId }
+    );
+
+    if (rowCount === 0) {
+      throw AppError.badRequest("Session already used or invalid");
+    }
   };
 }

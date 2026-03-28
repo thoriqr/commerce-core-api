@@ -1,6 +1,7 @@
 import crypto from "crypto";
+import { MidtransWebhookPayload } from "../../order-payments/order-payments.schema";
 
-export function verifyMidtransSignature(payload: any, serverKey: string): boolean {
+export function verifyMidtransSignature(payload: MidtransWebhookPayload, serverKey: string): boolean {
   const orderId = String(payload.order_id);
   const statusCode = String(payload.status_code);
   const grossAmount = String(payload.gross_amount);

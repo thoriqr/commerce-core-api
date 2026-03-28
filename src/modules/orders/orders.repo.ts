@@ -1,83 +1,18 @@
 import { Knex } from "knex";
 import {
-  CheckoutSessionItemRow,
-  CheckoutSessionRow,
   CreateOrderInput,
   InsertOrderItemInput,
   OrderDetailRow,
   OrderForPaymentRow,
   OrderItemDetailRow,
   OrderItemForPaymentRow,
-  ShipmentInput,
-  UpdateResult
+  ShipmentInput
 } from "./orders.types";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 
 export class OrdersRepo {
-  getCheckoutSessionForUpdate = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{ rows: CheckoutSessionRow[] }>(
-      `
-    SELECT
-      cs.*,
-
-      ua.recipient_name,
-      ua.phone,
-      ua.address_line,
-      ua.province_name,
-      ua.city_name,
-      ua.district_name,
-      ua.postal_code
-
-    FROM checkout_sessions cs
-    LEFT JOIN user_addresses ua
-      ON ua.id = cs.address_id
-
-    WHERE cs.id = :sessionId
-    AND cs.user_id = :userId
-    AND cs.converted_at IS NULL
-    AND cs.revoked_at IS NULL
-
-    FOR UPDATE OF cs
-    `,
-      { sessionId, userId }
-    );
-
-    return rows[0] ?? null;
-  };
-
-  getCheckoutSessionItemsForUpdate = async (sessionId: number, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{ rows: CheckoutSessionItemRow[] }>(
-      `
-  SELECT
-    csi.variant_id,
-    csi.product_id,
-    csi.slug,
-    csi.product_name,
-    csi.price,
-    csi.quantity,
-    csi.weight,
-    csi.option_snapshot,
-
-    pv.stock,
-    pv.status AS variant_status,
-
-    p.status AS product_status
-
-  FROM checkout_session_items csi
-  JOIN product_variants pv ON pv.id = csi.variant_id
-  JOIN products p ON p.id = csi.product_id
-
-  WHERE csi.checkout_session_id = :sessionId
-  FOR UPDATE OF pv
-  `,
-      { sessionId }
-    );
-
-    return rows;
-  };
-
   createOrder = async (input: CreateOrderInput, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: { id: number; order_code: string }[] }>(
       `
@@ -198,46 +133,6 @@ export class OrdersRepo {
     `,
       input
     );
-  };
-
-  reduceStock = async (items: CheckoutSessionItemRow[], trx: Knex.Transaction) => {
-    for (const item of items) {
-      const result = await trx.raw<UpdateResult>(
-        `
-      UPDATE product_variants
-      SET stock = stock - :qty
-      WHERE id = :variantId
-      AND stock >= :qty
-      `,
-        {
-          variantId: item.variant_id,
-          qty: item.quantity
-        }
-      );
-
-      if (result.rowCount === 0) {
-        throw AppError.badRequest("Stock changed, please retry checkout");
-      }
-    }
-  };
-
-  markSessionConverted = async (sessionId: number, trx: Knex.Transaction) => {
-    const { rowCount } = await trx.raw(
-      `
-    UPDATE checkout_sessions
-      SET 
-      converted_at = NOW(),
-      updated_at = NOW()
-      WHERE id = :sessionId
-      AND converted_at IS NULL
-      AND revoked_at IS NULL
-  `,
-      { sessionId }
-    );
-
-    if (rowCount === 0) {
-      throw AppError.badRequest("Session already used or invalid");
-    }
   };
 
   getOrderByCodeForUpdate = async (orderCode: string, trx: Knex.Transaction) => {
@@ -396,21 +291,6 @@ export class OrdersRepo {
     );
 
     return rows;
-  };
-
-  incrementVariantSold = async (orderId: number, trx: Knex.Transaction) => {
-    await trx.raw(
-      `
-    UPDATE product_variants pv
-    SET sold = pv.sold + oi.quantity
-    FROM order_items oi
-    WHERE oi.order_id = :orderId
-    AND oi.variant_id = pv.id
-  `,
-      {
-        orderId
-      }
-    );
   };
 
   getOrderForPaymentForUpdate = async (orderCode: string, userId: number, trx: Knex.Transaction) => {

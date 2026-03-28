@@ -3,7 +3,7 @@ import { OrdersRepo } from "./orders.repo";
 import { AppError } from "@/errors/app-error";
 import { assertCheckoutReady, assertItemsValid, generateOrderCode } from "./orders.util";
 import { ProductImageService } from "../product/product-image.service";
-import { CheckoutSessionItemRow, CreateOrderInput } from "./orders.types";
+import { CreateOrderInput } from "./orders.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
 import { mapOrder, mapSessionToCreateOrderInput } from "./orders.mapper";
 import { OrderPaymentsRepo } from "./order-payments/order-payments.repo";
@@ -13,13 +13,20 @@ import { buildMidtransPayload } from "./integrations/midtrans/midtrans.builder";
 import { MidtransWebhookPayload } from "./order-payments/order-payments.schema";
 import { PAYMENT_STATUS_RANK } from "./order-payments/order-payments.constants";
 import { UserRepo } from "../user/user.repo";
+import { CheckoutSessionItemRow } from "../checkout/checkout.types";
+import { ProductStockRepo } from "../product/product-stock.repo";
+import { CheckoutRepo } from "../checkout/checkout.repo";
+import { ProductMetricsRepo } from "../product/product-metrics.repo";
 
 export class OrdersService {
   constructor(
     private readonly tm: TransactionManager,
     private readonly repo: OrdersRepo,
+    private readonly checkoutRepo: CheckoutRepo,
     private readonly productImageService: ProductImageService,
     private readonly orderPaymentsRepo: OrderPaymentsRepo,
+    private readonly productStockRepo: ProductStockRepo,
+    private readonly productMetricsRepo: ProductMetricsRepo,
     private readonly userRepo: UserRepo
   ) {}
 
@@ -44,7 +51,7 @@ export class OrdersService {
   confirmCheckout = async (userId: number, sessionId: number) => {
     return this.tm.transaction(async (trx) => {
       // 1. GET SESSION
-      const session = await this.repo.getCheckoutSessionForUpdate(sessionId, userId, trx);
+      const session = await this.checkoutRepo.getCheckoutSessionForUpdate(sessionId, userId, trx);
 
       if (!session) {
         throw AppError.badRequest("Session already used or invalid");
@@ -65,7 +72,7 @@ export class OrdersService {
       assertCheckoutReady(session);
 
       // 2. GET ITEMS + LOCK STOCK
-      const items = await this.repo.getCheckoutSessionItemsForUpdate(sessionId, trx);
+      const items = await this.checkoutRepo.getCheckoutSessionItemsForUpdate(sessionId, trx);
 
       if (items.length === 0) {
         throw AppError.badRequest("No items");
@@ -84,7 +91,7 @@ export class OrdersService {
       }
 
       // 6. LOCK SESSION
-      await this.repo.markSessionConverted(sessionId, trx);
+      await this.checkoutRepo.markSessionConverted(sessionId, trx);
 
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
@@ -117,7 +124,7 @@ export class OrdersService {
       );
 
       // LAST
-      await this.repo.reduceStock(items, trx);
+      await this.productStockRepo.reduceStock(items, trx);
 
       return order.order_code;
     });
@@ -193,7 +200,7 @@ export class OrdersService {
           await this.repo.markOrderPaid(order.id, trx);
 
           // increment variant sold in here
-          await this.repo.incrementVariantSold(order.id, trx);
+          await this.productMetricsRepo.incrementVariantSold(order.id, trx);
         }
         return;
       }

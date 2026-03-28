@@ -1,48 +1,8 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
-import { ProductStatus, ProductVariantStatus } from "../admin/products/product.types";
+import { CheckoutSessionItemRow, CheckoutSessionRow } from "../checkout/checkout.types";
 
 export type UpdateResult = {
   rowCount: number;
-};
-
-export type CheckoutSessionRow = {
-  id: number;
-  user_id: number;
-  address_id: number | null;
-  courier_code: string | null;
-  courier_service: string | null;
-  courier_description: string | null;
-  shipping_cost: number | null;
-  shipping_etd: string | null;
-  subtotal: number | null;
-  total: number | null;
-  expires_at: Date;
-  converted_at: Date | null;
-  revoked_at: Date | null;
-  created_at: Date;
-  updated_at: Date | null;
-  courier_name: string | null;
-  recipient_name: string;
-  phone: string;
-  address_line: string;
-  province_name: string;
-  city_name: string;
-  district_name: string | null;
-  postal_code: string | null;
-};
-
-export type CheckoutSessionItemRow = {
-  variant_id: number;
-  product_name: string;
-  product_id: number;
-  price: number;
-  quantity: number;
-  weight: number;
-  stock: number;
-  variant_status: ProductVariantStatus;
-  product_status: ProductStatus;
-  slug: string;
-  option_snapshot: OptionSnapshot[] | null;
 };
 
 export type CreateOrderBaseInput = {
