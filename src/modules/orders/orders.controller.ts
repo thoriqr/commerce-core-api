@@ -25,7 +25,7 @@ export class OrdersController {
     const orderCode = await this.service.confirmCheckout(userId, params.sessionId);
 
     return sendSuccess(res, 200, {
-      data: orderCode
+      data: { orderCode }
     });
   };
 

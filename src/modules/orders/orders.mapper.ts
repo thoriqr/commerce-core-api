@@ -29,12 +29,7 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
     quantity: item.quantity,
     weight: item.weight,
 
-    imageKey: item.image_key
-      ? {
-          imageKey: item.image_key,
-          imageId: item.image_id
-        }
-      : null,
+    imageKey: item.image_key,
 
     options: item.option_snapshot ?? []
   }));
@@ -61,7 +56,11 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
     address: {
       recipientName: order.recipient_name,
       phone: order.phone,
-      addressLine: order.address_line
+      addressLine: order.address_line,
+      provinceName: order.province_name,
+      cityName: order.city_name,
+      districtName: order.district_name,
+      postalCode: order.postal_code ?? ""
     },
 
     shipping: {

@@ -137,6 +137,10 @@ export type OrderDetailRow = {
   cancelled_at: Date | null;
   recipient_name: string;
   phone: string;
+  province_name: string;
+  city_name: string;
+  district_name: string;
+  postal_code: string | null;
   address_line: string;
   courier_code: string;
   courier_name: string;

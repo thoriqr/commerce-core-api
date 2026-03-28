@@ -373,6 +373,10 @@ export class OrdersRepo {
       o.recipient_name,
       o.phone,
       o.address_line,
+      o.province_name,
+      o.city_name,
+      o.district_name,
+      o.postal_code,
 
       os.courier_code,
       os.courier_name,
