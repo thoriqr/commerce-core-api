@@ -11,23 +11,23 @@ export const cleanupCheckoutSessionsJob = {
       DELETE FROM checkout_sessions
       WHERE id IN (
         SELECT id
-        FROM checkout_sessions
+      FROM checkout_sessions
         WHERE
           (
             converted_at IS NULL
             AND expires_at < NOW()
           )
           OR (
-            revoked_at IS NOT NULL
-            AND revoked_at < NOW() - INTERVAL '1 day'
+            converted_at IS NOT NULL
+            AND converted_at < NOW() - INTERVAL '5 minutes'
           )
           OR (
-            converted_at IS NOT NULL
-            AND converted_at < NOW() - INTERVAL '1 day'
+            revoked_at IS NOT NULL
+            AND revoked_at < NOW() - INTERVAL '5 minutes'
           )
         LIMIT 500
       )
-      RETURNING id
+      RETURNING id;
     `);
 
     console.log(`Cleanup checkout sessions: deleted ${rows.length}`);

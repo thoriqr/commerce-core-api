@@ -25,7 +25,7 @@ export async function registerJobs() {
     },
     {
       name: JOB_NAMES.CLEANUP_CHECKOUT_SESSIONS,
-      pattern: "0 * * * *" // every 1 hour
+      pattern: "*/5 * * * *" // every 5 minutes
     },
     {
       name: JOB_NAMES.EXPIRE_ORDERS,
