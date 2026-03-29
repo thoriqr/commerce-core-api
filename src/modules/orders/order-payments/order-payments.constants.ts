@@ -1,11 +1,16 @@
 export const PAYMENT_STATUS_RANK: Record<string, number> = {
   pending: 1,
-  capture: 2,
-  settlement: 3,
+  authorize: 2,
 
-  // failure states (lowest priority)
-  deny: 0,
-  cancel: 0,
-  expire: 0,
-  failure: 0
+  capture: 3,
+  settlement: 4,
+
+  // final states
+  expire: 5,
+  cancel: 5,
+  deny: 5,
+  failure: 5,
+
+  refund: 6,
+  partial_refund: 6
 };

@@ -38,7 +38,6 @@ export class OrderPaymentsRepo {
       :settlementTime,
       :rawPayload
     )
-    ON CONFLICT (transaction_id) DO NOTHING
     `,
       {
         orderId: input.order_id,
