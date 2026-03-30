@@ -113,3 +113,36 @@ async function attemptRefresh(service: AuthService, refreshToken: string, res: R
     throw AppError.unauthorized("Session expired");
   }
 }
+
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const accessToken = req.cookies?.access_token;
+
+    const accessUser = tryVerifyAccessToken(accessToken);
+
+    if (!accessUser) {
+      throw AppError.unauthorized("Unauthorized");
+    }
+
+    req.user = accessUser;
+
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const accessUser = tryVerifyAccessToken(req.cookies?.access_token);
+
+    if (accessUser) {
+      req.user = accessUser;
+    }
+
+    return next();
+  } catch (err) {
+    // treat as guest
+    return next();
+  }
+}

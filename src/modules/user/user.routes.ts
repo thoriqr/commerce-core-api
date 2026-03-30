@@ -4,7 +4,7 @@ import { Router } from "express";
 import { UserRepo } from "./user.repo";
 import { UserService } from "./user.service";
 import { UserController } from "./user.controller";
-import { createRequireAuth } from "@/middlewares/auth.middleware";
+import { createRequireAuth, requireAuth } from "@/middlewares/auth.middleware";
 import { AuthRepo } from "../auth/auth.repo";
 import { AuthService } from "../auth/auth.service";
 import { ShippingService } from "../shipping/shipping.service";
@@ -24,7 +24,7 @@ const controller = new UserController(userService);
 const authRepo = new AuthRepo();
 const authService = new AuthService(tm, authRepo);
 
-const requireAuth = createRequireAuth(authService);
+// const requireAuth = createRequireAuth(authService);
 
 router.get("/profile", requireAuth, controller.getUserProfile);
 router.put("/profile", requireAuth, controller.updateProfile);

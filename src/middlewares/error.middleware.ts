@@ -14,32 +14,33 @@ function mapZodError(error: ZodError): FieldError[] {
 }
 
 export function errorMiddleware(err: any, req: Request, res: Response, _next: NextFunction) {
-  /**
-   * DEFAULT ERROR
-   */
   let statusCode = 500;
   let code = "INTERNAL_SERVER_ERROR";
   let message = "Internal server error";
   let errors: FieldError[] | undefined = undefined;
 
-  // ZOD  VALIDATION ERROR
+  // ZOD VALIDATION
   if (err instanceof ZodError) {
     statusCode = 400;
     code = "VALIDATION_ERROR";
     message = "Invalid request payload";
     errors = mapZodError(err);
-  } else if (err instanceof AppError) {
-    // DOMAIN / APPLICATION ERROR
+  }
+  // DOMAIN ERROR
+  else if (err instanceof AppError) {
     statusCode = err.statusCode;
     code = err.code;
     message = err.message;
     errors = err.errors;
-  } else if (err instanceof multer.MulterError) {
+  }
+  // MULTER
+  else if (err instanceof multer.MulterError) {
     statusCode = 400;
     code = "UPLOAD_ERROR";
     message = err.message;
-  } else if (err?.code === PG_ERROR_CODE.UNIQUE_VIOLATION) {
-    // POSTGRES / KNEX ERROR
+  }
+  // POSTGRES
+  else if (err?.code === PG_ERROR_CODE.UNIQUE_VIOLATION) {
     statusCode = 409;
     code = "DUPLICATE_RESOURCE";
     message = "Resource already exists";
@@ -49,17 +50,29 @@ export function errorMiddleware(err: any, req: Request, res: Response, _next: Ne
     message = "Invalid foreign key reference";
   }
 
-  // LOGGING (ALWAYS LAST)
-  logger.error("request error", {
+  /**
+   * 🔥 LOG LEVEL CONTROL
+   */
+  const logPayload = {
     path: req.path,
-    message: err.message,
     method: req.method,
     statusCode,
     code,
+    message: err?.message,
     error: err
-  });
+  };
 
-  // RESPONSE
+  if (statusCode >= 500) {
+    logger.error("request error", logPayload);
+  } else if (statusCode === 401) {
+    // 🔥 auth flow (expected)
+    logger.info("unauthorized request", logPayload);
+  } else if (statusCode >= 400) {
+    logger.warn("client error", logPayload);
+  } else {
+    logger.info("request info", logPayload);
+  }
+
   return res.status(statusCode).json({
     success: false,
     error: {
