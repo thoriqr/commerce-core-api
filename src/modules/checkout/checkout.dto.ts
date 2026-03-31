@@ -9,7 +9,7 @@ export interface CheckoutSessionDTO {
   total: number;
   totalWeight: number;
   address: {
-    id: number;
+    id: number | null;
     recipientName: string;
     phone: string;
     addressLine: string;

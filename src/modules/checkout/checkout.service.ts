@@ -38,10 +38,25 @@ export class CheckoutService {
 
       // 4. default address
       const defaultAddress = await this.repo.getDefaultAddress(userId, trx);
-      const addressId = defaultAddress ? defaultAddress.id : null;
+      let addressSnapshot = null;
+
+      if (defaultAddress) {
+        addressSnapshot = {
+          address_id: defaultAddress.id,
+          recipient_name: defaultAddress.recipient_name,
+          phone: defaultAddress.phone,
+          address_line: defaultAddress.address_line,
+          province_name: defaultAddress.province_name,
+          city_name: defaultAddress.city_name,
+          district_name: defaultAddress.district_name,
+          postal_code: defaultAddress.postal_code,
+          shipping_city_id: defaultAddress.shipping_city_id,
+          shipping_district_id: defaultAddress.shipping_district_id
+        };
+      }
 
       // 5. create session (NOW SAFE)
-      const sessionId = await this.repo.createCheckoutSession(userId, expiresAt, addressId, trx);
+      const sessionId = await this.repo.createCheckoutSession(userId, expiresAt, addressSnapshot, trx);
 
       // 6. insert items
       await this.repo.insertCheckoutSessionItems(sessionId, items, trx);
@@ -86,7 +101,7 @@ export class CheckoutService {
     }
 
     await this.tm.transaction(async (trx) => {
-      await this.repo.updateCheckoutSessionAddress(sessionId, addressId, trx);
+      await this.repo.updateCheckoutSessionAddress(sessionId, address, trx);
     });
   };
 
@@ -101,8 +116,8 @@ export class CheckoutService {
 
     const address = await this.repo.getCheckoutAddress(sessionId, userId);
 
-    if (!address) {
-      throw AppError.badRequest("Address not set");
+    if (!address || !address.shipping_city_id) {
+      throw AppError.badRequest("Please select a valid address before calculating shipping");
     }
 
     const items = await this.repo.getCheckoutItemsWeight(sessionId);
@@ -130,8 +145,8 @@ export class CheckoutService {
 
     const address = await this.repo.getCheckoutAddress(sessionId, userId);
 
-    if (!address) {
-      throw AppError.badRequest("Address not set");
+    if (!address || !address.shipping_city_id) {
+      throw AppError.badRequest("Please select a valid address before choosing shipping");
     }
 
     const items = await this.repo.getCheckoutItemsWeight(sessionId);

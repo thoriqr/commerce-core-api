@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
-import { CartItemRow, CheckoutSessionItemRow, CheckoutSessionRow } from "./checkout.types";
+import { CartItemRow, CheckoutSessionItemRow, CheckoutSessionRow, DefaultAddressRow } from "./checkout.types";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
 
@@ -38,22 +38,10 @@ export class CheckoutRepo {
       rows: CheckoutSessionRow[];
     }>(
       `
-    SELECT
-      cs.*,
-
-      ua.recipient_name,
-      ua.phone,
-      ua.address_line,
-      ua.province_name,
-      ua.city_name,
-      ua.district_name,
-      ua.postal_code
-
-    FROM checkout_sessions cs
-    LEFT JOIN user_addresses ua ON ua.id = cs.address_id
-
-    WHERE cs.id = :sessionId
-    AND cs.user_id = :userId
+    SELECT *
+    FROM checkout_sessions
+    WHERE id = :sessionId
+    AND user_id = :userId
     `,
       { sessionId, userId }
     );
@@ -95,27 +83,13 @@ export class CheckoutRepo {
   getCheckoutSessionForUpdate = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: CheckoutSessionRow[] }>(
       `
-      SELECT
-      cs.*,
-
-      ua.recipient_name,
-      ua.phone,
-      ua.address_line,
-      ua.province_name,
-      ua.city_name,
-      ua.district_name,
-      ua.postal_code
-
-    FROM checkout_sessions cs
-    LEFT JOIN user_addresses ua
-      ON ua.id = cs.address_id
-
-    WHERE cs.id = :sessionId
-    AND cs.user_id = :userId
-    AND cs.converted_at IS NULL
-    AND cs.revoked_at IS NULL
-
-    FOR UPDATE OF cs
+    SELECT *
+    FROM checkout_sessions
+    WHERE id = :sessionId
+      AND user_id = :userId
+      AND converted_at IS NULL
+      AND revoked_at IS NULL
+    FOR UPDATE
     `,
       { sessionId, userId }
     );
@@ -156,10 +130,20 @@ export class CheckoutRepo {
 
   getDefaultAddress = async (userId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{
-      rows: Array<{ id: number }>;
+      rows: DefaultAddressRow[];
     }>(
       `
-    SELECT id
+    SELECT 
+      id,
+      recipient_name,
+      phone,
+      address_line,
+      province_name,
+      city_name,
+      district_name,
+      postal_code,
+      shipping_city_id,
+      shipping_district_id
     FROM user_addresses
     WHERE user_id = :userId
       AND is_default = true
@@ -175,6 +159,13 @@ export class CheckoutRepo {
     const { rows } = await db.raw<{
       rows: Array<{
         id: number;
+        recipient_name: string;
+        phone: string;
+        address_line: string;
+        province_name: string;
+        city_name: string;
+        district_name: string;
+        postal_code: string | null;
         shipping_city_id: number;
         shipping_district_id: number | null;
       }>;
@@ -182,11 +173,18 @@ export class CheckoutRepo {
       `
     SELECT
       id,
+      recipient_name,
+      phone,
+      address_line,
+      province_name,
+      city_name,
+      district_name,
+      postal_code,
       shipping_city_id,
       shipping_district_id
     FROM user_addresses
     WHERE id = :addressId
-    AND user_id = :userId
+      AND user_id = :userId
     `,
       { userId, addressId }
     );
@@ -197,18 +195,17 @@ export class CheckoutRepo {
   getCheckoutAddress = async (sessionId: number, userId: number) => {
     const { rows } = await db.raw<{
       rows: Array<{
-        shipping_city_id: number;
+        shipping_city_id: number | null;
         shipping_district_id: number | null;
       }>;
     }>(
       `
     SELECT
-      ua.shipping_city_id,
-      ua.shipping_district_id
-    FROM checkout_sessions cs
-    JOIN user_addresses ua ON ua.id = cs.address_id
-    WHERE cs.id = :sessionId
-    AND cs.user_id = :userId
+      shipping_city_id,
+      shipping_district_id
+    FROM checkout_sessions
+    WHERE id = :sessionId
+      AND user_id = :userId
     `,
       { sessionId, userId }
     );
@@ -273,14 +270,51 @@ export class CheckoutRepo {
     );
   };
 
-  updateCheckoutSessionAddress = async (sessionId: number, addressId: number, trx: Knex.Transaction) => {
+  updateCheckoutSessionAddress = async (
+    sessionId: number,
+    address: {
+      id: number;
+      recipient_name: string;
+      phone: string;
+      address_line: string;
+      province_name: string;
+      city_name: string;
+      district_name: string;
+      postal_code: string | null;
+      shipping_city_id: number;
+      shipping_district_id: number | null;
+    },
+    trx: Knex.Transaction
+  ) => {
     await trx.raw(
       `
     UPDATE checkout_sessions
-    SET address_id = :addressId
+    SET
+      address_id = :addressId,
+      recipient_name = :recipientName,
+      phone = :phone,
+      address_line = :addressLine,
+      province_name = :provinceName,
+      city_name = :cityName,
+      district_name = :districtName,
+      postal_code = :postalCode,
+      shipping_city_id = :shippingCityId,
+      shipping_district_id = :shippingDistrictId
     WHERE id = :sessionId
     `,
-      { sessionId, addressId }
+      {
+        sessionId,
+        addressId: address.id,
+        recipientName: address.recipient_name,
+        phone: address.phone,
+        addressLine: address.address_line,
+        provinceName: address.province_name,
+        cityName: address.city_name,
+        districtName: address.district_name,
+        postalCode: address.postal_code,
+        shippingCityId: address.shipping_city_id,
+        shippingDistrictId: address.shipping_district_id
+      }
     );
   };
 
@@ -329,17 +363,62 @@ export class CheckoutRepo {
     await this.insertCheckoutSessionItems(sessionId, items, trx);
   };
 
-  createCheckoutSession = async (userId: number, expiresAt: Date, addressId: number | null, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{ rows: Array<{ id: number }> }>(
+  createCheckoutSession = async (
+    userId: number,
+    expiresAt: Date,
+    address: {
+      address_id: number | null;
+      recipient_name: string;
+      phone: string;
+      address_line: string;
+      province_name: string;
+      city_name: string;
+      district_name: string;
+      postal_code: string | null;
+      shipping_city_id: number | null;
+      shipping_district_id: number | null;
+    } | null,
+    trx: Knex.Transaction
+  ) => {
+    const { rows } = await trx.raw(
       `
-    INSERT INTO checkout_sessions (user_id, expires_at, address_id)
-    VALUES (:userId, :expiresAt, :addressId)
+    INSERT INTO checkout_sessions (
+      user_id,
+      expires_at,
+      address_id,
+      recipient_name,
+      phone,
+      address_line,
+      province_name,
+      city_name,
+      district_name,
+      postal_code
+    )
+    VALUES (
+      :userId,
+      :expiresAt,
+      :addressId,
+      :recipientName,
+      :phone,
+      :addressLine,
+      :provinceName,
+      :cityName,
+      :districtName,
+      :postalCode
+    )
     RETURNING id
-    `,
+  `,
       {
         userId,
         expiresAt,
-        addressId
+        addressId: address?.address_id ?? null,
+        recipientName: address?.recipient_name ?? null,
+        phone: address?.phone ?? null,
+        addressLine: address?.address_line ?? null,
+        provinceName: address?.province_name ?? null,
+        cityName: address?.city_name ?? null,
+        districtName: address?.district_name ?? null,
+        postalCode: address?.postal_code ?? null
       }
     );
 

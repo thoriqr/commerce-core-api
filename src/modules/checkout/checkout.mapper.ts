@@ -1,9 +1,9 @@
 import { ImageSignature } from "@/shared/variant-image/types";
 import { CheckoutSessionDTO } from "./checkout.dto";
-import { SessionItemRow, SessionRow } from "./checkout.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
+import { CheckoutSessionItemRow, CheckoutSessionRow } from "./checkout.types";
 
-function resolveCheckoutState(items: ReturnType<typeof mapSessionItem>, sessionRow: SessionRow, hasAddress: boolean) {
+function resolveCheckoutState(items: ReturnType<typeof mapSessionItem>, sessionRow: CheckoutSessionRow, hasAddress: boolean) {
   // 1. items
   for (const item of items) {
     if (!item.isAvailable) {
@@ -32,8 +32,20 @@ function resolveCheckoutState(items: ReturnType<typeof mapSessionItem>, sessionR
   return { canPlaceOrder: true, reason: null };
 }
 
+function hasValidAddress(sessionRow: CheckoutSessionRow): boolean {
+  return !!(
+    sessionRow.recipient_name &&
+    sessionRow.phone &&
+    sessionRow.address_line &&
+    sessionRow.province_name &&
+    sessionRow.city_name &&
+    sessionRow.district_name &&
+    sessionRow.shipping_city_id
+  );
+}
+
 export function mapSessionItem(
-  rows: SessionItemRow[],
+  rows: CheckoutSessionItemRow[],
   imageMap: Map<
     number,
     {
@@ -81,22 +93,22 @@ export function mapSessionItem(
   });
 }
 
-export function mapUserAddress(sessionRow: SessionRow) {
+export function mapUserAddress(sessionRow: CheckoutSessionRow) {
   return {
     id: sessionRow.address_id,
-    recipientName: sessionRow.recipient_name,
-    phone: sessionRow.phone,
-    addressLine: sessionRow.address_line,
-    provinceName: sessionRow.province_name,
-    cityName: sessionRow.city_name,
+    recipientName: sessionRow.recipient_name ?? "",
+    phone: sessionRow.phone ?? "",
+    addressLine: sessionRow.address_line ?? "",
+    provinceName: sessionRow.province_name ?? "",
+    cityName: sessionRow.city_name ?? "",
     districtName: sessionRow.district_name ?? "",
     postalCode: sessionRow.postal_code ?? ""
   };
 }
 
 export function mapCheckoutSession(
-  sessionRow: SessionRow,
-  sessionItemRow: SessionItemRow[],
+  sessionRow: CheckoutSessionRow,
+  sessionItemRow: CheckoutSessionItemRow[],
   imageMap: Map<
     number,
     {
@@ -119,9 +131,11 @@ export function mapCheckoutSession(
   const shippingCost = sessionRow.shipping_cost ?? 0;
   const total = sessionRow.total ?? 0;
 
-  const address = sessionRow.address_id && sessionRow.recipient_name ? mapUserAddress(sessionRow) : null;
+  const isAddressValid = hasValidAddress(sessionRow);
 
-  const { canPlaceOrder, reason } = resolveCheckoutState(mappedItems, sessionRow, !!address);
+  const address = isAddressValid ? mapUserAddress(sessionRow) : null;
+
+  const { canPlaceOrder, reason } = resolveCheckoutState(mappedItems, sessionRow, isAddressValid);
 
   return {
     sessionId: sessionRow.id,

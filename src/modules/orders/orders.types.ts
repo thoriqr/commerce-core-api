@@ -16,7 +16,7 @@ export type CreateOrderBaseInput = {
   addressLine: string;
   provinceName: string;
   cityName: string;
-  districtName: string | null;
+  districtName: string;
   postalCode: string | null;
 
   note: null;
@@ -58,6 +58,9 @@ export type ReadyCheckoutSession = CheckoutSessionRow & {
   recipient_name: string;
   phone: string;
   address_line: string;
+  province_name: string;
+  city_name: string;
+  district_name: string;
 };
 
 export type OrderItemForPaymentRow = {

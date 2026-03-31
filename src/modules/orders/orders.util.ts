@@ -1,5 +1,6 @@
 import { AppError } from "@/errors/app-error";
-import { CheckoutSessionItemRow, CheckoutSessionRow, ReadyCheckoutSession } from "./orders.types";
+import { ReadyCheckoutSession } from "./orders.types";
+import { CheckoutSessionItemRow, CheckoutSessionRow } from "../checkout/checkout.types";
 
 export function assertCheckoutReady(session: CheckoutSessionRow): asserts session is ReadyCheckoutSession {
   // totals
@@ -21,7 +22,7 @@ export function assertCheckoutReady(session: CheckoutSessionRow): asserts sessio
   }
 
   // address
-  if (!session.recipient_name || !session.phone || !session.address_line) {
+  if (!session.recipient_name || !session.phone || !session.address_line || !session.province_name || !session.city_name || !session.district_name) {
     throw AppError.badRequest("Address invalid");
   }
 

@@ -61,14 +61,6 @@ export class OrdersService {
         throw AppError.badRequest("Checkout session expired");
       }
 
-      if (!session.address_id) {
-        throw AppError.badRequest("Address not set");
-      }
-
-      if (!session.courier_code || !session.courier_service) {
-        throw AppError.badRequest("Shipping method not set");
-      }
-
       assertCheckoutReady(session);
 
       // 2. GET ITEMS + LOCK STOCK

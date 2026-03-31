@@ -1,7 +1,7 @@
 import { AppError } from "@/errors/app-error";
-import { SessionRow } from "./checkout.types";
+import { CheckoutSessionRow } from "./checkout.types";
 
-export function assertSessionActive(session: SessionRow) {
+export function assertSessionActive(session: CheckoutSessionRow) {
   if (session.converted_at) {
     throw AppError.badRequest("Checkout already completed");
   }
