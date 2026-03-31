@@ -1,5 +1,5 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
-import { OrderForPaymentRow, OrderItemForPaymentRow } from "../../orders.types";
+import { OrderForPaymentRow, OrderItemForPaymentRow } from "../../order.types";
 import { MidtransItem, MidtransPayload } from "./midtrans.types";
 import { env } from "@/config/env";
 

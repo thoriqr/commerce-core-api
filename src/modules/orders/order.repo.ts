@@ -2,17 +2,19 @@ import { Knex } from "knex";
 import {
   CreateOrderInput,
   InsertOrderItemInput,
+  OrderByUser,
   OrderDetailRow,
   OrderForPaymentRow,
   OrderItemDetailRow,
   OrderItemForPaymentRow,
   ShipmentInput
-} from "./orders.types";
+} from "./order.types";
 import { logger } from "@/libs/logger";
 import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
+import { GetOrdersByUserParams } from "./order.schema";
 
-export class OrdersRepo {
+export class OrderRepo {
   createOrder = async (input: CreateOrderInput, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: { id: number; order_code: string }[] }>(
       `
@@ -226,24 +228,7 @@ export class OrdersRepo {
     }>(
       `
     SELECT
-      o.id,
-      o.order_code,
-      o.total,
-      o.subtotal,
-      o.shipping_cost,
-      o.payment_status,
-      o.status,
-      o.cancelled_at,
-      o.expires_at,
-      o.paid_at,
-
-      o.recipient_name,
-      o.phone,
-      o.address_line,
-      o.province_name,
-      o.city_name,
-      o.district_name,
-      o.postal_code,
+      o.*,
 
       os.courier_code,
       os.courier_name,
@@ -339,4 +324,148 @@ export class OrdersRepo {
       }
     );
   };
+
+  getOrdersByUser = async (userId: number, params: GetOrdersByUserParams) => {
+    const { page, limit, status } = params;
+
+    const offset = (page - 1) * limit;
+
+    // status filter mapping
+    const filter = await this.buildUserOrderStatusFilter(status);
+
+    const bindings = {
+      userId,
+      limit,
+      offset,
+      ...filter.bindings
+    };
+
+    const { rows } = await db.raw<{
+      rows: OrderByUser[];
+    }>(
+      `
+    WITH order_base AS (
+      SELECT
+        o.id,
+        o.order_code,
+        o.status,
+        o.payment_status,
+        o.total,
+        o.created_at
+      FROM orders o
+      WHERE o.user_id = :userId
+      ${filter.sql}
+      ORDER BY o.created_at DESC
+      LIMIT :limit OFFSET :offset
+    ),
+
+    item_count AS (
+      SELECT
+        oi.order_id,
+        COUNT(*) AS item_count
+      FROM order_items oi
+      WHERE oi.order_id IN (SELECT id FROM order_base)
+      GROUP BY oi.order_id
+    ),
+
+    preview_item AS (
+      SELECT *
+      FROM (
+        SELECT
+          oi.order_id,
+          oi.product_name,
+          oi.image_url,
+          ROW_NUMBER() OVER (PARTITION BY oi.order_id ORDER BY oi.id) as rn
+        FROM order_items oi
+        WHERE oi.order_id IN (SELECT id FROM order_base)
+      ) t
+      WHERE t.rn = 1
+    )
+
+    SELECT
+      ob.id,
+      ob.order_code,
+      ob.status,
+      ob.payment_status,
+      ob.total,
+      ob.created_at,
+
+      ic.item_count,
+
+      pi.product_name AS preview_name,
+      pi.image_url AS preview_image
+
+    FROM order_base ob
+    LEFT JOIN item_count ic ON ic.order_id = ob.id
+    LEFT JOIN preview_item pi ON pi.order_id = ob.id
+    ORDER BY ob.created_at DESC
+    `,
+      bindings
+    );
+
+    return rows;
+  };
+
+  countOrdersByUser = async (userId: number, status?: "ongoing" | "completed" | "cancelled") => {
+    const filter = await this.buildUserOrderStatusFilter(status);
+
+    const bindings = {
+      userId,
+      ...filter.bindings
+    };
+
+    const { rows } = await db.raw<{
+      rows: Array<{ total: string }>; // postgres COUNT = string
+    }>(
+      `
+    SELECT COUNT(*)::int AS total
+    FROM orders o
+    WHERE o.user_id = :userId
+    ${filter.sql}
+    `,
+      bindings
+    );
+
+    return rows[0]?.total ?? 0;
+  };
+
+  private async buildUserOrderStatusFilter(status?: GetOrdersByUserParams["status"]) {
+    if (!status) {
+      return {
+        sql: "",
+        bindings: {}
+      };
+    }
+
+    if (status === "ongoing") {
+      return {
+        sql: `AND o.status IN ('PENDING', 'PROCESSING')`,
+        bindings: {}
+      };
+    }
+
+    if (status === "completed") {
+      return {
+        sql: `AND o.status = 'COMPLETED'`,
+        bindings: {}
+      };
+    }
+
+    if (status === "cancelled") {
+      return {
+        sql: `
+        AND (
+          o.status = 'CANCELLED'
+          OR o.payment_status IN ('FAILED', 'EXPIRED')
+        )
+      `,
+        bindings: {}
+      };
+    }
+
+    return {
+      sql: "",
+      bindings: {}
+    };
+  }
 }

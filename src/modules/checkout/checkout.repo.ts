@@ -392,7 +392,9 @@ export class CheckoutRepo {
       province_name,
       city_name,
       district_name,
-      postal_code
+      postal_code,
+      shipping_city_id,
+      shipping_district_id
     )
     VALUES (
       :userId,
@@ -404,7 +406,9 @@ export class CheckoutRepo {
       :provinceName,
       :cityName,
       :districtName,
-      :postalCode
+      :postalCode,
+      :shippingCityId,
+      :shippingDistrictId
     )
     RETURNING id
   `,
@@ -418,7 +422,9 @@ export class CheckoutRepo {
         provinceName: address?.province_name ?? null,
         cityName: address?.city_name ?? null,
         districtName: address?.district_name ?? null,
-        postalCode: address?.postal_code ?? null
+        postalCode: address?.postal_code ?? null,
+        shippingCityId: address?.shipping_city_id ?? null,
+        shippingDistrictId: address?.shipping_district_id ?? null
       }
     );
 
@@ -429,6 +435,54 @@ export class CheckoutRepo {
     }
 
     return row.id;
+  };
+
+  setCheckoutSessionAddressSnapshot = async (
+    sessionId: number,
+    address: {
+      address_id: number;
+      recipient_name: string;
+      phone: string;
+      address_line: string;
+      province_name: string;
+      city_name: string;
+      district_name: string;
+      postal_code: string | null;
+      shipping_city_id: number;
+      shipping_district_id: number | null;
+    },
+    trx: Knex.Transaction
+  ) => {
+    await trx.raw(
+      `
+    UPDATE checkout_sessions
+    SET
+      address_id = :addressId,
+      recipient_name = :recipientName,
+      phone = :phone,
+      address_line = :addressLine,
+      province_name = :provinceName,
+      city_name = :cityName,
+      district_name = :districtName,
+      postal_code = :postalCode,
+      shipping_city_id = :shippingCityId,
+      shipping_district_id = :shippingDistrictId
+    WHERE id = :sessionId
+    `,
+      {
+        sessionId,
+        addressId: address.address_id,
+        recipientName: address.recipient_name,
+        phone: address.phone,
+        addressLine: address.address_line,
+        provinceName: address.province_name,
+        cityName: address.city_name,
+        districtName: address.district_name,
+        postalCode: address.postal_code,
+        shippingCityId: address.shipping_city_id,
+        shippingDistrictId: address.shipping_district_id
+      }
+    );
   };
 
   getActiveSession = async (userId: number, trx: Knex.Transaction) => {

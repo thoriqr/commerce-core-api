@@ -1,11 +1,11 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
-import { OrdersRepo } from "./orders.repo";
+import { OrderRepo } from "./order.repo";
 import { AppError } from "@/errors/app-error";
 import { assertCheckoutReady, assertItemsValid, generateOrderCode } from "./orders.util";
 import { ProductImageService } from "../product/product-image.service";
-import { CreateOrderInput } from "./orders.types";
+import { CreateOrderInput } from "./order.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
-import { mapOrder, mapSessionToCreateOrderInput } from "./orders.mapper";
+import { mapOrder, mapSessionToCreateOrderInput } from "./order.mapper";
 import { OrderPaymentsRepo } from "./order-payments/order-payments.repo";
 import { mapMidtransWebhookToPayment } from "./order-payments/order-payments.mapper";
 import { createSnapTransaction } from "./integrations/midtrans/midtrans.client";
@@ -18,10 +18,10 @@ import { ProductStockRepo } from "../product/product-stock.repo";
 import { CheckoutRepo } from "../checkout/checkout.repo";
 import { ProductMetricsRepo } from "../product/product-metrics.repo";
 
-export class OrdersService {
+export class OrderService {
   constructor(
     private readonly tm: TransactionManager,
-    private readonly repo: OrdersRepo,
+    private readonly repo: OrderRepo,
     private readonly checkoutRepo: CheckoutRepo,
     private readonly productImageService: ProductImageService,
     private readonly orderPaymentsRepo: OrderPaymentsRepo,

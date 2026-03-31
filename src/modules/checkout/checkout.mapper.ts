@@ -1,7 +1,7 @@
 import { ImageSignature } from "@/shared/variant-image/types";
 import { CheckoutSessionDTO } from "./checkout.dto";
 import { findBestImage } from "@/shared/variant-image/resolver";
-import { CheckoutSessionItemRow, CheckoutSessionRow } from "./checkout.types";
+import { AddressSnapshotInput, CheckoutAddressSnapshot, CheckoutSessionItemRow, CheckoutSessionRow } from "./checkout.types";
 
 function resolveCheckoutState(items: ReturnType<typeof mapSessionItem>, sessionRow: CheckoutSessionRow, hasAddress: boolean) {
   // 1. items
@@ -156,5 +156,20 @@ export function mapCheckoutSession(
     items: mappedItems,
     canPlaceOrder,
     reason
+  };
+}
+
+export function buildAddressSnapshot(address: AddressSnapshotInput): CheckoutAddressSnapshot {
+  return {
+    address_id: address.id,
+    recipient_name: address.recipient_name,
+    phone: address.phone,
+    address_line: address.address_line,
+    province_name: address.province_name,
+    city_name: address.city_name,
+    district_name: address.district_name,
+    postal_code: address.postal_code,
+    shipping_city_id: address.shipping_city_id,
+    shipping_district_id: address.shipping_district_id
   };
 }

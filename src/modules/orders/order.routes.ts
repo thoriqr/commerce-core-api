@@ -4,9 +4,9 @@ import { Router } from "express";
 import { ProductImageRepo } from "../product/product-image.repo";
 import { ProductImageService } from "../product/product-image.service";
 import { OrderPaymentsRepo } from "./order-payments/order-payments.repo";
-import { OrdersRepo } from "./orders.repo";
-import { OrdersService } from "./orders.service";
-import { OrdersController } from "./orders.controller";
+import { OrderRepo } from "./order.repo";
+import { OrderService } from "./order.service";
+import { OrderController } from "./order.controller";
 import { AuthRepo } from "../auth/auth.repo";
 import { AuthService } from "../auth/auth.service";
 import { createRequireAuth } from "@/middlewares/auth.middleware";
@@ -36,9 +36,9 @@ const productMetricsRepo = new ProductMetricsRepo();
 
 const paymentsRepo = new OrderPaymentsRepo();
 
-const ordersRepo = new OrdersRepo();
-const ordersService = new OrdersService(tm, ordersRepo, checkoutRepo, imageService, paymentsRepo, productStockRepo, productMetricsRepo, userRepo);
-const controller = new OrdersController(ordersService);
+const orderRepo = new OrderRepo();
+const orderService = new OrderService(tm, orderRepo, checkoutRepo, imageService, paymentsRepo, productStockRepo, productMetricsRepo, userRepo);
+const controller = new OrderController(orderService);
 
 router.post("/checkout-sessions/:sessionId/confirm", requireAuth, controller.confirmCheckout);
 router.post("/orders/:orderCode/snap-token", requireAuth, controller.createSnapToken);

@@ -6,7 +6,7 @@ import authRouter from "./modules/auth/auth.routes";
 import userRouter from "./modules/user/user.routes";
 import shippingRouter from "./modules/shipping/shipping.routes";
 import checkoutRouter from "./modules/checkout/checkout.routes";
-import ordersRouter from "./modules/orders/orders.route";
+import orderRouter from "./modules/orders/order.routes";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { ADMIN_PREFIX, AUTH_PREFIX, SHIPPING_PREFIX, STORE_PREFIX, CHECKOUT_SESSION_PREFIX, USER_PREFIX } from "./constants/routes";
 import { env } from "./config/env";
@@ -29,7 +29,7 @@ app.use(STORE_PREFIX, storeRouter);
 app.use(AUTH_PREFIX, authRouter);
 app.use(USER_PREFIX, userRouter);
 app.use(SHIPPING_PREFIX, shippingRouter);
-app.use("/api", ordersRouter);
+app.use("/api", orderRouter);
 app.use(CHECKOUT_SESSION_PREFIX, checkoutRouter);
 app.use(ADMIN_PREFIX, adminRouter);
 

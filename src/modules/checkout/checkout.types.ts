@@ -73,3 +73,29 @@ export type DefaultAddressRow = {
 export type UpsertAddress = {};
 
 export type CheckoutBlockReason = "INVALID_ITEMS" | "NO_ADDRESS" | "NO_SHIPPING" | "SHIPPING_NOT_CALCULATED" | null;
+
+export type AddressSnapshotInput = {
+  id: number;
+  recipient_name: string;
+  phone: string;
+  address_line: string;
+  province_name: string;
+  city_name: string;
+  district_name: string;
+  postal_code: string | null;
+  shipping_city_id: number;
+  shipping_district_id: number | null;
+};
+
+export type CheckoutAddressSnapshot = {
+  address_id: number;
+  recipient_name: string;
+  phone: string;
+  address_line: string;
+  province_name: string;
+  city_name: string;
+  district_name: string;
+  postal_code: string | null;
+  shipping_city_id: number;
+  shipping_district_id: number | null;
+};

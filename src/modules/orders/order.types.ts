@@ -1,6 +1,10 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
 import { CheckoutSessionItemRow, CheckoutSessionRow } from "../checkout/checkout.types";
 
+export type OrderPaymentStatus = "UNPAID" | "PAID" | "FAILED" | "EXPIRED";
+
+export type OrderStatus = "PENDING" | "PROCESSING" | "CANCELLED" | "COMPLETED";
+
 export type UpdateResult = {
   rowCount: number;
 };
@@ -81,9 +85,9 @@ export type OrderForPaymentRow = {
   order_code: string;
   total: number;
   shipping_cost: number;
-  payment_status: string;
+  payment_status: OrderPaymentStatus;
   expires_at: Date;
-  status: string;
+  status: OrderStatus;
   phone: string;
   snap_token: string | null;
   snap_redirect_url: string | null;
@@ -91,15 +95,14 @@ export type OrderForPaymentRow = {
 
 export type OrderDetailRow = {
   id: number;
+  user_id: number;
   order_code: string;
   total: number;
   subtotal: number;
   shipping_cost: number;
-  payment_status: string;
-  status: string;
-  expires_at: Date;
-  paid_at: Date | null;
-  cancelled_at: Date | null;
+  payment_status: OrderPaymentStatus;
+  status: OrderStatus;
+
   recipient_name: string;
   phone: string;
   province_name: string;
@@ -114,6 +117,11 @@ export type OrderDetailRow = {
   shipping_etd: string;
   tracking_number: string;
   shipment_status: string;
+  created_at: Date;
+  updated_at: Date | null;
+  expires_at: Date;
+  paid_at: Date | null;
+  cancelled_at: Date | null;
   shipped_at: Date | null;
   delivered_at: Date | null;
 };
@@ -129,4 +137,18 @@ export type OrderItemDetailRow = {
   image_key: string | null;
   image_id: number | null;
   option_snapshot: OptionSnapshot[] | null;
+};
+
+export type OrderByUser = {
+  id: number;
+  order_code: string;
+  status: string;
+  payment_status: string;
+  total: number;
+  created_at: Date;
+
+  item_count: number;
+
+  preview_name: string | null;
+  preview_image: string | null;
 };

@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
-import { OrdersService } from "./orders.service";
+import { OrderService } from "./order.service";
 import { sendSuccess } from "@/utils/send-success";
 import { verifyMidtransSignature } from "./integrations/midtrans/midtrans.signature";
 import { midtransWebhookSchema } from "./order-payments/order-payments.schema";
 import { env } from "@/config/env";
-import { orderCodeParams, sessionIdParams } from "./orders.schema";
+import { orderCodeParams, sessionIdParams } from "./order.schema";
 
-export class OrdersController {
-  constructor(private readonly service: OrdersService) {}
+export class OrderController {
+  constructor(private readonly service: OrderService) {}
 
   getOrder = async (req: Request, res: Response) => {
     const userId = req.user?.id!;

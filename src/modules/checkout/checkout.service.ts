@@ -2,7 +2,7 @@ import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CheckoutRepo } from "./checkout.repo";
 import { ShippingService } from "../shipping/shipping.service";
 import { AppError } from "@/errors/app-error";
-import { mapCheckoutSession } from "./checkout.mapper";
+import { buildAddressSnapshot, mapCheckoutSession } from "./checkout.mapper";
 import { ProductImageService } from "../product/product-image.service";
 import { assertSessionActive } from "./checkout.util";
 
@@ -33,27 +33,21 @@ export class CheckoutService {
 
       if (existing) {
         await this.repo.replaceSessionItems(existing.id, items, trx);
+
+        const defaultAddress = await this.repo.getDefaultAddress(userId, trx);
+
+        if (defaultAddress) {
+          const snapshot = buildAddressSnapshot(defaultAddress);
+
+          await this.repo.setCheckoutSessionAddressSnapshot(existing.id, snapshot, trx);
+        }
+
         return { sessionId: existing.id };
       }
 
       // 4. default address
       const defaultAddress = await this.repo.getDefaultAddress(userId, trx);
-      let addressSnapshot = null;
-
-      if (defaultAddress) {
-        addressSnapshot = {
-          address_id: defaultAddress.id,
-          recipient_name: defaultAddress.recipient_name,
-          phone: defaultAddress.phone,
-          address_line: defaultAddress.address_line,
-          province_name: defaultAddress.province_name,
-          city_name: defaultAddress.city_name,
-          district_name: defaultAddress.district_name,
-          postal_code: defaultAddress.postal_code,
-          shipping_city_id: defaultAddress.shipping_city_id,
-          shipping_district_id: defaultAddress.shipping_district_id
-        };
-      }
+      const addressSnapshot = defaultAddress ? buildAddressSnapshot(defaultAddress) : null;
 
       // 5. create session (NOW SAFE)
       const sessionId = await this.repo.createCheckoutSession(userId, expiresAt, addressSnapshot, trx);
