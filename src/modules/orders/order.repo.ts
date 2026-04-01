@@ -374,7 +374,7 @@ export class OrderRepo {
         SELECT
           oi.order_id,
           oi.product_name,
-          oi.image_url,
+          oi.image_key,
           ROW_NUMBER() OVER (PARTITION BY oi.order_id ORDER BY oi.id) as rn
         FROM order_items oi
         WHERE oi.order_id IN (SELECT id FROM order_base)
@@ -393,7 +393,7 @@ export class OrderRepo {
       ic.item_count,
 
       pi.product_name AS preview_name,
-      pi.image_url AS preview_image
+      pi.image_key AS preview_image
 
     FROM order_base ob
     LEFT JOIN item_count ic ON ic.order_id = ob.id
@@ -415,7 +415,7 @@ export class OrderRepo {
     };
 
     const { rows } = await db.raw<{
-      rows: Array<{ total: string }>; // postgres COUNT = string
+      rows: Array<{ total: number }>;
     }>(
       `
     SELECT COUNT(*)::int AS total
@@ -431,15 +431,23 @@ export class OrderRepo {
 
   private async buildUserOrderStatusFilter(status?: GetOrdersByUserParams["status"]) {
     if (!status) {
-      return {
-        sql: "",
-        bindings: {}
-      };
+      return { sql: "", bindings: {} };
     }
 
     if (status === "ongoing") {
       return {
-        sql: `AND o.status IN ('PENDING', 'PROCESSING')`,
+        sql: `
+      AND (
+        -- waiting payment
+        (o.status = 'PENDING' AND o.payment_status = 'UNPAID')
+
+        -- paid but not processed yet
+        OR (o.status = 'PENDING' AND o.payment_status = 'PAID')
+
+        -- processing
+        OR o.status = 'PROCESSING'
+      )
+    `,
         bindings: {}
       };
     }
@@ -463,9 +471,6 @@ export class OrderRepo {
       };
     }
 
-    return {
-      sql: "",
-      bindings: {}
-    };
+    return { sql: "", bindings: {} };
   }
 }

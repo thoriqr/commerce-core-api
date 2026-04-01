@@ -9,6 +9,7 @@ import { AuthRepo } from "../auth/auth.repo";
 import { AuthService } from "../auth/auth.service";
 import { ShippingService } from "../shipping/shipping.service";
 import { RajaOngkirClient } from "../shipping/rajaongkir.client";
+import { OrderRepo } from "../orders/order.repo";
 
 const router = Router();
 
@@ -18,7 +19,8 @@ const rajaOngkirClient = new RajaOngkirClient();
 const shippingService = new ShippingService(rajaOngkirClient);
 
 const userRepo = new UserRepo();
-const userService = new UserService(tm, userRepo, shippingService);
+const orderRepo = new OrderRepo();
+const userService = new UserService(tm, userRepo, orderRepo, shippingService);
 const controller = new UserController(userService);
 
 const authRepo = new AuthRepo();
@@ -29,6 +31,7 @@ const requireAuth = createRequireAuth(authService);
 router.get("/profile", requireAuth, controller.getUserProfile);
 router.put("/profile", requireAuth, controller.updateProfile);
 
+router.get("/orders", requireAuth, controller.getOrders);
 router.get("/addresses", requireAuth, controller.getAddresses);
 
 router.get("/addresses/:addressId", requireAuth, controller.getAddressDetail);

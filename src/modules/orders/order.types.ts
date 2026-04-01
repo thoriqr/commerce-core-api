@@ -1,9 +1,6 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
 import { CheckoutSessionItemRow, CheckoutSessionRow } from "../checkout/checkout.types";
-
-export type OrderPaymentStatus = "UNPAID" | "PAID" | "FAILED" | "EXPIRED";
-
-export type OrderStatus = "PENDING" | "PROCESSING" | "CANCELLED" | "COMPLETED";
+import { OrderPaymentStatus, OrderShipmentStatus, OrderStatus } from "@/shared/order/order.types";
 
 export type UpdateResult = {
   rowCount: number;
@@ -116,7 +113,7 @@ export type OrderDetailRow = {
   courier_description: string | null;
   shipping_etd: string;
   tracking_number: string;
-  shipment_status: string;
+  shipment_status: OrderShipmentStatus;
   created_at: Date;
   updated_at: Date | null;
   expires_at: Date;
@@ -142,8 +139,8 @@ export type OrderItemDetailRow = {
 export type OrderByUser = {
   id: number;
   order_code: string;
-  status: string;
-  payment_status: string;
+  status: OrderStatus;
+  payment_status: OrderPaymentStatus;
   total: number;
   created_at: Date;
 

@@ -9,6 +9,6 @@ export type UserOrderListItemDTO = {
 
   previewItem: {
     name: string;
-    image: string | null;
+    imageKey: string | null;
   };
 };

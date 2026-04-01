@@ -1,0 +1,29 @@
+import z from "zod";
+
+export const shipmentSchema = z.object({
+  trackingNumber: z.string().min(5).max(100)
+});
+
+export const getOrdersQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+
+  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED"]).optional(),
+
+  paymentStatus: z.enum(["UNPAID", "PAID", "FAILED", "EXPIRED"]).optional(),
+
+  shipmentStatus: z.enum(["PENDING", "SHIPPED", "DELIVERED"]).optional(),
+
+  search: z.string().trim().min(1).max(100).optional(),
+
+  createdFrom: z.coerce.date().optional(),
+
+  createdTo: z.coerce.date().optional()
+});
+
+export const orderIdParams = z.object({
+  orderId: z.coerce.number()
+});
+
+export type GetOrdersQuery = z.infer<typeof getOrdersQuerySchema>;
