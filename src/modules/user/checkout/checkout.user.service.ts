@@ -1,9 +1,7 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CheckoutUserRepo } from "./checkout.user.repo";
-import { CheckoutRepo } from "@/modules/checkout/checkout.repo";
 import { AppError } from "@/errors/app-error";
 import { assertCheckoutReady, assertItemsValid, assertSessionActive } from "./checkout.user.utils";
-import { CheckoutSessionItemRow } from "@/modules/checkout/checkout.types";
 import { ProductImageService } from "@/modules/product/product-image.service";
 import { findBestImage } from "@/shared/variant-image/resolver";
 import { UserRepo } from "../user.repo";
@@ -13,6 +11,7 @@ import { OrderUserRepo } from "../order/order.user.repo";
 import { ProductStockRepo } from "@/modules/product/product-stock.repo";
 import { buildAddressSnapshot, mapCheckoutSession } from "./checkout.user.mapper";
 import { ShippingService } from "@/modules/shipping/shipping.service";
+import { CheckoutSessionItemRow } from "./checkout.user.types";
 
 export class CheckoutUserService {
   constructor(

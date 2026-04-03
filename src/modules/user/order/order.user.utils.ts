@@ -1,6 +1,5 @@
 import { AppError } from "@/errors/app-error";
-import { CheckoutSessionItemRow, CheckoutSessionRow } from "@/modules/checkout/checkout.types";
-import { ReadyCheckoutSession } from "./order.user.types";
+import { CheckoutSessionItemRow, CheckoutSessionRow, ReadyCheckoutSession } from "../checkout/checkout.user.types";
 
 export function assertCheckoutReady(session: CheckoutSessionRow): asserts session is ReadyCheckoutSession {
   // totals

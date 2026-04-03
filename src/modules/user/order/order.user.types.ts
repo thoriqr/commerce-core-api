@@ -1,6 +1,6 @@
-import { CheckoutSessionItemRow, CheckoutSessionRow } from "@/modules/checkout/checkout.types";
 import { OrderPaymentStatus, OrderShipmentStatus, OrderStatus } from "@/shared/order/order.types";
 import { OptionSnapshot } from "@/shared/variant-image/types";
+import { CheckoutSessionItemRow } from "../checkout/checkout.user.types";
 
 export type OrderByUser = {
   id: number;

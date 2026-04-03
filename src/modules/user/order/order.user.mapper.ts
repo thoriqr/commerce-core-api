@@ -138,7 +138,7 @@ export function mapOrderStatus(
 
   // 4. PAYMENT STATES
   if (order.status === "PENDING" && order.payment_status === "PAID") {
-    return "PAID";
+    return "PROCESSING";
   }
 
   if (order.status === "PENDING" && order.payment_status === "UNPAID") {

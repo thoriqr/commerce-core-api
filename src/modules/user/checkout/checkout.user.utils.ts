@@ -1,5 +1,4 @@
-import { CheckoutSessionItemRow, CheckoutSessionRow } from "@/modules/checkout/checkout.types";
-import { ReadyCheckoutSession } from "./checkout.user.types";
+import { CheckoutSessionItemRow, CheckoutSessionRow, ReadyCheckoutSession } from "./checkout.user.types";
 import { AppError } from "@/errors/app-error";
 
 export function assertCheckoutReady(session: CheckoutSessionRow): asserts session is ReadyCheckoutSession {
