@@ -5,6 +5,7 @@ import { cleanupPendingVerificationsJob } from "./jobs/cleanup-pending-verificat
 import { cleanupAbandonedGuestCartsJob } from "./jobs/cleanup-abandoned-guest-carts.job";
 import { cleanupCheckoutSessionsJob } from "./jobs/cleanup-checkout-sessions.job";
 import { expireOrdersJob } from "./jobs/expire-orders.job";
+import { autoCompleteDeliveredOrdersJob } from "./jobs/auto-complete-delivered-orders.job";
 
 type JobHandler = (data?: unknown) => Promise<unknown>;
 
@@ -15,7 +16,8 @@ const jobs = [
   cleanupPendingVerificationsJob,
   cleanupAbandonedGuestCartsJob,
   cleanupCheckoutSessionsJob,
-  expireOrdersJob
+  expireOrdersJob,
+  autoCompleteDeliveredOrdersJob
 ];
 
 export const jobRegistry = new Map<string, JobHandler>(jobs.map((job) => [job.name, job.handler]));

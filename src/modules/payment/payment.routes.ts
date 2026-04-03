@@ -3,7 +3,7 @@ import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { Router } from "express";
 import { ProductMetricsRepo } from "../product/product-metrics.repo";
 import { PaymentRepo } from "./payment.repo";
-import { OrderRepo } from "../orders/order.repo";
+import { OrderRepo } from "../order/order.repo";
 import { PaymentController } from "./payment.controller";
 import { PaymentService } from "./payment.service";
 

@@ -1,5 +1,5 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
-import { OrderRepo } from "../orders/order.repo";
+import { OrderRepo } from "../order/order.repo";
 import { PaymentRepo } from "./payment.repo";
 import { AppError } from "@/errors/app-error";
 import { MidtransWebhookPayload } from "./payment.schema";

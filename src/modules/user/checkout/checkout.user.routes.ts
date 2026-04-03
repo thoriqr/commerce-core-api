@@ -7,20 +7,23 @@ import { ProductStockRepo } from "@/modules/product/product-stock.repo";
 import { ProductImageRepo } from "@/modules/product/product-image.repo";
 import { ProductImageService } from "@/modules/product/product-image.service";
 import { UserRepo } from "../user.repo";
-import { CheckoutRepo } from "@/modules/checkout/checkout.repo";
-import { OrderUserRepo } from "../orders/order.user.repo";
+import { OrderUserRepo } from "../order/order.user.repo";
 import { CheckoutUserRepo } from "./checkout.user.repo";
+import { RajaOngkirClient } from "@/modules/shipping/rajaongkir.client";
+import { ShippingService } from "@/modules/shipping/shipping.service";
 
 const router = Router();
 
 const tm = new KnexTransactionManager(db);
+
+const rajaOngkirClient = new RajaOngkirClient();
+const shippingService = new ShippingService(rajaOngkirClient);
 
 const userRepo = new UserRepo();
 
 const orderUserRepo = new OrderUserRepo();
 
 const checkoutUserRepo = new CheckoutUserRepo();
-const checkoutRepo = new CheckoutRepo();
 
 const productStockRepo = new ProductStockRepo();
 
@@ -32,12 +35,22 @@ const checkoutUserService = new CheckoutUserService(
   userRepo,
   orderUserRepo,
   checkoutUserRepo,
-  checkoutRepo,
+  shippingService,
   productStockRepo,
   productImageService
 );
 
 const controller = new CheckoutUserController(checkoutUserService);
+
+router.post("/", controller.createCheckoutSession);
+
+router.get("/:sessionId", controller.getCheckoutSession);
+
+router.patch("/:sessionId/address", controller.setAddress);
+
+router.post("/:sessionId/shipping-cost", controller.calculateShippingCost);
+
+router.patch("/:sessionId/shipping-method", controller.setShippingMethod);
 
 router.post("/:sessionId/confirm", controller.confirmCheckout);
 

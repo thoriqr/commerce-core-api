@@ -2,15 +2,17 @@ import { TransactionManager } from "@/infra/db/transaction-manager";
 import { CheckoutUserRepo } from "./checkout.user.repo";
 import { CheckoutRepo } from "@/modules/checkout/checkout.repo";
 import { AppError } from "@/errors/app-error";
-import { assertCheckoutReady, assertItemsValid } from "./checkout.user.utils";
+import { assertCheckoutReady, assertItemsValid, assertSessionActive } from "./checkout.user.utils";
 import { CheckoutSessionItemRow } from "@/modules/checkout/checkout.types";
 import { ProductImageService } from "@/modules/product/product-image.service";
 import { findBestImage } from "@/shared/variant-image/resolver";
 import { UserRepo } from "../user.repo";
-import { generateOrderCode } from "../orders/order.user.utils";
-import { mapSessionToCreateOrderInput } from "../orders/order.user.mapper";
-import { OrderUserRepo } from "../orders/order.user.repo";
+import { generateOrderCode } from "../order/order.user.utils";
+import { mapSessionToCreateOrderInput } from "../order/order.user.mapper";
+import { OrderUserRepo } from "../order/order.user.repo";
 import { ProductStockRepo } from "@/modules/product/product-stock.repo";
+import { buildAddressSnapshot, mapCheckoutSession } from "./checkout.user.mapper";
+import { ShippingService } from "@/modules/shipping/shipping.service";
 
 export class CheckoutUserService {
   constructor(
@@ -18,15 +20,180 @@ export class CheckoutUserService {
     private readonly userRepo: UserRepo,
     private readonly orderUserRepo: OrderUserRepo,
     private readonly checkoutUserRepo: CheckoutUserRepo,
-    private readonly checkoutRepo: CheckoutRepo,
+    private readonly shippingService: ShippingService,
     private readonly productStockRepo: ProductStockRepo,
     private readonly productImageService: ProductImageService
   ) {}
 
+  createCheckoutSession = async (userId: number) => {
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    return this.tm.transaction(async (trx) => {
+      // 1. revoke expired → IMPORTANT (state fix)
+      await this.checkoutUserRepo.revokeExpiredSessions(userId, trx);
+
+      // 2. cart
+      const items = await this.checkoutUserRepo.getCartItems(userId, trx);
+
+      if (items.length === 0) {
+        throw AppError.badRequest("Cart is empty");
+      }
+
+      // 3. existing active session
+      const existing = await this.checkoutUserRepo.getActiveSession(userId, trx);
+
+      if (existing) {
+        await this.checkoutUserRepo.replaceSessionItems(existing.id, items, trx);
+
+        const defaultAddress = await this.checkoutUserRepo.getDefaultAddress(userId, trx);
+
+        if (defaultAddress) {
+          const snapshot = buildAddressSnapshot(defaultAddress);
+
+          await this.checkoutUserRepo.setCheckoutSessionAddressSnapshot(existing.id, snapshot, trx);
+        }
+
+        return { sessionId: existing.id };
+      }
+
+      // 4. default address
+      const defaultAddress = await this.checkoutUserRepo.getDefaultAddress(userId, trx);
+      const addressSnapshot = defaultAddress ? buildAddressSnapshot(defaultAddress) : null;
+
+      // 5. create session (NOW SAFE)
+      const sessionId = await this.checkoutUserRepo.createCheckoutSession(userId, expiresAt, addressSnapshot, trx);
+
+      // 6. insert items
+      await this.checkoutUserRepo.insertCheckoutSessionItems(sessionId, items, trx);
+
+      return { sessionId };
+    });
+  };
+
+  getCheckoutSession = async (userId: number, sessionId: number) => {
+    const session = await this.checkoutUserRepo.getCheckoutSession(sessionId, userId);
+
+    if (!session) {
+      throw AppError.notFound("Checkout session not found");
+    }
+
+    assertSessionActive(session);
+
+    const items = await this.checkoutUserRepo.getCheckoutSessionItems(sessionId);
+
+    const productIds = [...new Set(items.map((r) => r.product_id))];
+
+    // image map (cache + DB)
+    const imageMap = await this.productImageService.getVariantImagesBulk(productIds);
+
+    const dto = mapCheckoutSession(session, items, imageMap);
+
+    return dto;
+  };
+
+  setCheckoutAddress = async (userId: number, sessionId: number, addressId: number) => {
+    const session = await this.checkoutUserRepo.getCheckoutSession(sessionId, userId);
+
+    if (!session) {
+      throw AppError.notFound("Checkout session not found");
+    }
+    assertSessionActive(session);
+
+    const address = await this.checkoutUserRepo.getUserAddress(userId, addressId);
+
+    if (!address) {
+      throw AppError.badRequest("Invalid address");
+    }
+
+    await this.tm.transaction(async (trx) => {
+      await this.checkoutUserRepo.updateCheckoutSessionAddress(sessionId, address, trx);
+    });
+  };
+
+  calculateShippingCost = async (userId: number, sessionId: number, courier: string) => {
+    const session = await this.checkoutUserRepo.getCheckoutSession(sessionId, userId);
+
+    if (!session) {
+      throw AppError.notFound("Checkout session not found");
+    }
+
+    assertSessionActive(session);
+
+    const address = await this.checkoutUserRepo.getCheckoutAddress(sessionId, userId);
+
+    if (!address || !address.shipping_city_id) {
+      throw AppError.badRequest("Please select a valid address before calculating shipping");
+    }
+
+    const items = await this.checkoutUserRepo.getCheckoutItemsWeight(sessionId);
+
+    const totalWeight = items.reduce((acc, item) => acc + item.weight * item.quantity, 0);
+
+    const weight = Math.max(totalWeight, 1000); // minimal 1kg rule
+
+    const result = await this.shippingService.calculateDomesticCost(address.shipping_city_id, weight, courier);
+
+    return {
+      courier,
+      services: result
+    };
+  };
+
+  setShippingMethod = async (userId: number, sessionId: number, courierCode: string, courierService: string) => {
+    const session = await this.checkoutUserRepo.getCheckoutSession(sessionId, userId);
+
+    if (!session) {
+      throw AppError.notFound("Checkout session not found");
+    }
+
+    assertSessionActive(session);
+
+    const address = await this.checkoutUserRepo.getCheckoutAddress(sessionId, userId);
+
+    if (!address || !address.shipping_city_id) {
+      throw AppError.badRequest("Please select a valid address before choosing shipping");
+    }
+
+    const items = await this.checkoutUserRepo.getCheckoutItemsWeight(sessionId);
+
+    const totalWeight = items.reduce((acc, item) => acc + item.weight * item.quantity, 0);
+
+    const weight = Math.max(totalWeight, 1000);
+
+    const services = await this.shippingService.calculateDomesticCost(address.shipping_city_id, weight, courierCode);
+
+    const selected = services.find((s) => s.service === courierService);
+
+    if (!selected) {
+      throw AppError.badRequest("Invalid shipping service");
+    }
+
+    const fullItems = await this.checkoutUserRepo.getCheckoutSessionItems(sessionId);
+
+    const subtotal = fullItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+    const total = subtotal + selected.cost;
+
+    await this.tm.transaction(async (trx) => {
+      await this.checkoutUserRepo.setShippingMethod(
+        sessionId,
+        courierCode,
+        selected.name,
+        courierService,
+        selected.description,
+        selected.cost,
+        selected.etd,
+        subtotal,
+        total,
+        trx
+      );
+    });
+  };
+
   confirmCheckout = async (userId: number, sessionId: number) => {
     return this.tm.transaction(async (trx) => {
       // 1. GET SESSION
-      const session = await this.checkoutRepo.getCheckoutSessionForUpdate(sessionId, userId, trx);
+      const session = await this.checkoutUserRepo.getCheckoutSessionForUpdate(sessionId, userId, trx);
 
       if (!session) {
         throw AppError.badRequest("Session already used or invalid");
@@ -39,7 +206,7 @@ export class CheckoutUserService {
       assertCheckoutReady(session);
 
       // 2. GET ITEMS + LOCK STOCK
-      const items = await this.checkoutRepo.getCheckoutSessionItemsForUpdate(sessionId, trx);
+      const items = await this.checkoutUserRepo.getCheckoutSessionItemsForUpdate(sessionId, trx);
 
       if (items.length === 0) {
         throw AppError.badRequest("No items");
@@ -58,7 +225,7 @@ export class CheckoutUserService {
       }
 
       // 6. LOCK SESSION
-      await this.checkoutRepo.markSessionConverted(sessionId, trx);
+      await this.checkoutUserRepo.markSessionConverted(sessionId, trx);
 
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 

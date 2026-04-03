@@ -9,7 +9,7 @@ import { AuthRepo } from "../auth/auth.repo";
 import { AuthService } from "../auth/auth.service";
 import { ShippingService } from "../shipping/shipping.service";
 import { RajaOngkirClient } from "../shipping/rajaongkir.client";
-import orderUserRouter from "./orders/order.user.routes";
+import orderUserRouter from "./order/order.user.routes";
 import checkoutUserRouter from "./checkout/checkout.user.routes";
 import { USER_ROUTES } from "./user.constants";
 

@@ -1,14 +1,14 @@
 import express from "express";
 import cors from "cors";
-import adminRouter from "./modules/admin/admin.route";
-import storeRouter from "./modules/store/store.route";
+import adminRouter from "./modules/admin/admin.routes";
+import storeRouter from "./modules/store/store.routes";
 import authRouter from "./modules/auth/auth.routes";
 import userRouter from "./modules/user/user.routes";
 import shippingRouter from "./modules/shipping/shipping.routes";
-import checkoutRouter from "./modules/checkout/checkout.routes";
 import paymentRouter from "./modules/payment/payment.routes";
+import cartRouter from "./modules/cart/cart.routes";
 import { errorMiddleware } from "./middlewares/error.middleware";
-import { ADMIN_PREFIX, AUTH_PREFIX, SHIPPING_PREFIX, STORE_PREFIX, CHECKOUT_SESSION_PREFIX, USER_PREFIX, PAYMENT_PREFIX } from "./constants/routes";
+import { ROUTES } from "./constants/routes";
 import { env } from "./config/env";
 import cookieParser from "cookie-parser";
 
@@ -25,13 +25,13 @@ app.use(
   })
 );
 
-app.use(STORE_PREFIX, storeRouter);
-app.use(AUTH_PREFIX, authRouter);
-app.use(USER_PREFIX, userRouter);
-app.use(SHIPPING_PREFIX, shippingRouter);
-app.use(CHECKOUT_SESSION_PREFIX, checkoutRouter);
-app.use(PAYMENT_PREFIX, paymentRouter);
-app.use(ADMIN_PREFIX, adminRouter);
+app.use(ROUTES.STORE, storeRouter);
+app.use(ROUTES.CART, cartRouter);
+app.use(ROUTES.AUTH, authRouter);
+app.use(ROUTES.USER, userRouter);
+app.use(ROUTES.SHIPPING, shippingRouter);
+app.use(ROUTES.PAYMENT, paymentRouter);
+app.use(ROUTES.ADMIN, adminRouter);
 
 app.use(errorMiddleware);
 

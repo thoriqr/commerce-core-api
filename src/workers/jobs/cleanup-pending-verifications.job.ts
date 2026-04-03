@@ -1,13 +1,14 @@
 import { db } from "@/infra/db/knex";
 import { JOB_NAMES } from "@/shared/queues/job-names";
+import { runCleanup } from "./cleanup.helper";
 
 export const cleanupPendingVerificationsJob = {
   name: JOB_NAMES.CLEANUP_PENDING_VERIFICATIONS,
 
   async handler() {
-    const { rows } = await db.raw<{
-      rows: { id: number }[];
-    }>(`
+    return runCleanup(
+      JOB_NAMES.CLEANUP_PENDING_VERIFICATIONS,
+      `
       DELETE FROM pending_verifications
       WHERE id IN (
         SELECT id
@@ -17,12 +18,7 @@ export const cleanupPendingVerificationsJob = {
         LIMIT 500
       )
       RETURNING id
-    `);
-
-    if (rows.length > 0) {
-      console.log(`[cleanup] deleted ${rows.length} Pending verifications`);
-    }
-
-    return rows.length;
+      `
+    );
   }
 };

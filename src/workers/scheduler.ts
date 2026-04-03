@@ -1,3 +1,4 @@
+import { logger } from "@/libs/logger";
 import { appQueue } from "@/queues/app.queue";
 import { JOB_NAMES } from "@/shared/queues/job-names";
 
@@ -30,6 +31,10 @@ export async function registerJobs() {
     {
       name: JOB_NAMES.EXPIRE_ORDERS,
       pattern: "*/10 * * * *" // every 10 minutes
+    },
+    {
+      name: JOB_NAMES.AUTO_COMPLETE_DELIVERED_ORDERS,
+      pattern: "0 */6 * * *" // every 6 hours
     }
   ];
 
@@ -54,6 +59,9 @@ export async function registerJobs() {
       }
     );
 
-    console.log(`Scheduled ${job.name}`);
+    logger.info("Scheduled job", {
+      jobName: job.name,
+      pattern: job.pattern
+    });
   }
 }

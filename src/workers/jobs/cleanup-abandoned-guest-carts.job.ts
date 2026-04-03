@@ -1,13 +1,13 @@
-import { db } from "@/infra/db/knex";
 import { JOB_NAMES } from "@/shared/queues/job-names";
+import { runCleanup } from "./cleanup.helper";
 
 export const cleanupAbandonedGuestCartsJob = {
   name: JOB_NAMES.CLEANUP_ABANDONED_GUEST_CARTS,
 
   async handler() {
-    const { rows } = await db.raw<{
-      rows: { id: string }[];
-    }>(`
+    return runCleanup(
+      JOB_NAMES.CLEANUP_ABANDONED_GUEST_CARTS,
+      `
       DELETE FROM carts
       WHERE id IN (
         SELECT id
@@ -17,12 +17,7 @@ export const cleanupAbandonedGuestCartsJob = {
         LIMIT 500
       )
       RETURNING id
-    `);
-
-    if (rows.length > 0) {
-      console.log(`[cleanup] deleted ${rows.length} Abandoned carts`);
-    }
-
-    return rows.length;
+      `
+    );
   }
 };
