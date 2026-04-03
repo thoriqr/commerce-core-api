@@ -31,13 +31,15 @@ export const cleanupOrphanProductImagesJob = {
     for (const row of rows) {
       try {
         await deleteFile(row.image_key);
-        console.log("Deleted orphan image:", row.image_key);
+        console.log("Deleted orphan product image:", row.image_key);
       } catch (err) {
-        console.error("Failed deleting image:", row.image_key, err);
+        console.error("Failed deleting product image:", row.image_key, err);
       }
     }
 
-    console.log(`Cleanup finished. Deleted ${rows.length} images`);
+    if (rows.length > 0) {
+      console.log(`[cleanup] deleted ${rows.length} Product images`);
+    }
 
     return rows.length;
   }

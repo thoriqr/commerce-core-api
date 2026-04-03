@@ -6,3 +6,4 @@ export const AUTH_PREFIX = `${API_PREFIX}/auth`;
 export const SHIPPING_PREFIX = `${API_PREFIX}/shipping`;
 export const USER_PREFIX = `${API_PREFIX}/user`;
 export const CHECKOUT_SESSION_PREFIX = `${API_PREFIX}/checkout-sessions`;
+export const PAYMENT_PREFIX = `${API_PREFIX}/payments`;

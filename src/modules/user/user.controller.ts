@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { UserService } from "./user.service";
 import { sendSuccess } from "@/utils/send-success";
 import { addressIdParamsSchema, updateProfileSchema, upsertAddressSchema } from "./user.schema";
-import { ordersByUserQuerySchema } from "../orders/order.schema";
 
 export class UserController {
   constructor(private readonly service: UserService) {}
@@ -23,16 +22,6 @@ export class UserController {
     const address = await this.service.getAddressDetail(userId, params.addressId);
 
     sendSuccess(res, 200, { data: address });
-  };
-
-  getOrders = async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-
-    const qParams = ordersByUserQuerySchema.parse(req.query);
-
-    const { data, meta } = await this.service.getOrders(userId, qParams);
-
-    sendSuccess(res, 200, { data, meta });
   };
 
   createAddress = async (req: Request, res: Response) => {

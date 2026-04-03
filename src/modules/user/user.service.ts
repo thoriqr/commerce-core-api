@@ -5,15 +5,11 @@ import { ShippingService } from "../shipping/shipping.service";
 import { AppError } from "@/errors/app-error";
 import { MAX_USER_ADDRESSES } from "./user.constants";
 import { mapUserAddresses } from "./user.mapper";
-import { OrderRepo } from "../orders/order.repo";
-import { GetOrdersByUserParams } from "../orders/order.schema";
-import { mapOrdersByUser } from "../orders/order.mapper";
 
 export class UserService {
   constructor(
     private tm: TransactionManager,
     private readonly userRepo: UserRepo,
-    private readonly orderRepo: OrderRepo,
     private readonly shippingService: ShippingService
   ) {}
 
@@ -40,25 +36,6 @@ export class UserService {
       shippingCityId: String(address.shipping_city_id),
       shippingDistrictId: String(address.shipping_district_id),
       isDefault: address.isDefault
-    };
-  };
-
-  getOrders = async (userId: number, qParams: GetOrdersByUserParams) => {
-    const [rows, total] = await Promise.all([
-      this.orderRepo.getOrdersByUser(userId, qParams),
-      this.orderRepo.countOrdersByUser(userId, qParams.status)
-    ]);
-
-    return {
-      data: rows.map(mapOrdersByUser),
-      meta: {
-        page: qParams.page,
-        limit: qParams.limit,
-        total,
-        totalPages: Math.ceil(total / qParams.limit),
-        hasNext: qParams.page * qParams.limit < total,
-        hasPrev: qParams.page > 1
-      }
     };
   };
 

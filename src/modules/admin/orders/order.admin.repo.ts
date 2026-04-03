@@ -1,10 +1,8 @@
-import { OrderPaymentStatus, OrderShipmentStatus, OrderStatus } from "@/shared/order/order.types";
-import { Knex } from "knex";
 import { GetOrdersQuery } from "./order.schema";
 import { db } from "@/infra/db/knex";
 import { OrderDetailRow, OrderItemRow, OrderListingRow } from "./order.types";
 
-export class OrderRepo {
+export class OrderAdminRepo {
   getOrders = async (params: GetOrdersQuery) => {
     const { page, limit } = params;
     const offset = (page - 1) * limit;
@@ -167,6 +165,7 @@ export class OrderRepo {
     }>(
       `
     SELECT
+      product_id,
       product_name,
       quantity,
       slug,
@@ -203,124 +202,6 @@ export class OrderRepo {
     );
 
     return rows[0]?.total ?? 0;
-  };
-
-  getShipmentForUpdate = async (orderId: number, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{
-      rows: Array<{
-        id: number;
-        order_id: number;
-        status: OrderShipmentStatus;
-        tracking_number: string | null;
-      }>;
-    }>(
-      `
-    SELECT
-      id,
-      order_id,
-      status,
-      tracking_number
-    FROM order_shipments
-    WHERE order_id = :orderId
-    FOR UPDATE
-    `,
-      { orderId }
-    );
-
-    return rows[0] ?? null;
-  };
-
-  updateShipmentToShipped = async (orderId: number, data: { trackingNumber: string; shippedAt: Date }, trx: Knex.Transaction) => {
-    const result = await trx.raw<{ rowCount: number }>(
-      `
-    UPDATE order_shipments
-    SET
-      tracking_number = :trackingNumber,
-      status = 'SHIPPED',
-      shipped_at = :shippedAt
-    WHERE order_id = :orderId
-      AND status = 'PENDING'
-    `,
-      {
-        orderId,
-        trackingNumber: data.trackingNumber,
-        shippedAt: data.shippedAt
-      }
-    );
-
-    return result.rowCount ?? 0;
-  };
-
-  updateShipmentToDelivered = async (orderId: number, data: { deliveredAt: Date }, trx: Knex.Transaction) => {
-    const result = await trx.raw<{ rowCount: number }>(
-      `
-    UPDATE order_shipments
-    SET
-      status = 'DELIVERED',
-      delivered_at = :deliveredAt
-    WHERE order_id = :orderId
-      AND status = 'SHIPPED'
-    `,
-      {
-        orderId,
-        deliveredAt: data.deliveredAt
-      }
-    );
-
-    return result.rowCount ?? 0;
-  };
-
-  getOrderForUpdate = async (orderId: number, trx: Knex.Transaction) => {
-    const { rows } = await trx.raw<{
-      rows: Array<{
-        id: number;
-        status: OrderStatus;
-        payment_status: OrderPaymentStatus;
-      }>;
-    }>(
-      `
-    SELECT
-      id,
-      status,
-      payment_status
-    FROM orders
-    WHERE id = :orderId
-    FOR UPDATE
-    `,
-      { orderId }
-    );
-
-    return rows[0] ?? null;
-  };
-
-  updateOrderToProcessing = async (orderId: number, trx: Knex.Transaction) => {
-    const result = await trx.raw<{ rowCount: number }>(
-      `
-    UPDATE orders
-    SET
-      status = 'PROCESSING'
-    WHERE id = :orderId
-      AND status = 'PENDING'
-    `,
-      { orderId }
-    );
-
-    return result.rowCount ?? 0;
-  };
-
-  updateOrderToCompleted = async (orderId: number, trx: Knex.Transaction) => {
-    const result = await trx.raw<{ rowCount: number }>(
-      `
-    UPDATE orders
-    SET
-      status = 'COMPLETED'
-    WHERE id = :orderId
-      AND status != 'COMPLETED'
-      AND status != 'CANCELLED'
-    `,
-      { orderId }
-    );
-    return result.rowCount ?? 0;
   };
 
   private buildOrderFilter(params: GetOrdersQuery) {

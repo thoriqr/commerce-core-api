@@ -1,6 +1,6 @@
 import { OrderPaymentStatus, OrderShipmentStatus, OrderStatus } from "@/shared/order/order.types";
-import { UserOrderListItemDTO } from "./order.dto";
-import { CreateOrderBaseInput, OrderByUser, OrderDetailRow, OrderItemDetailRow, ReadyCheckoutSession } from "./order.types";
+import { CreateOrderBaseInput, OrderByUser, OrderDetailRow, OrderItemDetailRow } from "./order.user.types";
+import { ReadyCheckoutSession } from "../checkout/checkout.user.types";
 
 export function mapSessionToCreateOrderInput(session: ReadyCheckoutSession, userId: number): CreateOrderBaseInput {
   return {
@@ -21,7 +21,28 @@ export function mapSessionToCreateOrderInput(session: ReadyCheckoutSession, user
   };
 }
 
-function buildOrderTimeline(order: OrderDetailRow) {
+export function mapOrdersByUser(row: OrderByUser) {
+  return {
+    orderCode: row.order_code,
+
+    status: mapOrderStatus(row, {
+      status: row.shipment_status
+    }),
+
+    total: row.total,
+    createdAt: row.created_at,
+
+    itemCount: row.item_count ?? 0,
+
+    previewItem: {
+      name: row.preview_name ?? "",
+      imageKey: row.preview_image
+    },
+    canConfirm: row.shipment_status === "SHIPPED"
+  };
+}
+
+export function buildOrderTimeline(order: OrderDetailRow) {
   // 1. TERMINAL STATES
   if (order.status === "CANCELLED") {
     return [
@@ -97,7 +118,10 @@ function buildOrderTimeline(order: OrderDetailRow) {
   ];
 }
 
-function mapOrderStatus(order: { status: OrderStatus; payment_status: OrderPaymentStatus }, shipment?: { status: OrderShipmentStatus | null }) {
+export function mapOrderStatus(
+  order: { status: OrderStatus; payment_status: OrderPaymentStatus },
+  shipment?: { status: OrderShipmentStatus | null }
+) {
   // 1. TERMINAL STATES (highest priority)
   if (order.status === "CANCELLED") return "CANCELLED";
 
@@ -124,22 +148,11 @@ function mapOrderStatus(order: { status: OrderStatus; payment_status: OrderPayme
   return "UNKNOWN";
 }
 
-export function mapOrdersByUser(row: OrderByUser): UserOrderListItemDTO {
-  return {
-    orderCode: row.order_code,
+export function canConfirmOrder(order: OrderDetailRow) {
+  const isFinal =
+    order.status === "CANCELLED" || order.status === "COMPLETED" || order.payment_status === "FAILED" || order.payment_status === "EXPIRED";
 
-    status: mapOrderStatus(row),
-
-    total: row.total,
-    createdAt: row.created_at,
-
-    itemCount: row.item_count ?? 0,
-
-    previewItem: {
-      name: row.preview_name ?? "",
-      imageKey: row.preview_image
-    }
-  };
+  return order.shipment_status === "SHIPPED" && !isFinal;
 }
 
 export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
@@ -187,6 +200,7 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
 
     //  action state
     canPay,
+    canConfirm: canConfirmOrder(order),
 
     //  address
     address: {

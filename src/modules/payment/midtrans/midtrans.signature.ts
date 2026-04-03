@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { MidtransWebhookPayload } from "../../order-payments/order-payments.schema";
+import { MidtransWebhookPayload } from "../../orders/order-payments/order-payments.schema";
 
 export function verifyMidtransSignature(payload: MidtransWebhookPayload, serverKey: string): boolean {
   const orderId = String(payload.order_id);

@@ -1,6 +1,6 @@
+import { CheckoutSessionItemRow, CheckoutSessionRow } from "@/modules/checkout/checkout.types";
+import { ReadyCheckoutSession } from "./checkout.user.types";
 import { AppError } from "@/errors/app-error";
-import { ReadyCheckoutSession } from "./order.types";
-import { CheckoutSessionItemRow, CheckoutSessionRow } from "../checkout/checkout.types";
 
 export function assertCheckoutReady(session: CheckoutSessionRow): asserts session is ReadyCheckoutSession {
   // totals
@@ -55,11 +55,4 @@ export function assertItemsValid(items: CheckoutSessionItemRow[]) {
       throw AppError.badRequest("Invalid item weight");
     }
   }
-}
-
-export function generateOrderCode(): string {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-  return `ORD-${date}-${random}`;
 }

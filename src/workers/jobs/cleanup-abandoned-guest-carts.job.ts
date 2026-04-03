@@ -19,7 +19,9 @@ export const cleanupAbandonedGuestCartsJob = {
       RETURNING id
     `);
 
-    console.log(`Cleanup abandoned carts: deleted ${rows.length}`);
+    if (rows.length > 0) {
+      console.log(`[cleanup] deleted ${rows.length} Abandoned carts`);
+    }
 
     return rows.length;
   }

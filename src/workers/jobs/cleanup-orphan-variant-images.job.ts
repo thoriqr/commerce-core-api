@@ -37,7 +37,9 @@ export const cleanupOrphanVariantImagesJob = {
       }
     }
 
-    console.log(`Variant image cleanup finished. Deleted ${rows.length} images`);
+    if (rows.length > 0) {
+      console.log(`[cleanup] deleted ${rows.length} Variant images`);
+    }
 
     return rows.length;
   }

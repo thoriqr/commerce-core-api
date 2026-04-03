@@ -1,44 +1,44 @@
 import { Knex } from "knex";
-import { InsertOrderPaymentInput } from "./order-payments.types";
-import { MidtransWebhookPayload } from "./order-payments.schema";
+import { InsertOrderPaymentInput } from "./payment.types";
+import { MidtransWebhookPayload } from "./payment.schema";
 
-export class OrderPaymentsRepo {
+export class PaymentRepo {
   insertPayment = async (input: InsertOrderPaymentInput, trx: Knex.Transaction) => {
     await trx.raw(
       `
-    INSERT INTO order_payments (
-      order_id,
-      order_code,
-      transaction_id,
-      payment_type,
-      transaction_status,
-      fraud_status,
-      gross_amount,
-      currency,
-      payment_code,
-      store,
-      bank,
-      transaction_time,
-      settlement_time,
-      raw_payload
-    )
-    VALUES (
-      :orderId,
-      :orderCode,
-      :transactionId,
-      :paymentType,
-      :transactionStatus,
-      :fraudStatus,
-      :grossAmount,
-      :currency,
-      :paymentCode,
-      :store,
-      :bank,
-      :transactionTime,
-      :settlementTime,
-      :rawPayload
-    )
-    `,
+      INSERT INTO order_payments (
+        order_id,
+        order_code,
+        transaction_id,
+        payment_type,
+        transaction_status,
+        fraud_status,
+        gross_amount,
+        currency,
+        payment_code,
+        store,
+        bank,
+        transaction_time,
+        settlement_time,
+        raw_payload
+      )
+      VALUES (
+        :orderId,
+        :orderCode,
+        :transactionId,
+        :paymentType,
+        :transactionStatus,
+        :fraudStatus,
+        :grossAmount,
+        :currency,
+        :paymentCode,
+        :store,
+        :bank,
+        :transactionTime,
+        :settlementTime,
+        :rawPayload
+      )
+      `,
       {
         orderId: input.order_id,
         orderCode: input.order_code,
@@ -61,13 +61,13 @@ export class OrderPaymentsRepo {
   updatePaymentStatus = async (transactionId: string, payload: MidtransWebhookPayload, trx: Knex.Transaction) => {
     await trx.raw(
       `
-    UPDATE order_payments
-    SET
-      transaction_status = :transaction_status,
-      fraud_status = :fraud_status,
-      settlement_time = :settlement_time
-    WHERE transaction_id = :transaction_id
-  `,
+      UPDATE order_payments
+      SET
+        transaction_status = :transaction_status,
+        fraud_status = :fraud_status,
+        settlement_time = :settlement_time
+      WHERE transaction_id = :transaction_id
+    `,
       {
         transaction_id: transactionId,
         transaction_status: payload.transaction_status,
@@ -82,11 +82,11 @@ export class OrderPaymentsRepo {
       rows: { id: number; transaction_status: string }[];
     }>(
       `
-    SELECT id, transaction_status
-    FROM order_payments
-    WHERE transaction_id = :transactionId
-    LIMIT 1
-    `,
+      SELECT id, transaction_status
+      FROM order_payments
+      WHERE transaction_id = :transactionId
+      LIMIT 1
+      `,
       { transactionId }
     );
 

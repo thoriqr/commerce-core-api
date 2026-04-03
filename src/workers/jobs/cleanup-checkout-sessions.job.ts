@@ -19,18 +19,20 @@ export const cleanupCheckoutSessionsJob = {
           )
           OR (
             converted_at IS NOT NULL
-            AND converted_at < NOW() - INTERVAL '5 minutes'
+            AND converted_at < NOW() - INTERVAL '1 hour'
           )
           OR (
             revoked_at IS NOT NULL
-            AND revoked_at < NOW() - INTERVAL '5 minutes'
+            AND revoked_at < NOW() - INTERVAL '1 hour'
           )
         LIMIT 500
       )
       RETURNING id;
     `);
 
-    console.log(`Cleanup checkout sessions: deleted ${rows.length}`);
+    if (rows.length > 0) {
+      console.log(`[cleanup] deleted ${rows.length} Checkout sessions`);
+    }
 
     return rows.length;
   }

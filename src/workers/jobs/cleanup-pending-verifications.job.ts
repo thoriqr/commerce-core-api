@@ -19,7 +19,9 @@ export const cleanupPendingVerificationsJob = {
       RETURNING id
     `);
 
-    console.log(`Cleanup pending verifications: deleted ${rows.length}`);
+    if (rows.length > 0) {
+      console.log(`[cleanup] deleted ${rows.length} Pending verifications`);
+    }
 
     return rows.length;
   }

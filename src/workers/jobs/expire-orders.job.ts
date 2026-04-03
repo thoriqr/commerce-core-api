@@ -56,7 +56,9 @@ export const expireOrdersJob = {
         { orderIds }
       );
 
-      console.log(`Expire orders: updated ${orderIds.length}`);
+      if (orderIds.length > 0) {
+        console.log(`[expire-orders] updated ${orderIds.length} Orders`);
+      }
 
       return orderIds.length;
     });

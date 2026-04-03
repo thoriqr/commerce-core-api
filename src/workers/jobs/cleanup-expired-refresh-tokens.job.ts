@@ -27,7 +27,9 @@ export const cleanupExpiredRefreshTokensJob = {
       RETURNING id
     `);
 
-    console.log(`Refresh token cleanup removed ${rows.length} tokens`);
+    if (rows.length > 0) {
+      console.log(`[cleanup] deleted ${rows.length} Refresh tokens`);
+    }
 
     return rows.length;
   }

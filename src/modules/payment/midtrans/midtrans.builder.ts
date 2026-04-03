@@ -1,6 +1,6 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
-import { OrderForPaymentRow, OrderItemForPaymentRow } from "../../order.types";
-import { MidtransItem, MidtransPayload } from "./midtrans.types";
+import { OrderForPaymentRow, OrderItemForPaymentRow } from "../../orders/order.types";
+import { MidtransItem, MidtransPayload } from "../../orders/integrations/midtrans/midtrans.types";
 import { env } from "@/config/env";
 
 function formatDateToMidtrans(date: Date) {

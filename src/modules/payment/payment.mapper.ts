@@ -1,5 +1,5 @@
-import { MidtransWebhookPayload } from "./order-payments.schema";
-import { InsertOrderPaymentInput } from "./order-payments.types";
+import { MidtransWebhookPayload } from "./payment.schema";
+import { InsertOrderPaymentInput } from "./payment.types";
 
 export function mapMidtransWebhookToPayment(payload: MidtransWebhookPayload, orderId: number): InsertOrderPaymentInput {
   let paymentCode: string | null = null;
