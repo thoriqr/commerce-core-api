@@ -77,7 +77,7 @@ export class OrderUserService {
     });
   };
 
-  confirmOrderDelivered = async (userId: number, orderCode: string) => {
+  confirmDelivered = async (userId: number, orderCode: string) => {
     return this.tm.transaction(async (trx) => {
       const order = await this.orderRepo.getOrderByCodeForUpdate(orderCode, trx);
 

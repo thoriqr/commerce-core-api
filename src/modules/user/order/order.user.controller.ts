@@ -36,6 +36,17 @@ export class OrderUserController {
     });
   };
 
+  confirmDelivered = async (req: Request, res: Response) => {
+    const userId = req.user?.id!;
+    const { orderCode } = orderCodeParams.parse(req.params);
+
+    await this.service.confirmDelivered(userId, orderCode);
+
+    sendSuccess(res, 200, {
+      message: "Order delivered"
+    });
+  };
+
   createSnapToken = async (req: Request, res: Response) => {
     const userId = req.user?.id!;
     const { orderCode } = orderCodeParams.parse(req.params);

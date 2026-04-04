@@ -21,6 +21,7 @@ router.get("/", controller.getOrders);
 router.get("/:orderCode", controller.getOrder);
 
 router.post("/:orderCode/cancel", controller.cancelOrder);
+router.post("/:orderCode/deliver", controller.confirmDelivered);
 
 router.post("/:orderCode/snap-token", controller.createSnapToken);
 
