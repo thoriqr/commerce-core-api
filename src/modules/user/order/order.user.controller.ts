@@ -21,9 +21,9 @@ export class OrderUserController {
 
     const qParams = ordersByUserQuerySchema.parse(req.query);
 
-    const { data, meta } = await this.service.getOrders(userId, qParams);
+    const data = await this.service.getOrders(userId, qParams);
 
-    sendSuccess(res, 200, { data, meta });
+    sendSuccess(res, 200, { data });
   };
 
   cancelOrder = async (req: Request, res: Response) => {

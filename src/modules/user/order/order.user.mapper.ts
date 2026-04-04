@@ -23,6 +23,7 @@ export function mapSessionToCreateOrderInput(session: ReadyCheckoutSession, user
 
 export function mapOrdersByUser(row: OrderByUser) {
   return {
+    id: row.id,
     orderCode: row.order_code,
 
     status: mapOrderStatus(row, {

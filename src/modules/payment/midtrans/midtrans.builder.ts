@@ -1,7 +1,6 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
-import { OrderForPaymentRow, OrderItemForPaymentRow } from "../../order/order.types";
-import { MidtransItem, MidtransPayload } from "../../order/integrations/midtrans/midtrans.types";
-import { env } from "@/config/env";
+import { OrderForPaymentRow, OrderItemForPaymentRow } from "@/modules/user/order/order.user.types";
+import { MidtransItem, MidtransPayload } from "./midtrans.types";
 
 function formatDateToMidtrans(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -68,9 +67,10 @@ export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItem
 
   const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
 
-  const isDev = env.NODE_ENV !== "production";
+  // const isDev = env.NODE_ENV !== "production";
 
-  const duration = isDev ? 2 : remainingMinutes;
+  // const duration = isDev ? 2 : remainingMinutes;
+  const duration = remainingMinutes;
 
   return {
     transaction_details: {

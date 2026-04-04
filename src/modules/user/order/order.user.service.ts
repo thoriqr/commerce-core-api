@@ -36,8 +36,8 @@ export class OrderUserService {
   getOrders = async (userId: number, qParams: GetOrdersByUserParams) => {
     const [rows, total] = await Promise.all([this.orderUserRepo.getOrders(userId, qParams), this.orderUserRepo.countOrders(userId, qParams.status)]);
 
-    return {
-      data: rows.map(mapOrdersByUser),
+    const data = {
+      items: rows.map(mapOrdersByUser),
       meta: {
         page: qParams.page,
         limit: qParams.limit,
@@ -47,6 +47,8 @@ export class OrderUserService {
         hasPrev: qParams.page > 1
       }
     };
+
+    return data;
   };
 
   cancelOrder = async (userId: number, orderCode: string) => {
