@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "@/shared/jwt/jwt.util";
 import { AppError } from "@/errors/app-error";
-import { setAuthCookies } from "@/utils/set-auth-cookie";
+import { clearAuthCookies, setAuthCookies } from "@/utils/set-auth-cookie";
 import { AuthService } from "@/modules/auth/auth.service";
 import { AuthContext } from "@/modules/auth/auth.types";
 import { TokenExpiredError } from "jsonwebtoken";
@@ -22,6 +22,7 @@ export function createRequireAuth(service: AuthService) {
 
       // access expired → try refresh
       if (!refreshToken) {
+        clearAuthCookies(res);
         throw AppError.unauthorized("Session expired");
       }
 
@@ -110,6 +111,7 @@ async function attemptRefresh(service: AuthService, refreshToken: string, res: R
       role: user.role
     };
   } catch {
+    clearAuthCookies(res);
     throw AppError.unauthorized("Session expired");
   }
 }

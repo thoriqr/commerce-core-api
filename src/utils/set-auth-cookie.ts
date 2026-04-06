@@ -3,36 +3,46 @@ import { env } from "@/config/env";
 
 const isProd = env.NODE_ENV === "production";
 
+const baseCookieOptions = {
+  secure: isProd,
+  sameSite: "lax" as const,
+  path: "/"
+};
+
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
   res.cookie("access_token", accessToken, {
+    ...baseCookieOptions,
     httpOnly: true,
-    secure: isProd,
-    sameSite: "lax",
-    path: "/",
     maxAge: 15 * 60 * 1000
   });
 
   res.cookie("refresh_token", refreshToken, {
+    ...baseCookieOptions,
     httpOnly: true,
-    secure: isProd,
-    sameSite: "lax",
-    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  // auth hint
+  res.cookie("auth_hint", "1", {
+    ...baseCookieOptions,
+    httpOnly: false // FE bisa baca
   });
 }
 
 export function clearAuthCookies(res: Response) {
   res.clearCookie("access_token", {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "lax",
-    path: "/"
+    ...baseCookieOptions,
+    httpOnly: true
   });
 
   res.clearCookie("refresh_token", {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: "lax",
-    path: "/"
+    ...baseCookieOptions,
+    httpOnly: true
+  });
+
+  // clear auth hint
+  res.clearCookie("auth_hint", {
+    ...baseCookieOptions,
+    httpOnly: false
   });
 }
