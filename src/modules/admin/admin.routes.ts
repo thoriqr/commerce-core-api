@@ -8,8 +8,22 @@ import warehousesRouter from "./warehouse/warehouse.routes";
 import dashboardRouter from "./dashboard/dashboard.routes";
 import orderRouter from "./order/order.routes";
 import { ADMIN_ROUTES } from "./admin.constants";
+import { AuthRepo } from "../auth/auth.repo";
+import { AuthService } from "../auth/auth.service";
+import { KnexTransactionManager } from "@/infra/db/transaction-manager";
+import { db } from "@/infra/db/knex";
+import { createRequireAuth } from "@/middlewares/auth.middleware";
+import { requireRole } from "@/middlewares/role.middleware";
 
 const router = Router();
+
+const tm = new KnexTransactionManager(db);
+const authRepo = new AuthRepo();
+const authService = new AuthService(tm, authRepo);
+
+const requireAuth = createRequireAuth(authService);
+
+router.use(requireAuth, requireRole("ADMIN", "SUPER"));
 
 router.use(ADMIN_ROUTES.PRODUCT, productRouter);
 router.use(ADMIN_ROUTES.CATEGORY, categoryRouter);
