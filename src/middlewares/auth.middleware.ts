@@ -22,7 +22,6 @@ export function createRequireAuth(service: AuthService) {
 
       // access expired → try refresh
       if (!refreshToken) {
-        clearAuthCookies(res);
         throw AppError.unauthorized("Session expired");
       }
 
@@ -69,51 +68,21 @@ export function createOptionalAuth(service: AuthService) {
   };
 }
 
-function tryVerifyAccessToken(token?: string): AuthContext | null {
-  if (!token) return null;
-
-  try {
-    const payload = verifyAccessToken(token);
-
-    const id = Number(payload.sub);
-
-    if (!Number.isInteger(id)) {
-      throw AppError.unauthorized("Invalid token payload");
-    }
-
-    return {
-      id,
-      role: payload.role
-    };
-  } catch (err: any) {
-    if (err instanceof TokenExpiredError) {
-      return null;
-    }
-
-    throw AppError.unauthorized("Invalid access token");
-  }
-}
-
 async function attemptRefresh(service: AuthService, refreshToken: string, res: Response): Promise<AuthContext> {
-  try {
-    const { user, accessToken, refreshToken: newRefresh } = await service.refresh(refreshToken);
+  const { user, accessToken, refreshToken: newRefresh } = await service.refresh(refreshToken);
 
-    setAuthCookies(res, accessToken, newRefresh);
+  setAuthCookies(res, accessToken, newRefresh);
 
-    const id = Number(user.id);
+  const id = Number(user.id);
 
-    if (!Number.isInteger(id)) {
-      throw AppError.unauthorized("Invalid user id");
-    }
-
-    return {
-      id,
-      role: user.role
-    };
-  } catch {
-    clearAuthCookies(res);
-    throw AppError.unauthorized("Session expired");
+  if (!Number.isInteger(id)) {
+    throw AppError.unauthorized("Invalid user id");
   }
+
+  return {
+    id,
+    role: user.role
+  };
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -146,5 +115,30 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
   } catch (err) {
     // treat as guest
     return next();
+  }
+}
+
+function tryVerifyAccessToken(token?: string): AuthContext | null {
+  if (!token) return null;
+
+  try {
+    const payload = verifyAccessToken(token);
+
+    const id = Number(payload.sub);
+
+    if (!Number.isInteger(id)) {
+      throw AppError.unauthorized("Invalid token payload");
+    }
+
+    return {
+      id,
+      role: payload.role
+    };
+  } catch (err: any) {
+    if (err instanceof TokenExpiredError) {
+      return null;
+    }
+
+    throw AppError.unauthorized("Invalid access token");
   }
 }

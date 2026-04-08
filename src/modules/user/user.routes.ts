@@ -4,14 +4,12 @@ import { Router } from "express";
 import { UserRepo } from "./user.repo";
 import { UserService } from "./user.service";
 import { UserController } from "./user.controller";
-import { createRequireAuth } from "@/middlewares/auth.middleware";
-import { AuthRepo } from "../auth/auth.repo";
-import { AuthService } from "../auth/auth.service";
 import { ShippingService } from "../shipping/shipping.service";
 import { RajaOngkirClient } from "../shipping/rajaongkir.client";
 import orderUserRouter from "./order/order.user.routes";
 import checkoutUserRouter from "./checkout/checkout.user.routes";
 import { USER_ROUTES } from "./user.constants";
+import { requireAuth } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
@@ -23,11 +21,6 @@ const shippingService = new ShippingService(rajaOngkirClient);
 const userRepo = new UserRepo();
 const userService = new UserService(tm, userRepo, shippingService);
 const userController = new UserController(userService);
-
-const authRepo = new AuthRepo();
-const authService = new AuthService(tm, authRepo);
-
-const requireAuth = createRequireAuth(authService);
 
 router.use(requireAuth);
 

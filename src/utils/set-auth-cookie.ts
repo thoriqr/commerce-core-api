@@ -21,12 +21,6 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
-
-  // auth hint
-  res.cookie("auth_hint", "1", {
-    ...baseCookieOptions,
-    httpOnly: false // FE bisa baca
-  });
 }
 
 export function clearAuthCookies(res: Response) {
@@ -38,11 +32,5 @@ export function clearAuthCookies(res: Response) {
   res.clearCookie("refresh_token", {
     ...baseCookieOptions,
     httpOnly: true
-  });
-
-  // clear auth hint
-  res.clearCookie("auth_hint", {
-    ...baseCookieOptions,
-    httpOnly: false
   });
 }

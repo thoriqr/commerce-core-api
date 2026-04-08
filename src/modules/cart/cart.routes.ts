@@ -4,9 +4,7 @@ import { CartService } from "./cart.service";
 import { CartController } from "./cart.controller";
 import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
-import { AuthRepo } from "@/modules/auth/auth.repo";
-import { AuthService } from "@/modules/auth/auth.service";
-import { createOptionalAuth } from "@/middlewares/auth.middleware";
+import { optionalAuth } from "@/middlewares/auth.middleware";
 import { ProductImageRepo } from "@/modules/product/product-image.repo";
 import { ProductImageService } from "@/modules/product/product-image.service";
 
@@ -23,15 +21,10 @@ const cartRepo = new CartRepo();
 const cartService = new CartService(tm, cartRepo, imageService);
 const cartController = new CartController(cartService);
 
-// AUTH (for optionalAuth)
-const authRepo = new AuthRepo();
-const authService = new AuthService(tm, authRepo);
-
-const optionalAuth = createOptionalAuth(authService);
-
-router.get("/", optionalAuth, cartController.getCart);
-router.post("/items", optionalAuth, cartController.addItem);
-router.patch("/items/:variantId", optionalAuth, cartController.updateItem);
-router.delete("/items/:variantId", optionalAuth, cartController.deleteItem);
+router.use(optionalAuth);
+router.get("/", cartController.getCart);
+router.post("/items", cartController.addItem);
+router.patch("/items/:variantId", cartController.updateItem);
+router.delete("/items/:variantId", cartController.deleteItem);
 
 export default router;
