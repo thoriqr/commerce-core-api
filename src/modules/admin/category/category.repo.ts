@@ -36,7 +36,7 @@ export class CategoryRepo {
   }
 
   async getParentTree(parentId: number) {
-    // 1️⃣ ambil id_path parent dulu
+    // ambil id_path parent dulu
     const { rows: parentRows } = await db.raw<{ rows: { id_path: string }[] }>(
       `
       SELECT id_path
@@ -55,7 +55,7 @@ export class CategoryRepo {
     const rootPath = parentRow.id_path;
     const rootPrefix = `${rootPath}/%`;
 
-    // 2️⃣ ambil subtree pakai id_path
+    // ambil subtree pakai id_path
     const { rows } = await db.raw<{ rows: CategoryRow[] }>(
       `
       SELECT
@@ -112,7 +112,7 @@ export class CategoryRepo {
 
     const { name, description, parentId, status } = input;
 
-    // 1️⃣ insert dulu
+    // insert dulu
     const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
     INSERT INTO categories
@@ -139,7 +139,7 @@ export class CategoryRepo {
 
     const newId = row.id;
 
-    // 2️⃣ hitung id_path & slug_path
+    // hitung id_path & slug_path
     let idPath: string;
     let slugPath: string;
 
@@ -169,7 +169,7 @@ export class CategoryRepo {
       slugPath = `${parent.slug_path}/${slug}`;
     }
 
-    // 3️⃣ update id_path + slug_path
+    // update id_path + slug_path
     await trx.raw(
       `
     UPDATE categories
@@ -188,7 +188,7 @@ export class CategoryRepo {
   async update(trx: Knex.Transaction, categoryId: number, input: CategoryUpdateSchema, slug: string) {
     const { name, description, status } = input;
 
-    // 1️⃣ Ambil slug_path lama
+    // Ambil slug_path lama
     const { rows: existingRows } = await trx.raw<{
       rows: { slug_path: string }[];
     }>(
@@ -207,7 +207,7 @@ export class CategoryRepo {
 
     const oldSlugPath = existing.slug_path;
 
-    // 2️⃣ Update basic fields + slug
+    // Update basic fields + slug
     await trx.raw(
       `
     UPDATE categories
@@ -226,7 +226,7 @@ export class CategoryRepo {
       }
     );
 
-    // 3️⃣ Ambil parent slug_path untuk hitung slug_path baru
+    // Ambil parent slug_path untuk hitung slug_path baru
     const { rows: parentRows } = await trx.raw<{
       rows: { parent_id: number | null; parent_slug_path: string | null }[];
     }>(
@@ -258,7 +258,7 @@ export class CategoryRepo {
       newSlugPath = `${parent.parent_slug_path}/${slug}`;
     }
 
-    // 4️⃣ Update current category slug_path
+    // Update current category slug_path
     await trx.raw(
       `
     UPDATE categories
@@ -271,7 +271,7 @@ export class CategoryRepo {
       }
     );
 
-    // 5️⃣ Update subtree slug_path
+    // Update subtree slug_path
     await trx.raw(
       `
     UPDATE categories

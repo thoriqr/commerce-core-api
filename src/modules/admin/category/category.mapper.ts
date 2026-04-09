@@ -1,7 +1,6 @@
-import { BreadcrumbRow } from "@/modules/store/category/category.types";
+import { CategoryBreadcrumbRow } from "@/modules/store/category/category.types";
 import { CategoryDetailDTO, CategoryFlatDTO, CategoryParentDTO, CategoryParentTreeDTO } from "./category.dto";
 import { CategoryDetailRow, CategoryFlatRow, CategoryParentRow, CategoryRow } from "./category.types";
-import { BreadcrumbDTO } from "@/modules/store/category/category.dto";
 
 export function mapCategoryParents(rows: CategoryParentRow[]): CategoryParentDTO[] {
   return rows.map((r) => ({
@@ -18,6 +17,7 @@ export function mapCategoryParentTree(rows: CategoryRow[]): CategoryParentTreeDT
   const map = new Map<number, CategoryParentTreeDTO>();
   const roots: CategoryParentTreeDTO[] = [];
 
+  // create nodes
   for (const r of rows) {
     map.set(r.id, {
       id: r.id,
@@ -30,16 +30,20 @@ export function mapCategoryParentTree(rows: CategoryRow[]): CategoryParentTreeDT
     });
   }
 
-  // 2) link parent -> children
+  // link parent -> children
   for (const r of rows) {
     const node = map.get(r.id)!;
 
     if (r.parent_id !== null && map.has(r.parent_id)) {
       map.get(r.parent_id)!.children.push(node);
     } else {
-      // root (self / parent main)
       roots.push(node);
     }
+  }
+
+  // IMPORTANT: sort children per level
+  for (const node of map.values()) {
+    node.children.sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
   return roots[0];
@@ -64,7 +68,7 @@ export function mapCategoryFlat(rows: CategoryFlatRow[]): CategoryFlatDTO[] {
   }));
 }
 
-export function mapBreadcrumb(rows: BreadcrumbRow[]): BreadcrumbDTO[] {
+export function mapBreadcrumb(rows: CategoryBreadcrumbRow[]) {
   return rows.map((r) => ({
     name: r.name,
     slug: r.slug,
