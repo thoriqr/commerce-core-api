@@ -31,13 +31,31 @@ export class OrderAdminRepo {
         o.created_at,
 
         CASE
-          WHEN o.status = 'PENDING' AND o.payment_status = 'UNPAID' THEN 1
-          WHEN o.payment_status = 'PAID' AND o.status = 'PENDING' THEN 2
-          WHEN o.status = 'PROCESSING' THEN 3
-          WHEN o.status = 'COMPLETED' THEN 4
-          WHEN o.status = 'CANCELLED' THEN 5
-          ELSE 99
-        END AS priority
+        WHEN o.payment_status = 'PAID'
+          AND EXISTS (
+            SELECT 1 FROM order_shipments os
+            WHERE os.order_id = o.id
+            AND os.status = 'PENDING'
+          ) THEN 0 -- READY_TO_SHIP
+
+        WHEN o.payment_status = 'UNPAID' THEN 1 -- WAITING_PAYMENT
+
+        WHEN EXISTS (
+          SELECT 1 FROM order_shipments os
+          WHERE os.order_id = o.id
+          AND os.status = 'SHIPPED'
+        ) THEN 2 -- SHIPPED
+
+        WHEN o.status = 'COMPLETED' THEN 3
+
+        WHEN o.status = 'CANCELLED' THEN 4
+
+        WHEN o.payment_status = 'FAILED' THEN 5
+
+        WHEN o.payment_status = 'EXPIRED' THEN 6
+
+        ELSE 99
+      END AS priority
 
       FROM orders o
       ${whereSql}
@@ -99,7 +117,7 @@ export class OrderAdminRepo {
     LEFT JOIN preview_item pi ON pi.order_id = ob.id
     INNER JOIN shipment s ON s.order_id = ob.id
 
-    ORDER BY ob.created_at DESC
+    ORDER BY ob.priority ASC, ob.created_at DESC
     `,
       bindings
     );
@@ -208,21 +226,73 @@ export class OrderAdminRepo {
     const where: string[] = [];
     const bindings: Record<string, any> = {};
 
+    /**
+     * ADMIN STATUS FILTER
+     */
     if (params.status) {
-      where.push(`o.status = :status`);
-      bindings.status = params.status;
+      switch (params.status) {
+        case "WAITING_PAYMENT":
+          where.push(`o.payment_status = 'UNPAID'`);
+          break;
+
+        case "READY_TO_SHIP":
+          where.push(`o.payment_status = 'PAID'`);
+          where.push(`
+          EXISTS (
+            SELECT 1 FROM order_shipments os
+            WHERE os.order_id = o.id
+            AND os.status = 'PENDING'
+          )
+        `);
+          break;
+
+        case "SHIPPED":
+          where.push(`
+          EXISTS (
+            SELECT 1 FROM order_shipments os
+            WHERE os.order_id = o.id
+            AND os.status = 'SHIPPED'
+          )
+        `);
+          break;
+
+        case "COMPLETED":
+          where.push(`o.status = 'COMPLETED'`);
+          break;
+
+        case "CANCELLED":
+          where.push(`o.status = 'CANCELLED'`);
+          break;
+
+        case "FAILED":
+          where.push(`o.payment_status = 'FAILED'`);
+          break;
+
+        case "EXPIRED":
+          where.push(`o.payment_status = 'EXPIRED'`);
+          break;
+      }
     }
 
+    /**
+     * PAYMENT FILTER
+     */
     if (params.paymentStatus) {
       where.push(`o.payment_status = :paymentStatus`);
       bindings.paymentStatus = params.paymentStatus;
     }
 
+    /**
+     * SEARCH
+     */
     if (params.search) {
       where.push(`o.order_code ILIKE :search`);
       bindings.search = `%${params.search}%`;
     }
 
+    /**
+     * DATE RANGE
+     */
     if (params.createdFrom) {
       where.push(`o.created_at >= :createdFrom`);
       bindings.createdFrom = params.createdFrom;
@@ -231,20 +301,6 @@ export class OrderAdminRepo {
     if (params.createdTo) {
       where.push(`o.created_at <= :createdTo`);
       bindings.createdTo = params.createdTo;
-    }
-
-    // 🔥 shipment filter (EXISTS)
-    if (params.shipmentStatus) {
-      where.push(`
-      EXISTS (
-        SELECT 1
-        FROM order_shipments os
-        WHERE os.order_id = o.id
-        AND os.status = :shipmentStatus
-      )
-    `);
-
-      bindings.shipmentStatus = params.shipmentStatus;
     }
 
     return { where, bindings };

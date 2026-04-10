@@ -1,23 +1,41 @@
 import { OrderDetailRow, OrderItemRow, OrderListingRow, OrderStateBase } from "./order.types";
 
-type AdminOrderStatus = "WAITING_PAYMENT" | "READY_TO_SHIP" | "SHIPPED" | "DELIVERED" | "COMPLETED" | "CANCELLED" | "FAILED" | "EXPIRED";
+type AdminOrderStatus = "WAITING_PAYMENT" | "READY_TO_SHIP" | "SHIPPED" | "COMPLETED" | "CANCELLED" | "FAILED" | "EXPIRED";
 
 function mapAdminOrderStatus(row: OrderStateBase): AdminOrderStatus {
-  if (row.status === "CANCELLED") return "CANCELLED";
+  const { status, payment_status, shipment_status } = row;
 
-  if (row.payment_status === "FAILED") return "FAILED";
-  if (row.payment_status === "EXPIRED") return "EXPIRED";
+  const isPaid = payment_status === "PAID";
 
-  if (row.payment_status === "UNPAID") return "WAITING_PAYMENT";
+  /**
+   * 1. TERMINAL STATES
+   */
+  if (status === "CANCELLED") return "CANCELLED";
 
-  // PAID flows
-  if (row.shipment_status === "PENDING") return "READY_TO_SHIP";
+  if (payment_status === "FAILED") return "FAILED";
+  if (payment_status === "EXPIRED") return "EXPIRED";
 
-  if (row.shipment_status === "SHIPPED") return "SHIPPED";
+  /**
+   * 2. UNPAID
+   */
+  if (!isPaid) return "WAITING_PAYMENT";
 
-  if (row.shipment_status === "DELIVERED") {
-    return row.status === "COMPLETED" ? "COMPLETED" : "DELIVERED";
-  }
+  /**
+   * 3. PAID FLOW
+   */
+  if (shipment_status === "PENDING") return "READY_TO_SHIP";
+
+  if (shipment_status === "SHIPPED") return "SHIPPED";
+
+  /**
+   * DELIVERED → is COMPLETED
+   */
+  if (shipment_status === "DELIVERED") return "COMPLETED";
+
+  /**
+   * 4. FALLBACK
+   */
+  if (status === "COMPLETED") return "COMPLETED";
 
   return "READY_TO_SHIP";
 }
@@ -29,11 +47,11 @@ function getOrderActions(row: OrderStateBase) {
 
   const canShip = row.shipment_status === "PENDING" && row.payment_status === "PAID" && !isCancelled && !isPaymentInvalid;
 
-  const canDeliver = row.shipment_status === "SHIPPED" && !isCancelled && !isPaymentInvalid;
+  // const canDeliver = row.shipment_status === "SHIPPED" && !isCancelled && !isPaymentInvalid;
 
   return {
-    canShip,
-    canDeliver
+    canShip
+    // canDeliver
   };
 }
 

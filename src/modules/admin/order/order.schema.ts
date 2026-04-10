@@ -9,11 +9,9 @@ export const getOrdersQuerySchema = z.object({
 
   limit: z.coerce.number().int().min(1).max(50).default(10),
 
-  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED"]).optional(),
+  status: z.enum(["WAITING_PAYMENT", "READY_TO_SHIP", "SHIPPED", "COMPLETED", "CANCELLED", "FAILED", "EXPIRED"]).optional(),
 
   paymentStatus: z.enum(["UNPAID", "PAID", "FAILED", "EXPIRED"]).optional(),
-
-  shipmentStatus: z.enum(["PENDING", "SHIPPED", "DELIVERED"]).optional(),
 
   search: z.string().trim().min(1).max(100).optional(),
 
