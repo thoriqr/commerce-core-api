@@ -2,7 +2,7 @@ import { OrderDetailRow, OrderItemRow, OrderListingRow, OrderStateBase } from ".
 
 type AdminOrderStatus = "WAITING_PAYMENT" | "READY_TO_SHIP" | "SHIPPED" | "COMPLETED" | "CANCELLED" | "FAILED" | "EXPIRED";
 
-function mapAdminOrderStatus(row: OrderStateBase): AdminOrderStatus {
+export function mapAdminOrderStatus(row: OrderStateBase): AdminOrderStatus {
   const { status, payment_status, shipment_status } = row;
 
   const isPaid = payment_status === "PAID";

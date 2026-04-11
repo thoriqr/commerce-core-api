@@ -10,7 +10,6 @@ import { verifyGoogleIdToken } from "@/shared/google/google.util";
 import { UserDetailRow } from "./auth.repo.types";
 import { Knex } from "knex";
 import { logger } from "@/libs/logger";
-import { UserProvider } from "@/shared/user/user.types";
 
 export class AuthService {
   constructor(

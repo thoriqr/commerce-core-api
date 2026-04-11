@@ -6,5 +6,6 @@ export const ADMIN_ROUTES = {
   VARIANT_PRESET: "/variant-dimension-presets",
   WAREHOUSE: "/warehouse",
   DASHBOARD: "/dashboard",
-  ORDER: "/orders"
+  ORDER: "/orders",
+  USER: "/users"
 } as const;

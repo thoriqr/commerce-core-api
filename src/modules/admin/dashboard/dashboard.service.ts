@@ -1,3 +1,4 @@
+import { mapAdminOrderStatus } from "../order/order.mapper";
 import { DashboardRepo } from "./dashboard.repo";
 import { GetDashboardInput } from "./dashboard.schema";
 import { fillMissingDays, fillMissingMonths } from "./dashboard.uitl";
@@ -53,8 +54,14 @@ export class DashboardService {
       recentOrders: recentOrders.map((r) => ({
         orderCode: r.order_code,
         total: Number(r.total),
-        status: r.status,
+        status: mapAdminOrderStatus({
+          status: r.status,
+          payment_status: r.payment_status,
+          shipment_status: r.shipment_status
+        }),
+        rawStatus: r.status,
         paymentStatus: r.payment_status,
+        shipmentStatus: r.shipment_status,
         createdAt: r.created_at,
         recipientName: r.recipient_name
       }))

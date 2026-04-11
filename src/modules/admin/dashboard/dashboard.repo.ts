@@ -1,4 +1,5 @@
 import { db } from "@/infra/db/knex";
+import { OrderPaymentStatus, OrderShipmentStatus, OrderStatus } from "@/shared/order/order.types";
 
 export class DashboardRepo {
   getSummary = async (from?: Date, to?: Date) => {
@@ -136,23 +137,26 @@ export class DashboardRepo {
       rows: {
         order_code: string;
         total: string;
-        status: string;
-        payment_status: string;
+        status: OrderStatus;
+        payment_status: OrderPaymentStatus;
+        shipment_status: OrderShipmentStatus;
         created_at: Date;
         recipient_name: string;
       }[];
     }>(
       `
-    SELECT
-      order_code,
-      total,
-      status,
-      payment_status,
-      created_at,
-      recipient_name
-    FROM orders
-    ORDER BY created_at DESC
-    LIMIT :limit
+        SELECT
+          o.order_code,
+          o.total,
+          o.status,
+          o.payment_status,
+          os.status AS shipment_status,
+          o.created_at,
+          o.recipient_name
+        FROM orders o
+        JOIN order_shipments os ON os.order_id = o.id
+        ORDER BY o.created_at DESC
+        LIMIT :limit
   `,
       { limit }
     );

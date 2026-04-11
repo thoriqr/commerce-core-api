@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import adminRouter from "./modules/admin/admin.routes";
+import superRouter from "./modules/super/super.routes";
 import storeRouter from "./modules/store/store.routes";
 import authRouter from "./modules/auth/auth.routes";
 import userRouter from "./modules/user/user.routes";
@@ -32,6 +33,7 @@ app.use(ROUTES.USER, userRouter);
 app.use(ROUTES.SHIPPING, shippingRouter);
 app.use(ROUTES.PAYMENT, paymentRouter);
 app.use(ROUTES.ADMIN, adminRouter);
+app.use(ROUTES.SUPER, superRouter);
 
 app.use(errorMiddleware);
 

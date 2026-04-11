@@ -7,6 +7,7 @@ import variantPresetRouter from "./variant-preset/variant-preset.routes";
 import warehousesRouter from "./warehouse/warehouse.routes";
 import dashboardRouter from "./dashboard/dashboard.routes";
 import orderRouter from "./order/order.routes";
+import userAdminRouter from "./user/user.admin.routes";
 import { ADMIN_ROUTES } from "./admin.constants";
 import { requireRole } from "@/middlewares/role.middleware";
 import { requireAuth } from "@/middlewares/auth.middleware";
@@ -23,5 +24,6 @@ router.use(ADMIN_ROUTES.VARIANT_PRESET, variantPresetRouter);
 router.use(ADMIN_ROUTES.WAREHOUSE, warehousesRouter);
 router.use(ADMIN_ROUTES.DASHBOARD, dashboardRouter);
 router.use(ADMIN_ROUTES.ORDER, orderRouter);
+router.use(ADMIN_ROUTES.USER, userAdminRouter);
 
 export default router;
