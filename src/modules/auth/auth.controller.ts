@@ -13,6 +13,8 @@ import {
   requestPasswordResetSchema,
   resetPasswordSchema,
   setPasswordSchema,
+  validateAdminInviteSchema,
+  verifyAdminInvite,
   verifyEmailSchema
 } from "./auth.schema";
 import { clearAuthCookies, setAuthCookies } from "@/utils/set-auth-cookie";
@@ -29,6 +31,27 @@ export class AuthController {
 
     sendSuccess(res, 200, {
       message: "Verification email sent"
+    });
+  };
+
+  validateInviteAdmin = async (req: Request, res: Response) => {
+    const { token } = validateAdminInviteSchema.parse(req.params);
+
+    const data = await this.service.validateAdminInvite(token);
+    sendSuccess(res, 200, {
+      data
+    });
+  };
+
+  acceptAdminInvite = async (req: Request, res: Response) => {
+    const payload = verifyAdminInvite.parse(req.body);
+
+    const { accessToken, refreshToken } = await this.service.acceptAdminInvite(payload);
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    sendSuccess(res, 200, {
+      message: "Admin access granted"
     });
   };
 

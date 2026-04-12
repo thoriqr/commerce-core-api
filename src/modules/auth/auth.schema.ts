@@ -12,7 +12,7 @@ export const registerSchema = z.object({
 
 export const verifyEmailSchema = z.object({
   token: tokenSchema,
-  displayName: z.string().trim().min(2, "Display name too short").max(100, "Display name too long"),
+  displayName: z.string().trim().min(2).max(100),
   password: passwordSchema
 });
 
@@ -56,8 +56,19 @@ export const confirmEmailChangeSchema = z.object({
   token: tokenSchema
 });
 
+export const validateAdminInviteSchema = z.object({
+  token: tokenSchema
+});
+
+export const verifyAdminInvite = z.object({
+  token: tokenSchema,
+  displayName: z.string().trim().min(2).max(100).optional(),
+  password: passwordSchema.optional()
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+export type VerifyAdminInvite = z.infer<typeof verifyAdminInvite>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

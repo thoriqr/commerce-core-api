@@ -36,6 +36,9 @@ router.get("/me", requireAuth, controller.me);
 
 router.post("/invite", requireAuth, requireRole("SUPER"), controller.inviteAdmin);
 
+router.get("/invite/validate", controller.validateInviteAdmin);
+router.post("/invite/accept", controller.acceptAdminInvite);
+
 // TODO: enable when change email flow is finalized
 // router.post("/change-email", requireAuth, controller.changeEmail);
 // router.post("/confirm-email-change", controller.confirmEmailChange);

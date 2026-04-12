@@ -21,7 +21,9 @@ export class UserSuperService {
         page: params.page,
         limit: params.limit,
         total,
-        totalPages: Math.ceil(total / params.limit)
+        totalPages: Math.ceil(total / params.limit),
+        hasNext: params.page * params.limit < total,
+        hasPrev: params.page > 1
       }
     };
   };

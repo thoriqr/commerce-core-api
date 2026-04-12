@@ -1,6 +1,14 @@
 import { generateRefreshToken, hashRefreshToken } from "@/shared/jwt/refresh-token.util";
 import { AuthRepo } from "./auth.repo";
-import { GoogleLoginInput, LoginInput, RegisterInput, RequestPasswordResetInput, ResetPasswordInput, VerifyEmailInput } from "./auth.schema";
+import {
+  GoogleLoginInput,
+  LoginInput,
+  RegisterInput,
+  RequestPasswordResetInput,
+  ResetPasswordInput,
+  VerifyAdminInvite,
+  VerifyEmailInput
+} from "./auth.schema";
 import { AuthUser } from "./auth.types";
 import { AppError } from "@/errors/app-error";
 import { TransactionManager } from "@/infra/db/transaction-manager";
@@ -10,6 +18,7 @@ import { verifyGoogleIdToken } from "@/shared/google/google.util";
 import { UserDetailRow } from "./auth.repo.types";
 import { Knex } from "knex";
 import { logger } from "@/libs/logger";
+import { validatePending } from "./auth-utils";
 
 export class AuthService {
   constructor(
@@ -22,16 +31,16 @@ export class AuthService {
       // Reject if email already exists
       const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
 
-      if (existingUser) {
-        throw AppError.conflict("Email already registered");
+      if (existingUser && (existingUser.role === "ADMIN" || existingUser.role === "SUPER")) {
+        throw AppError.conflict("User is already an admin");
       }
 
       // Delete old pending invites
       await this.repo.deletePendingByEmailAndType(trx, email, "INVITE");
 
       // Generate token
-      const token = generateRefreshToken(); // reuse util
-      const tokenHash = hashRefreshToken(token);
+      const rawToken = generateRefreshToken(); // reuse util
+      const tokenHash = hashRefreshToken(rawToken);
 
       const expiresAt = this.getShortExpiry(15);
 
@@ -40,11 +49,115 @@ export class AuthService {
         email,
         tokenHash,
         type: "INVITE",
-        expiresAt
+        expiresAt,
+        userId: existingUser?.id ?? null
       });
 
       // 5️⃣ TODO: send email with token
       // await mailer.sendInvite(email, token);
+
+      const verifyUrl = `http://localhost:5173/invite?token=${rawToken}`;
+
+      console.log("invite url:", verifyUrl);
+    });
+  };
+
+  validateAdminInvite = async (token: string) => {
+    const tokenHash = hashRefreshToken(token);
+
+    const verification = await this.repo.checkPendingVerification(tokenHash, "INVITE");
+
+    const pending = validatePending(verification);
+
+    let user: UserDetailRow | null = null;
+
+    if (pending.user_id) {
+      user = await this.repo.findUserById(pending.user_id);
+    } else {
+      user = await this.repo.findUserByEmailOrNull(pending.email);
+    }
+
+    if (user && (user.role === "ADMIN" || user.role === "SUPER")) {
+      throw AppError.conflict("User is already an admin");
+    }
+
+    return {
+      email: pending.email,
+      displayName: user?.display_name ?? "",
+      hasPassword: !!user?.password_hash
+    };
+  };
+
+  acceptAdminInvite = async (input: VerifyAdminInvite) => {
+    const tokenHash = hashRefreshToken(input.token);
+
+    return this.tm.transaction(async (trx) => {
+      const verification = await this.repo.findPendingVerification(trx, tokenHash, "INVITE");
+
+      const pending = validatePending(verification);
+
+      let user: UserDetailRow | null = null;
+
+      //  find user
+      if (pending.user_id) {
+        user = await this.repo.findUserById(pending.user_id, trx);
+      } else {
+        user = await this.repo.findUserByEmailOrNull(pending.email, trx);
+      }
+
+      // safety check
+      if (user && (user.role === "ADMIN" || user.role === "SUPER")) {
+        throw AppError.conflict("User is already an admin");
+      }
+
+      const hasPassword = !!user?.password_hash;
+
+      // validation (business logic)
+      if (!hasPassword) {
+        if (!input.password) {
+          throw AppError.badRequest("Password is required");
+        }
+
+        if (!input.displayName) {
+          throw AppError.badRequest("Display name is required");
+        }
+      }
+
+      let passwordHash: string | undefined;
+
+      if (input.password) {
+        passwordHash = await bcrypt.hash(input.password, 10);
+      }
+
+      // branching
+      if (!user) {
+        // CREATE
+        user = await this.repo.insertUserWithRole(trx, {
+          email: pending.email,
+          passwordHash: passwordHash!, // safe already validated
+          displayName: input.displayName ?? null,
+          role: "ADMIN",
+          status: "ACTIVE"
+        });
+      } else {
+        // UPDATE (upgrade role)
+        await this.repo.updateUserToAdmin(trx, {
+          userId: user.id,
+          ...(passwordHash !== undefined && { passwordHash }),
+          ...(input.displayName !== undefined && { displayName: input.displayName })
+        });
+      }
+
+      // mark used
+      await this.repo.markPendingVerificationUsed(trx, pending.id);
+
+      const accessToken = this.issueAccessToken(user);
+      const refreshToken = await this.issueRefreshToken(trx, user.id);
+
+      return {
+        accessToken,
+        refreshToken
+      };
     });
   };
 
@@ -89,20 +202,10 @@ export class AuthService {
 
     const verification = await this.repo.checkPendingVerification(tokenHash, input.type);
 
-    if (!verification) {
-      throw AppError.badRequest("Invalid token");
-    }
-
-    if (verification.used_at) {
-      throw AppError.badRequest("Invalid token");
-    }
-
-    if (verification.expires_at < new Date()) {
-      throw AppError.badRequest("Token expired");
-    }
+    const pending = validatePending(verification);
 
     return {
-      expiresAt: verification.expires_at
+      expiresAt: pending.expires_at
     };
   };
 
@@ -110,19 +213,9 @@ export class AuthService {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
-      const pending = await this.repo.findPendingVerification(trx, tokenHash, "REGISTER");
+      const verification = await this.repo.findPendingVerification(trx, tokenHash, "REGISTER");
 
-      if (!pending) {
-        throw AppError.unauthorized("Invalid token");
-      }
-
-      if (pending.used_at) {
-        throw AppError.unauthorized("Token already used");
-      }
-
-      if (new Date(pending.expires_at) < new Date()) {
-        throw AppError.unauthorized("Token expired");
-      }
+      const pending = validatePending(verification);
 
       // REGISTER only
       const role = "USER";

@@ -25,6 +25,18 @@ export class UserSuperRepo {
 
     const whereSql = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
+    const orderSql = role
+      ? `ORDER BY created_at DESC`
+      : `
+    ORDER BY
+      CASE role
+        WHEN 'SUPER' THEN 1
+        WHEN 'ADMIN' THEN 2
+        WHEN 'USER' THEN 3
+      END,
+      created_at DESC
+  `;
+
     const { rows } = await db.raw<{
       rows: {
         id: number;
@@ -43,7 +55,7 @@ export class UserSuperRepo {
         created_at
       FROM users
       ${whereSql}
-      ORDER BY created_at DESC
+      ${orderSql}
       LIMIT :limit OFFSET :offset
       `,
       bindings

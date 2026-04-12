@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { UserDetailRow, VerificationType } from "./auth.repo.types";
 import { Provider, UserRole, UserStatus } from "@/shared/user/user.types";
 import { logger } from "@/libs/logger";
+import { PendingVerificationRow } from "./auth.types";
 
 export class AuthRepo {
   async findUserById(userId: number, trx?: Knex.Transaction) {
@@ -134,6 +135,31 @@ export class AuthRepo {
     return row;
   }
 
+  async updateUserToAdmin(
+    trx: Knex.Transaction,
+    input: {
+      userId: number;
+      passwordHash?: string;
+      displayName?: string;
+    }
+  ) {
+    await trx.raw(
+      `
+    UPDATE users
+    SET
+      role = 'ADMIN',
+      password_hash = COALESCE(password_hash, :passwordHash),
+      display_name = COALESCE(display_name, :displayName)
+    WHERE id = :userId
+    `,
+      {
+        userId: input.userId,
+        passwordHash: input.passwordHash,
+        displayName: input.displayName
+      }
+    );
+  }
+
   async updateUserPassword(trx: Knex.Transaction, userId: number, passwordHash: string) {
     await trx.raw(
       `
@@ -167,12 +193,12 @@ export class AuthRepo {
     );
   }
 
-  checkPendingVerification = async (tokenHash: string, type: "REGISTER" | "RESET_PASSWORD") => {
+  checkPendingVerification = async (tokenHash: string, type: VerificationType) => {
     const { rows } = await db.raw<{
-      rows: { id: number; expires_at: Date; used_at: Date | null }[];
+      rows: PendingVerificationRow[];
     }>(
       `
-    SELECT id, expires_at, used_at
+    SELECT id, user_id, email, expires_at, used_at, type
     FROM pending_verifications
     WHERE token_hash = :tokenHash
     AND type = :type
@@ -223,7 +249,7 @@ export class AuthRepo {
 
   async findPendingVerification(trx: Knex.Transaction, tokenHash: string, type: VerificationType) {
     const { rows } = await trx.raw<{
-      rows: Array<{ id: number; user_id: number; email: string; expires_at: Date; used_at: Date | null; type: VerificationType }>;
+      rows: PendingVerificationRow[];
     }>(
       `
     SELECT id, user_id, email, expires_at, used_at, type
