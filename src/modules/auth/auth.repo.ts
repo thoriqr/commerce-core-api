@@ -154,8 +154,8 @@ export class AuthRepo {
     `,
       {
         userId: input.userId,
-        passwordHash: input.passwordHash,
-        displayName: input.displayName
+        passwordHash: input.passwordHash ?? null,
+        displayName: input.displayName ?? null
       }
     );
   }

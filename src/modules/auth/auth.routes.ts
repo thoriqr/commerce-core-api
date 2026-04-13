@@ -6,7 +6,6 @@ import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
 import { requireRole } from "@/middlewares/role.middleware";
 import { requireAuth } from "@/middlewares/auth.middleware";
-// import { createRequireAuth } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
@@ -14,7 +13,6 @@ const tm = new KnexTransactionManager(db);
 const repo = new AuthRepo();
 const service = new AuthService(tm, repo);
 const controller = new AuthController(service);
-// const requireAuth = createRequireAuth(service);
 
 router.post("/register", controller.register);
 router.post("/check-verification-token", controller.checkVerificationToken);
@@ -36,7 +34,7 @@ router.get("/me", requireAuth, controller.me);
 
 router.post("/invite", requireAuth, requireRole("SUPER"), controller.inviteAdmin);
 
-router.get("/invite/validate", controller.validateInviteAdmin);
+router.get("/invite/validate/:token", controller.validateInviteAdmin);
 router.post("/invite/accept", controller.acceptAdminInvite);
 
 // TODO: enable when change email flow is finalized

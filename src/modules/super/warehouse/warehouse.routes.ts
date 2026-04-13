@@ -7,6 +7,9 @@ import { db } from "@/infra/db/knex";
 import { RajaOngkirClient } from "@/modules/shipping/rajaongkir.client";
 import { ShippingService } from "@/modules/shipping/shipping.service";
 
+// NOTE: warehouse is restricted to SUPER only (critical config)
+// future: may be extended to ADMIN with audit logging
+
 const router = Router();
 
 const tm = new KnexTransactionManager(db);

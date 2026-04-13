@@ -146,6 +146,12 @@ export class AuthService {
           ...(passwordHash !== undefined && { passwordHash }),
           ...(input.displayName !== undefined && { displayName: input.displayName })
         });
+
+        user = await this.repo.findUserById(user.id, trx);
+
+        if (!user) {
+          throw AppError.notFound("User not found");
+        }
       }
 
       // mark used

@@ -1,3 +1,4 @@
 export const SUPER_ROUTES = {
-  USER: "/users"
+  USER: "/users",
+  WAREHOUSE: "/warehouse"
 } as const;
