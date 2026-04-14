@@ -6,8 +6,10 @@ import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
 import { RajaOngkirClient } from "@/modules/shipping/rajaongkir.client";
 import { ShippingService } from "@/modules/shipping/shipping.service";
+import { requireAuth } from "@/middlewares/auth.middleware";
+import { requireRole } from "@/middlewares/role.middleware";
 
-// NOTE: warehouse is restricted to SUPER only (critical config)
+// NOTE: upsert warehouse is restricted to SUPER only (critical config)
 // future: may be extended to ADMIN with audit logging
 
 const router = Router();
@@ -21,7 +23,7 @@ const repo = new WarehouseRepo();
 const service = new WarehouseService(tm, repo, shippingService);
 const controller = new WarehouseController(service);
 
-router.get("/", controller.getWarehouse);
-router.put("/", controller.upsertWarehouse);
+router.get("/", requireAuth, requireRole("SUPER", "ADMIN"), controller.getWarehouse);
+router.put("/", requireAuth, requireRole("SUPER"), controller.upsertWarehouse);
 
 export default router;

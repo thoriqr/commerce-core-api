@@ -8,6 +8,7 @@ import userRouter from "./modules/user/user.routes";
 import shippingRouter from "./modules/shipping/shipping.routes";
 import paymentRouter from "./modules/payment/payment.routes";
 import cartRouter from "./modules/cart/cart.routes";
+import warehouseRouter from "./modules/warehouse/warehouse.routes";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { ROUTES } from "./constants/routes";
 import { env } from "./config/env";
@@ -32,6 +33,7 @@ app.use(ROUTES.AUTH, authRouter);
 app.use(ROUTES.USER, userRouter);
 app.use(ROUTES.SHIPPING, shippingRouter);
 app.use(ROUTES.PAYMENT, paymentRouter);
+app.use(ROUTES.WAREHOUSE, warehouseRouter);
 app.use(ROUTES.ADMIN, adminRouter);
 app.use(ROUTES.SUPER, superRouter);
 
