@@ -1,6 +1,7 @@
 import { OptionSnapshot } from "@/shared/variant-image/types";
 import { OrderForPaymentRow, OrderItemForPaymentRow } from "@/modules/user/order/order.user.types";
 import { MidtransItem, MidtransPayload } from "./midtrans.types";
+import { env } from "@/config/env";
 
 function formatDateToMidtrans(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -99,7 +100,7 @@ export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItem
         postal_code: order.postal_code ?? "-"
       }
     },
-    notification_url: "https://webhook.commerce.web.id/api/payments/midtrans/webhook",
+    notification_url: env.NOTIFICATION_WEBHOOK_URL,
     expiry: {
       start_time: formatDateToMidtrans(now),
       unit: "minute",

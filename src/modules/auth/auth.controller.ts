@@ -18,8 +18,6 @@ import {
   verifyEmailSchema
 } from "./auth.schema";
 import { clearAuthCookies, setAuthCookies } from "@/utils/set-auth-cookie";
-import { env } from "@/config/env";
-import { getSafeOrigin } from "@/utils/get-safe-origin";
 
 export class AuthController {
   constructor(private readonly service: AuthService) {}
@@ -58,9 +56,7 @@ export class AuthController {
   register = async (req: Request, res: Response) => {
     const payload = registerSchema.parse(req.body);
 
-    const origin = getSafeOrigin(req);
-
-    await this.service.register(payload, origin);
+    await this.service.register(payload);
 
     sendSuccess(res, 200, {
       message: "Verification email sent"
@@ -136,9 +132,7 @@ export class AuthController {
   requestPasswordReset = async (req: Request, res: Response) => {
     const payload = requestPasswordResetSchema.parse(req.body);
 
-    const origin = getSafeOrigin(req);
-
-    await this.service.requestPasswordReset(payload, origin);
+    await this.service.requestPasswordReset(payload);
 
     sendSuccess(res, 200, {
       message: "If the email exists, a reset link has been sent."
@@ -196,9 +190,7 @@ export class AuthController {
 
     const payload = changeEmailSchema.parse(req.body);
 
-    const origin = getSafeOrigin(req);
-
-    await this.service.changeEmail(req.user.id, payload.email, origin);
+    await this.service.changeEmail(req.user.id, payload.email);
 
     sendSuccess(res, 200, {
       message: "Verification email sent"
@@ -220,21 +212,11 @@ export class AuthController {
   googleLogin = async (req: Request, res: Response) => {
     const payload = googleLoginSchema.parse(req.body);
 
-    const origin = getSafeOrigin(req);
-
-    const { user, accessToken, refreshToken } = await this.service.googleLogin(payload);
+    const { accessToken, refreshToken } = await this.service.googleLogin(payload);
 
     setAuthCookies(res, accessToken, refreshToken);
 
-    // Admin panel
-    if (origin === env.ADMIN_ORIGIN) {
-      return sendSuccess(res, 200, {
-        data: { user }
-      });
-    }
-
-    // Storefront
-    return sendSuccess(res, 200, {
+    sendSuccess(res, 200, {
       message: "Login successful"
     });
   };
@@ -244,21 +226,10 @@ export class AuthController {
       throw AppError.unauthorized();
     }
 
-    const origin = getSafeOrigin(req);
-
     const user = await this.service.me(req.user.id);
 
-    // Admin panel
-    if (origin === env.ADMIN_ORIGIN) {
-      return sendSuccess(res, 200, {
-        data: user
-      });
-    }
-
-    // Storefront
-    const { role, ...userNoRole } = user;
-    return sendSuccess(res, 200, {
-      data: userNoRole
+    sendSuccess(res, 200, {
+      data: user
     });
   };
 }

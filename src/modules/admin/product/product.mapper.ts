@@ -180,6 +180,7 @@ export function mapProductList(rows: ProductListRow[]): ProductListDTO[] {
     minPrice: row.min_price,
     maxPrice: row.max_price,
     totalStock: row.total_stock,
+    totalSold: row.total_sold,
     sku: row.representative_sku ?? "-",
     status: row.status,
     categoryName: row.category_name ?? "-",

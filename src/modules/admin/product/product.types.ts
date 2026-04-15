@@ -74,6 +74,7 @@ export type ProductListRow = {
   status: ProductStatus;
   category_name: string | null;
   total_stock: number;
+  total_sold: number;
   variant_count: number;
   min_price: number;
   max_price: number;

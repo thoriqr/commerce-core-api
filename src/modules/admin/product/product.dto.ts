@@ -50,6 +50,7 @@ export interface ProductListDTO {
   status: ProductStatus;
   categoryName: string;
   totalStock: number;
+  totalSold: number;
   variantCount: number;
   minPrice: number;
   maxPrice: number;

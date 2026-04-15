@@ -22,6 +22,7 @@ import { CollectionRepo } from "../collection/collection.repo";
 import { VariantPresetRepo } from "../variant-preset/variant-preset.repo";
 import { redis } from "@/libs/redis";
 import { REDIS_KEYS } from "@/shared/cache/redis-keys";
+import { mapProductList } from "./product.mapper";
 
 export class ProductService {
   constructor(
@@ -35,9 +36,9 @@ export class ProductService {
   getall = async (qParams: ProductQueryParamsSchema) => {
     const { page, limit } = qParams;
 
-    const [items, total] = await Promise.all([this.productRepo.getAll(qParams), this.productRepo.getCount(qParams)]);
+    const [rows, total] = await Promise.all([this.productRepo.getAll(qParams), this.productRepo.getCount(qParams)]);
     return {
-      data: items,
+      data: mapProductList(rows),
       meta: {
         page,
         limit,

@@ -59,6 +59,7 @@ export class ProductRepo {
         c.name AS category_name,
         p.created_at,
         COALESCE(SUM(pv.stock), 0) AS total_stock,
+        COALESCE(SUM(pv.sold), 0) AS total_sold,
         COUNT(pv.id) AS variant_count,
         MIN(pv.price) AS min_price,
         MAX(pv.price) AS max_price,
@@ -96,7 +97,7 @@ export class ProductRepo {
 
     const { rows } = await db.raw<{ rows: ProductListRow[] }>(sql, bindings);
 
-    return mapProductList(rows);
+    return rows;
   }
 
   async getCount(qParams: ProductQueryParamsSchema) {

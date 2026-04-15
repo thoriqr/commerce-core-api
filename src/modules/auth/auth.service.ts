@@ -19,6 +19,7 @@ import { UserDetailRow } from "./auth.repo.types";
 import { Knex } from "knex";
 import { logger } from "@/libs/logger";
 import { validatePending } from "./auth-utils";
+import { env } from "@/config/env";
 
 export class AuthService {
   constructor(
@@ -56,7 +57,7 @@ export class AuthService {
       // 5️⃣ TODO: send email with token
       // await mailer.sendInvite(email, token);
 
-      const verifyUrl = `http://localhost:5173/invite?token=${rawToken}`;
+      const verifyUrl = `${env.ADMIN_ORIGIN}/invite?token=${rawToken}`;
 
       console.log("invite url:", verifyUrl);
     });
@@ -167,7 +168,7 @@ export class AuthService {
     });
   };
 
-  register = async (input: RegisterInput, origin: string): Promise<void> => {
+  register = async (input: RegisterInput): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
     return this.tm.transaction(async (trx) => {
@@ -197,7 +198,7 @@ export class AuthService {
 
       // TODO: Send magic link via mailer
       // link example:
-      const verifyUrl = `${origin}/verify?token=${rawToken}`;
+      const verifyUrl = `${env.STOREFRONT_ORIGIN}/verify?token=${rawToken}`;
 
       console.log("VERIFY URL:", verifyUrl);
     });
@@ -392,7 +393,7 @@ export class AuthService {
     });
   };
 
-  requestPasswordReset = async (input: RequestPasswordResetInput, origin: string): Promise<void> => {
+  requestPasswordReset = async (input: RequestPasswordResetInput): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
     return this.tm.transaction(async (trx) => {
@@ -423,7 +424,7 @@ export class AuthService {
 
       // TODO: send reset email with rawToken
       // reset link
-      const resetUrl = `${origin}/reset-password?token=${rawToken}`;
+      const resetUrl = `${env.STOREFRONT_ORIGIN}/reset-password?token=${rawToken}`;
 
       console.log("RESET URL:", resetUrl);
     });
@@ -619,7 +620,7 @@ export class AuthService {
     };
   };
 
-  changeEmail = async (userId: number, newEmail: string, origin: string): Promise<void> => {
+  changeEmail = async (userId: number, newEmail: string): Promise<void> => {
     const email = newEmail.trim().toLowerCase();
 
     return this.tm.transaction(async (trx) => {
@@ -655,7 +656,7 @@ export class AuthService {
         expiresAt
       });
 
-      const confirmUrl = `${origin}/confirm-email-change?token=${rawToken}`;
+      const confirmUrl = `${env.STOREFRONT_ORIGIN}/confirm-email-change?token=${rawToken}`;
 
       console.log("CHANGE EMAIL URL:", confirmUrl);
 

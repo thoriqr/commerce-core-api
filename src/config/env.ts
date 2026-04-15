@@ -30,7 +30,8 @@ const envSchema = z.object({
   SUPER_PASSWORD: z.string().min(1),
 
   RAJAONGKIR_API_KEY: z.string().min(1),
-  MIDTRANS_SERVER_KEY: z.string().min(1)
+  MIDTRANS_SERVER_KEY: z.string().min(1),
+  NOTIFICATION_WEBHOOK_URL: z.string().min(1)
 });
 
 const parsed = envSchema.safeParse(process.env);
