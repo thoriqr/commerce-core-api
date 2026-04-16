@@ -22,7 +22,7 @@ import {
   ProductImageFilesMap,
   ProductCollectionIdRow
 } from "./product.types";
-import { mapProductDetail, mapProductList } from "./product.mapper";
+import { mapProductDetail } from "./product.mapper";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
 import { ProductVariantRepo } from "./product-variant.repo";
 import { PRODUCT_LIMITS } from "@/shared/product/product.constants";
@@ -63,14 +63,17 @@ export class ProductRepo {
         COUNT(pv.id) AS variant_count,
         MIN(pv.price) AS min_price,
         MAX(pv.price) AS max_price,
+        MIN(CASE WHEN pv.status = 'ACTIVE' THEN pv.price END) AS active_min_price,
+        MAX(CASE WHEN pv.status = 'ACTIVE' THEN pv.price END) AS active_max_price,
         COALESCE(
+          MAX(CASE WHEN pv.is_primary AND pv.status = 'ACTIVE' THEN pv.sku END),
           MAX(CASE WHEN pv.is_primary THEN pv.sku END),
-          MIN(pv.sku)
+        MIN(pv.sku)
         ) AS representative_sku
       FROM products p
       JOIN product_variants pv
         ON pv.product_id = p.id
-      AND pv.status = 'ACTIVE'
+      AND pv.status <> 'ARCHIVED'
 
       -- get one product_images
       LEFT JOIN LATERAL(
@@ -164,7 +167,7 @@ export class ProductRepo {
 
     const { rows: variantRows } = await db.raw<{ rows: VariantRow[] }>(
       `
-      SELECT id, product_id, price, stock, weight, sku, is_primary
+      SELECT id, product_id, price, stock, weight, sku, status, is_primary
       FROM product_variants
       WHERE product_id = :productId
         AND status <> 'ARCHIVED'
@@ -259,20 +262,20 @@ export class ProductRepo {
 
     await this.insertProductImages(trx, productId, images, productImageFilesMap);
 
-    // 4️⃣ Guard
+    // Guard
     if (variantImageFilesMap.size > 0 && variants.length === 1) {
       throw AppError.internal("Variant images are only allowed for multi-variant products");
     }
 
     const hasVariantDimension = Array.isArray(variantDimension) && variantDimension.length > 0;
 
-    // 5️⃣ Snapshot lookup
+    // Snapshot lookup
     const snapshotLookup = hasVariantDimension ? this.buildVariantSnapshotLookup(variantDimension) : null;
 
-    // 6️⃣ Insert variants (NEW ONLY)
+    // Insert variants (NEW ONLY)
     const variantIdMap = await this.variantRepo.insertNewVariants(trx, productId, variants, snapshotLookup);
 
-    // 7️⃣ Descriptor runtime only if multi
+    // Descriptor runtime only if multi
     if (hasVariantDimension) {
       await this.variantRepo.handleNewAndRemovedVariantImages(trx, productId, variantDimension, variantImageFilesMap, new Set());
 

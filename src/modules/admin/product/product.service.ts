@@ -7,7 +7,7 @@ import { generateUniqueSlug } from "./product.slug";
 import { ProductRepo } from "./product.repo";
 import { ALLOWED_IMG_FORMAT, PRODUCT_IMAGE_MAX_SIZE, PRODUCT_IMAGE_MIN_SIZE } from "./product.constants";
 import { TransactionManager } from "@/infra/db/transaction-manager";
-import { ProductImageFilesMap, VariantImageFilesMap } from "./product.types";
+import { ProductImageFilesMap, ProductStatus, VariantImageFilesMap } from "./product.types";
 import { validateAndMapProductImages, validateAndMapVariantImages } from "./product.image.validator";
 import {
   ProductImageSchema,
@@ -71,7 +71,7 @@ export class ProductService {
   };
 
   create = async (input: ProductUpsertSchema, productImgs: Express.Multer.File[], variantImgs: Express.Multer.File[]) => {
-    const finalIsVariant = this.validateVariantRules(input.variants);
+    const finalIsVariant = this.validateVariantRules(input.variants, input.status);
 
     let productImageFilesMap: ProductImageFilesMap = new Map();
     let variantImageFilesMap: VariantImageFilesMap = new Map();
@@ -96,7 +96,7 @@ export class ProductService {
   };
 
   update = async (id: number, input: ProductUpsertSchema, productImgs: Express.Multer.File[], variantImgs: Express.Multer.File[]) => {
-    const finalIsVariant = this.validateVariantRules(input.variants);
+    const finalIsVariant = this.validateVariantRules(input.variants, input.status);
 
     let productImageFilesMap: ProductImageFilesMap = new Map();
     let variantImageFilesMap: VariantImageFilesMap = new Map();
@@ -255,17 +255,36 @@ export class ProductService {
     };
   }
 
-  private validateVariantRules(variants: VariantSchema[]) {
+  private validateVariantRules(variants: VariantSchema[], productStatus: ProductStatus) {
     const finalIsVariant = variants.length > 1;
+
     const primaries = variants.filter((v) => v.isPrimary);
 
+    // Ensure exactly one primary variant
     if (primaries.length !== 1) {
       throw AppError.badRequest("Exactly one primary variant is required");
+    }
+
+    const primary = primaries[0]!;
+
+    // Ensure primary is ACTIVE when product is ACTIVE
+    if (productStatus === "ACTIVE" && primary.status !== "ACTIVE") {
+      throw AppError.badRequest("Primary variant must be active when product is active");
+    }
+
+    // Ensure at least one ACTIVE variant when product is ACTIVE
+    if (productStatus === "ACTIVE") {
+      const hasActiveVariant = variants.some((v) => v.status === "ACTIVE");
+
+      if (!hasActiveVariant) {
+        throw AppError.badRequest("At least one active variant is required when product is active");
+      }
     }
 
     // SINGLE PRODUCT MUST NOT HAVE options
     if (!finalIsVariant) {
       const hasOptions = variants[0]?.options?.length;
+
       if (hasOptions) {
         throw AppError.badRequest("Single product must not have variant options");
       }
@@ -279,11 +298,6 @@ export class ProductService {
         }
       }
     }
-
-    // RULE:
-    // - single variant must not have options
-    // - multi variant must have options
-    // - exactly one primary variant
 
     return finalIsVariant;
   }

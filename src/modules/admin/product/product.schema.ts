@@ -64,13 +64,14 @@ const variantSchema = z.object({
   id: z.coerce.number().int().positive().optional(),
   clientId: z.string().min(1),
   price: z.coerce.number().int().positive().min(PRODUCT_LIMITS.PRICE_MIN).max(PRODUCT_LIMITS.PRICE_MAX),
-  stock: z.coerce.number().int().positive().min(PRODUCT_LIMITS.STOCK_MIN).max(PRODUCT_LIMITS.STOCK_MAX),
+  stock: z.coerce.number().int().min(0).max(PRODUCT_LIMITS.STOCK_MAX),
   weight: z.coerce.number().positive().min(PRODUCT_LIMITS.WEIGHT_MIN).max(PRODUCT_LIMITS.WEIGHT_MAX),
   sku: z.preprocess((val) => {
     if (typeof val !== "string") return undefined;
     const trimmed = val.trim();
     return trimmed === "" ? undefined : trimmed;
   }, z.string().max(PRODUCT_LIMITS.MAX_SKU).optional()),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
   isPrimary: z.boolean(),
   options: z.array(
     z.object({
@@ -84,7 +85,7 @@ export const productUpsertSchema = z
   .object({
     name: z.coerce.string().min(PRODUCT_LIMITS.NAME_MIN).max(PRODUCT_LIMITS.NAME_MAX),
     description: z.coerce.string().min(PRODUCT_LIMITS.DESCRIPTION_MIN).max(PRODUCT_LIMITS.DESCRIPTION_MAX),
-    status: z.enum(["ACTIVE", "INACTIVE"]),
+    status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]),
     categoryId: z.coerce.number().int().positive(),
     collectionIds: z.array(z.coerce.number().int().positive()),
     isVariant: z.boolean().optional(),
@@ -155,6 +156,17 @@ export const productUpsertSchema = z
             });
           });
         }
+      }
+    });
+
+    variants.forEach((v, vIdx) => {
+      // ACTIVE variant must have stock > 0
+      if (v.status === "ACTIVE" && v.stock <= 0) {
+        ctx.addIssue({
+          path: ["variants", vIdx, "stock"],
+          message: "Active variant must have stock greater than 0",
+          code: "custom"
+        });
       }
     });
 

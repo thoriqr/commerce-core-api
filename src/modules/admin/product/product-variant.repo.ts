@@ -74,7 +74,7 @@ export class ProductVariantRepo {
         throw AppError.badRequest(`Variant ${id} is archived and cannot be modified`);
       }
 
-      // Build snapshot di sini
+      // Build snapshot
       const snapshot = snapshotLookup && v.options?.length ? this.buildVariantSnapshot(v, snapshotLookup) : null;
 
       const { rows } = await trx.raw<{ rows: { id: number }[] }>(
@@ -85,7 +85,7 @@ export class ProductVariantRepo {
           weight = :weight,
           sku = :sku,
           is_primary = :isPrimary,
-          status = 'ACTIVE',
+          status = :status,
           option_snapshot = :snapshot
       WHERE id = :id
       AND product_id = :productId
@@ -98,6 +98,7 @@ export class ProductVariantRepo {
           stock: v.stock,
           weight: v.weight,
           sku: normalizeSku(v.sku),
+          status: v.status,
           isPrimary: v.isPrimary,
           snapshot
         }
@@ -135,9 +136,9 @@ export class ProductVariantRepo {
       const { rows } = await trx.raw<{ rows: { id: number }[] }>(
         `
         INSERT INTO product_variants
-         (product_id, price, stock, weight, sku, is_primary, option_snapshot)
+         (product_id, price, stock, weight, sku, status, is_primary, option_snapshot)
         VALUES
-          (:productId, :price, :stock, :weight, :sku, :is_primary, :snapshot)
+          (:productId, :price, :stock, :weight, :sku, :status, :is_primary, :snapshot)
         RETURNING id
       `,
         {
@@ -146,6 +147,7 @@ export class ProductVariantRepo {
           stock: v.stock,
           weight: v.weight,
           sku: normalizeSku(v.sku),
+          status: v.status,
           is_primary: v.isPrimary,
           snapshot
         }
@@ -208,7 +210,7 @@ export class ProductVariantRepo {
   ) {
     await this.clearAllDimensionsAndPivot(trx, productId);
 
-    // 4️⃣ INSERT new dimensions
+    // INSERT new dimensions
     const dimensionIdMap = new Map<string, number>();
 
     for (const dim of dims) {
@@ -236,7 +238,7 @@ export class ProductVariantRepo {
       dimensionIdMap.set(String(dim.id), rows[0].id);
     }
 
-    // 5️⃣ INSERT values
+    // INSERT values
     const valueIdMap = new Map<string, number>();
 
     for (const dim of dims) {
@@ -272,7 +274,7 @@ export class ProductVariantRepo {
       }
     }
 
-    // 6️⃣ INSERT pivot (ACTIVE variants only)
+    // INSERT pivot (ACTIVE variants only)
     for (const variant of variants) {
       const key = this.resolveVariantKey(variant);
       const dbVariantId = variantIdMap.get(key);
@@ -340,7 +342,7 @@ export class ProductVariantRepo {
           throw AppError.badRequest(`Invalid variant image reference: ${imageId}`);
         }
 
-        // 🔥 delete signature lama (runtime descriptor only)
+        // delete signature lama (runtime descriptor only)
         await trx.raw(
           `
         DELETE FROM product_variant_image_signatures
@@ -349,7 +351,7 @@ export class ProductVariantRepo {
           { variantImageId: imageId }
         );
 
-        // 🔥 insert signature baru dengan normalized terbaru
+        // insert signature baru dengan normalized terbaru
         await trx.raw(
           `
         INSERT INTO product_variant_image_signatures
@@ -378,7 +380,7 @@ export class ProductVariantRepo {
     variantImageFilesMap: VariantImageFilesMap,
     usedImageIds: Set<number>
   ) {
-    // 🔹 Ambil semua image runtime lama
+    // Ambil semua image runtime lama
     const { rows: existingRows } = await trx.raw<{
       rows: { id: number }[];
     }>(
@@ -393,7 +395,7 @@ export class ProductVariantRepo {
 
     const existingImageIds = new Set(existingRows.map((r) => r.id));
 
-    // 🔹 Loop payload
+    // Loop payload
     for (const dim of variantDimensions) {
       for (const opt of dim.options) {
         // ===== CASE 2: replace image (upload baru) =====
@@ -476,7 +478,7 @@ export class ProductVariantRepo {
       }
     }
 
-    // 🔥 FINAL ORPHAN STEP
+    // FINAL ORPHAN STEP
     for (const imageId of existingImageIds) {
       if (!usedImageIds.has(imageId)) {
         await trx.raw(
@@ -543,7 +545,7 @@ export class ProductVariantRepo {
       };
     });
 
-    // 🔥 Canonical sorting di sini
+    // Canonical sorting di sini
     snapshot.sort((a, b) => {
       if (a.dimension === b.dimension) {
         return a.value.localeCompare(b.value);

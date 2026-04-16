@@ -1,4 +1,4 @@
-import { ProductStatus } from "./product.types";
+import { ProductStatus, ProductVariantStatus } from "./product.types";
 
 export interface ProductVariantDTO {
   id: number;
@@ -8,6 +8,7 @@ export interface ProductVariantDTO {
   weight: number;
   sku: string;
   isPrimary: boolean;
+  status: ProductVariantStatus;
   options: {
     dimensionId: string;
     optionId: string;

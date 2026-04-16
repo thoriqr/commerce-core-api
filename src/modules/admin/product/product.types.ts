@@ -37,6 +37,7 @@ export type VariantRow = {
   stock: number;
   weight: number;
   sku: string | null;
+  status: ProductVariantStatus;
   is_primary: boolean;
 };
 
@@ -78,6 +79,8 @@ export type ProductListRow = {
   variant_count: number;
   min_price: number;
   max_price: number;
+  active_min_price: number | null;
+  active_max_price: number | null;
   representative_sku: string | null;
   created_at: Date;
 };

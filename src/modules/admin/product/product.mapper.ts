@@ -46,6 +46,7 @@ export function mapProductDetail(
         weight: v.weight,
         sku: v.sku ?? "",
         isPrimary: v.is_primary,
+        status: v.status,
         options: []
       }))
     };
@@ -122,6 +123,7 @@ export function mapProductDetail(
     weight: v.weight,
     sku: v.sku ?? "",
     isPrimary: v.is_primary,
+    status: v.status,
     options: optValMap.get(String(v.id)) ?? []
   }));
 
@@ -179,6 +181,8 @@ export function mapProductList(rows: ProductListRow[]): ProductListDTO[] {
     thumbnailImage: row.thumbnail_image,
     minPrice: row.min_price,
     maxPrice: row.max_price,
+    activeMinPrice: row.active_min_price,
+    activeMaxPrice: row.active_max_price,
     totalStock: row.total_stock,
     totalSold: row.total_sold,
     sku: row.representative_sku ?? "-",
