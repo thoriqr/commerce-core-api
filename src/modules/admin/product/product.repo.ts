@@ -25,7 +25,7 @@ import {
 import { mapProductDetail } from "./product.mapper";
 import { IMAGE_CONTEXT } from "@/constants/image-context";
 import { ProductVariantRepo } from "./product-variant.repo";
-import { PRODUCT_LIMITS } from "@/shared/product/product.constants";
+import { PRODUCT_LIMITS, PRODUCT_LOW_STOCK_THRESHOLD } from "@/shared/product/product.constants";
 
 export class ProductRepo {
   constructor(private readonly variantRepo: ProductVariantRepo) {}
@@ -418,14 +418,15 @@ export class ProductRepo {
     }
   }
 
-  async updateStatus(input: UpdateProductStatusSchema) {
+  async updateStatus(trx: Knex.Transaction, input: UpdateProductStatusSchema) {
     const { productIds, status } = input;
 
-    const { rows } = await db.raw<{ rows: { id: number }[] }>(
+    // 1. validate products exist
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
-        SELECT id FROM products
-        WHERE id = ANY(:productIds)
-      `,
+    SELECT id FROM products
+    WHERE id = ANY(:productIds)
+    `,
       { productIds }
     );
 
@@ -433,13 +434,27 @@ export class ProductRepo {
       throw AppError.notFound("Some products not found");
     }
 
-    await db.raw(
+    // 2. update products
+    await trx.raw(
       `
-        UPDATE products
-          SET status = :status
-        WHERE id = ANY(:productIds)
-      `,
+    UPDATE products
+    SET status = :status
+    WHERE id = ANY(:productIds)
+    `,
       { status, productIds }
+    );
+
+    // 3. sync variants
+    const variantStatus = status === "ACTIVE" ? "ACTIVE" : "INACTIVE";
+
+    await trx.raw(
+      `
+    UPDATE product_variants
+    SET status = :variantStatus
+    WHERE product_id = ANY(:productIds)
+      AND status <> 'ARCHIVED'
+    `,
+      { productIds, variantStatus }
     );
   }
 
@@ -716,7 +731,7 @@ export class ProductRepo {
 
     if (stock === "LOW_STOCK") {
       having.push(`SUM(pv.stock) < ?`);
-      bindings.push(5);
+      bindings.push(PRODUCT_LOW_STOCK_THRESHOLD);
     }
 
     if (priceMin != null) {

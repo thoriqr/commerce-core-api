@@ -43,12 +43,12 @@ export const productBySearchQueryParams = z
 
 export const productFilterQueryParams = z.object({ q: z.string().min(1) });
 
-export const productSlugParams = z.object({
-  slug: z.string().trim().min(1)
+export const productIdParams = z.object({
+  productId: z.coerce.number().int().positive()
 });
 
 export const productVariantIdParams = z.object({
-  productSlug: z.string().trim().min(1),
+  productId: z.coerce.number().int().positive(),
   variantId: z.coerce.number().int().positive()
 });
 

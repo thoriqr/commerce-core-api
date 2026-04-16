@@ -2,7 +2,7 @@ export const PRODUCT_LIMITS = {
   // schema
   NAME_MIN: 5,
   NAME_MAX: 100,
-  DESCRIPTION_MIN: 20,
+  DESCRIPTION_MIN: 5,
   DESCRIPTION_MAX: 2000,
   PRICE_MIN: 1_000,
   PRICE_MAX: 1_000_000_000,
@@ -13,3 +13,5 @@ export const PRODUCT_LIMITS = {
   MAX_SKU: 32,
   IMAGE_LIMIT: 5
 } as const;
+
+export const PRODUCT_LOW_STOCK_THRESHOLD = 5;

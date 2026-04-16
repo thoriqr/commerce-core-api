@@ -121,7 +121,9 @@ export class ProductService {
   };
 
   updateStatus = async (input: UpdateProductStatusSchema) => {
-    return await this.productRepo.updateStatus(input);
+    await this.tm.transaction(async (trx) => {
+      await this.productRepo.updateStatus(trx, input);
+    });
   };
 
   private async prepareProductImages(images: ProductImageSchema[], files: Express.Multer.File[]): Promise<ProductImageFilesMap> {

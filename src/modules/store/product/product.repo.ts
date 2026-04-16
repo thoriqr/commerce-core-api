@@ -7,7 +7,7 @@ import { buildProductCardJoins } from "./sql/product-card.sql";
 import { getVariantDimensions, getVariantValues } from "@/shared/cache/variant-filter/variant-filter.cache";
 
 export class ProductRepo {
-  async getProductDetailBySlug(slug: string) {
+  async getProductDetailById(productId: number) {
     // Product Basic
     const { rows } = await db.raw<{
       rows: ProductBasicRow[];
@@ -25,11 +25,10 @@ export class ProductRepo {
       p.updated_at
     FROM products p
     JOIN categories c ON c.id = p.category_id
-    WHERE p.slug = :slug
-      AND p.status <> 'ARCHIVED'
+    WHERE p.id = :productId
     LIMIT 1
     `,
-      { slug }
+      { productId }
     );
 
     const product = rows[0];
@@ -53,7 +52,7 @@ export class ProductRepo {
     LEFT JOIN product_variant_dimensions d ON d.id = pov.dimension_id
     LEFT JOIN product_variant_dimension_values dv ON dv.id = pov.value_id
     WHERE v.product_id = :productId
-      AND v.status = 'ACTIVE'
+      AND v.status <> 'ARCHIVED'
     ORDER BY v.is_primary DESC, v.id ASC
     `,
       { productId: product.id }
@@ -135,7 +134,7 @@ export class ProductRepo {
     };
   }
 
-  async getVariantDetail(productSlug: string, variantId: number) {
+  async getVariantDetail(productId: number, variantId: number) {
     const { rows } = await db.raw<{ rows: VariantDetailRow[] }>(
       `
     SELECT
@@ -153,14 +152,13 @@ export class ProductRepo {
     FROM product_variants v
     JOIN products p ON p.id = v.product_id
 
-    WHERE p.slug = :productSlug
+    WHERE p.id = :productId
       AND v.id = :variantId
-      AND p.status <> 'ARCHIVED'
       AND v.status <> 'ARCHIVED'
 
     LIMIT 1
     `,
-      { productSlug, variantId }
+      { productId, variantId }
     );
 
     const row = rows[0];

@@ -21,6 +21,7 @@ export interface VariantDetailDTO {
   weight: number;
   weightUnit: string;
   isAvailable: boolean;
+  warning: string | null;
 }
 
 export interface ProductDetailDTO {
@@ -31,6 +32,7 @@ export interface ProductDetailDTO {
   isVariant: boolean;
   initialVariantId: number;
   isAvailable: boolean;
+  warning: string | null;
   category: {
     name: string;
     slugPath: string;

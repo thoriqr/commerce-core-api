@@ -6,8 +6,8 @@ import { mapProductDetail, mapProductFilters, mapProductListing, mapVariantDetai
 export class ProductService {
   constructor(private readonly repo: ProductRepo) {}
 
-  getProductDetail = async (slug: string) => {
-    const { product, variantRows, dimensionRows, imageRows, etagSeed } = await this.repo.getProductDetailBySlug(slug);
+  getProductDetail = async (productId: number) => {
+    const { product, variantRows, dimensionRows, imageRows, etagSeed } = await this.repo.getProductDetailById(productId);
 
     const dto = mapProductDetail({ product, variantRows, dimensionRows, imageRows });
     const etag = generateETag(etagSeed);
@@ -15,8 +15,8 @@ export class ProductService {
     return { dto, etag };
   };
 
-  getVariantDetail = async (productSlug: string, variantId: number) => {
-    const { row, etagSeed } = await this.repo.getVariantDetail(productSlug, variantId);
+  getVariantDetail = async (productId: number, variantId: number) => {
+    const { row, etagSeed } = await this.repo.getVariantDetail(productId, variantId);
 
     const dto = mapVariantDetail(row);
     const etag = generateETag(etagSeed);
