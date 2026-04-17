@@ -1,5 +1,5 @@
 import { db } from "@/infra/db/knex";
-import { CategoryBreadcrumbRow, CategoryChildRow, CategoryDetailRow, CategoryFilterRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
+import { CategoryBreadcrumbRow, CategoryChildRow, CategoryDetailRow, CategoryFilterRow, CategoryPopularRow, CategoryRow } from "./category.types";
 import { AppError } from "@/errors/app-error";
 
 export class CategoryRepo {
@@ -42,23 +42,32 @@ export class CategoryRepo {
     return { rows, etagSeed };
   }
 
-  async getTopLevelCategories() {
-    const { rows } = await db.raw<{ rows: CategoryTopLevelRow[] }>(`
-      SELECT
-        id,
-        name,
-        slug,
-        sort_order,
-        updated_at
-      FROM categories
-      WHERE parent_id IS NULL
-        AND status = 'ACTIVE'
-      ORDER BY sort_order ASC, id ASC
-    `);
+  async getPopularCategories(limit: number) {
+    const { rows } = await db.raw<{ rows: CategoryPopularRow[] }>(
+      `
+    SELECT
+      c.id,
+      c.name,
+      c.slug,
+      c.slug_path,
+      COALESCE(SUM(pv.sold), 0) AS total_sold,
+      MAX(c.updated_at) AS updated_at
+    FROM categories c
+    LEFT JOIN products p
+      ON p.category_id = c.id
+    LEFT JOIN product_variants pv
+      ON pv.product_id = p.id
+    WHERE c.status = 'ACTIVE'
+    GROUP BY c.id
+    ORDER BY total_sold DESC, c.sort_order ASC, c.id ASC
+    LIMIT :limit
+    `,
+      { limit }
+    );
 
     const maxUpdatedAt = rows.length ? Math.max(...rows.map((r) => r.updated_at.getTime())) : 0;
 
-    const etagSeed = rows.length ? `top-level:${rows.length}:${maxUpdatedAt}` : "top-level:empty";
+    const etagSeed = rows.length ? `popular:${rows.length}:${maxUpdatedAt}` : "popular:empty";
 
     return { rows, etagSeed };
   }

@@ -1,6 +1,6 @@
 import { generateETag } from "@/utils/generate-etag";
 import { CategoryRepo } from "./category.repo";
-import { mapCategoryDetail, mapCategoryFilters, mapMegaMenu, mapTopLevelCategories } from "./category.mapper";
+import { mapCategoryDetail, mapCategoryFilters, mapMegaMenu, mapPopularCategories } from "./category.mapper";
 
 export class CategoryService {
   constructor(private readonly repo: CategoryRepo) {}
@@ -14,9 +14,10 @@ export class CategoryService {
   };
 
   getPopular = async () => {
-    const { rows, etagSeed } = await this.repo.getTopLevelCategories();
+    const LIMIT = 7;
+    const { rows, etagSeed } = await this.repo.getPopularCategories(LIMIT);
 
-    const dto = mapTopLevelCategories(rows);
+    const dto = mapPopularCategories(rows);
     const etag = generateETag(etagSeed);
 
     return { dto, etag };

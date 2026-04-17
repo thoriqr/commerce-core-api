@@ -69,6 +69,8 @@ export class OrderUserRepo {
         FROM (
           SELECT
             oi.order_id,
+            oi.product_id,
+            oi.slug,
             oi.product_name,
             oi.image_key,
             ROW_NUMBER() OVER (PARTITION BY oi.order_id ORDER BY oi.id) as rn
@@ -89,7 +91,9 @@ export class OrderUserRepo {
         ob.shipment_status,
   
         ic.item_count,
-  
+
+        pi.slug AS slug,
+        pi.product_id AS product_id,
         pi.product_name AS preview_name,
         pi.image_key AS preview_image
   

@@ -12,6 +12,8 @@ export type OrderByUser = {
   shipment_status: OrderShipmentStatus;
   item_count: number;
 
+  product_id: number;
+  slug: string;
   preview_name: string | null;
   preview_image: string | null;
 };

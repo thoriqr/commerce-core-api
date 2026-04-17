@@ -25,6 +25,8 @@ export function mapOrdersByUser(row: OrderByUser) {
   return {
     id: row.id,
     orderCode: row.order_code,
+    productId: row.product_id,
+    slug: row.slug,
 
     status: mapOrderStatus(row, {
       status: row.shipment_status

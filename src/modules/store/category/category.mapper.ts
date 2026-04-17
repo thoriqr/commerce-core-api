@@ -1,5 +1,5 @@
 import { CategoryDetailDTO, CategoryFilterDimensionDTO, CategoryNodeDTO, CategoryTopLevelDTO } from "./category.dto";
-import { CategoryBreadcrumbRow, CategoryChildRow, CategoryDetailRow, CategoryFilterRow, CategoryRow, CategoryTopLevelRow } from "./category.types";
+import { CategoryBreadcrumbRow, CategoryChildRow, CategoryDetailRow, CategoryFilterRow, CategoryPopularRow, CategoryRow } from "./category.types";
 
 export function mapMegaMenu(rows: CategoryRow[]): CategoryNodeDTO[] {
   const map = new Map<number, CategoryNodeDTO>();
@@ -31,11 +31,13 @@ export function mapMegaMenu(rows: CategoryRow[]): CategoryNodeDTO[] {
   return roots;
 }
 
-export function mapTopLevelCategories(rows: CategoryTopLevelRow[]): CategoryTopLevelDTO[] {
+export function mapPopularCategories(rows: CategoryPopularRow[]) {
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
-    slug: r.slug
+    slug: r.slug,
+    slugPath: r.slug_path,
+    totalSold: r.total_sold
   }));
 }
 

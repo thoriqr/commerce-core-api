@@ -8,11 +8,12 @@ export type CategoryRow = {
   sort_order: number;
 };
 
-export type CategoryTopLevelRow = {
+export type CategoryPopularRow = {
   id: number;
   name: string;
   slug: string;
-  sort_order: number;
+  slug_path: string;
+  total_sold: number;
   updated_at: Date;
 };
 
