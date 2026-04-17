@@ -5,17 +5,19 @@ export function mapMegaMenu(rows: CategoryRow[]): CategoryNodeDTO[] {
   const map = new Map<number, CategoryNodeDTO>();
   const roots: CategoryNodeDTO[] = [];
 
-  // 1️⃣ build map
+  // build map
   for (const r of rows) {
     map.set(r.id, {
       id: r.id,
+      parentId: r.parent_id,
       name: r.name,
       slug: r.slug,
+      slugPath: r.slug_path,
       children: []
     });
   }
 
-  // 2️⃣ link parent -> children
+  // link parent -> children
   for (const r of rows) {
     const node = map.get(r.id)!;
 
@@ -119,7 +121,7 @@ export function mapCategoryFilters(rows: CategoryFilterRow[]): CategoryFilterDim
 
   const result = Array.from(map.values());
 
-  // 🔥 SORT PER DIMENSION
+  // SORT PER DIMENSION
   for (const dimension of result) {
     if (isSizeDimension(dimension.name)) {
       dimension.values = sortSizeValues(dimension.values);

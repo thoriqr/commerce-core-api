@@ -11,6 +11,7 @@ export class CategoryRepo {
       c.slug,
       c.parent_id,
       c.id_path,
+      c.slug_path,
       c.sort_order
     FROM categories c
     WHERE c.status = 'ACTIVE'

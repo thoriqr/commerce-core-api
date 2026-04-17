@@ -2,6 +2,26 @@ import { ImageSignature } from "@/shared/variant-image/types";
 import { CartItemDTO } from "./cart.dto";
 import { CartItemRow } from "./cart.types";
 import { findBestImage } from "@/shared/variant-image/resolver";
+import { getVariantWarning } from "../store/product/product.mapper";
+import { VariantDetailRow } from "../store/product/product.types";
+
+function getCartWarning(row: CartItemRow): string | null {
+  // base warning
+  const base = getVariantWarning({
+    product_status: row.product_status,
+    variant_status: row.variant_status,
+    stock: row.stock
+  } as VariantDetailRow);
+
+  if (base) return base;
+
+  // cart-specific rule
+  if (row.stock < row.quantity) {
+    return "INSUFFICIENT_STOCK";
+  }
+
+  return null;
+}
 
 export function mapCartItems(
   rows: CartItemRow[],
@@ -23,9 +43,9 @@ export function mapCartItems(
 
     const imageKey = best?.imageKey ?? null;
 
-    const isAvailable = row.product_status === "ACTIVE" && row.variant_status === "ACTIVE";
+    const warning = getCartWarning(row);
 
-    const stockWarning = row.stock === 0 ? "OUT_OF_STOCK" : row.stock < row.quantity ? "INSUFFICIENT_STOCK" : null;
+    const isAvailable = row.product_status === "ACTIVE" && row.variant_status === "ACTIVE" && row.stock > 0;
 
     return {
       variantId: row.variant_id,
@@ -38,7 +58,7 @@ export function mapCartItems(
       imageKey,
       options: row.option_snapshot ?? [],
       isAvailable,
-      stockWarning
+      warning
     };
   });
 }

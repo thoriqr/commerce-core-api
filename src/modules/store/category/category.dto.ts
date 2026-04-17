@@ -1,7 +1,9 @@
 export interface CategoryNodeDTO {
   id: number;
+  parentId: number | null;
   name: string;
   slug: string;
+  slugPath: string;
   children: CategoryNodeDTO[];
 }
 

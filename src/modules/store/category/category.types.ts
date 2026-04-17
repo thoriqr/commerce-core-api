@@ -4,6 +4,7 @@ export type CategoryRow = {
   slug: string;
   parent_id: number | null;
   id_path: string;
+  slug_path: string;
   sort_order: number;
 };
 

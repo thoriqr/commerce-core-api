@@ -27,14 +27,14 @@ function mapProductCard(row: ProductCardRow): ProductCardDTO {
   };
 }
 
-function getProductWarning(status: string): string | null {
+export function getProductWarning(status: string): string | null {
   if (status === "ARCHIVED" || status === "INACTIVE") {
     return "UNAVAILABLE";
   }
   return null;
 }
 
-function getVariantWarning(row: VariantDetailRow): string | null {
+export function getVariantWarning(row: VariantDetailRow): string | null {
   if (row.product_status === "ARCHIVED" || row.product_status === "INACTIVE") {
     return "UNAVAILABLE";
   }

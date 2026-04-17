@@ -1,4 +1,4 @@
-import { OptionSnapshot } from "./cart.types";
+import { OptionSnapshot } from "@/shared/variant-image/types";
 
 export type CartItemDTO = {
   variantId: number;
@@ -11,5 +11,5 @@ export type CartItemDTO = {
   imageKey: string | null;
   options: OptionSnapshot[];
   isAvailable: boolean;
-  stockWarning: "OUT_OF_STOCK" | "INSUFFICIENT_STOCK" | null;
+  warning: string | null;
 };
