@@ -7,6 +7,7 @@ import { db } from "@/infra/db/knex";
 import { optionalAuth } from "@/middlewares/auth.middleware";
 import { ProductImageRepo } from "@/modules/product/product-image.repo";
 import { ProductImageService } from "@/modules/product/product-image.service";
+import { actionLimiter } from "@/middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -23,8 +24,8 @@ const cartController = new CartController(cartService);
 
 router.use(optionalAuth);
 router.get("/", cartController.getCart);
-router.post("/items", cartController.addItem);
-router.patch("/items/:variantId", cartController.updateItem);
-router.delete("/items/:variantId", cartController.deleteItem);
+router.post("/items", actionLimiter, cartController.addItem);
+router.patch("/items/:variantId", actionLimiter, cartController.updateItem);
+router.delete("/items/:variantId", actionLimiter, cartController.deleteItem);
 
 export default router;

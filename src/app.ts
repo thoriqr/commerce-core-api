@@ -13,12 +13,19 @@ import { errorMiddleware } from "./middlewares/error.middleware";
 import { ROUTES } from "./constants/routes";
 import { env } from "./config/env";
 import cookieParser from "cookie-parser";
+import { attachClient } from "./middlewares/attach-client.middleware";
+import helmet from "helmet";
+import { globalLimiter } from "./middlewares/rate-limit.middleware";
 
 const app = express();
+
+app.set("trust proxy", 1);
 
 app.use(express.json());
 
 app.use(cookieParser());
+
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(
   cors({
@@ -26,6 +33,9 @@ app.use(
     credentials: true
   })
 );
+
+app.use(globalLimiter);
+app.use(attachClient);
 
 app.use(ROUTES.STORE, storeRouter);
 app.use(ROUTES.CART, cartRouter);

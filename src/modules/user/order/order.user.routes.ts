@@ -5,6 +5,7 @@ import { OrderUserService } from "./order.user.service";
 import { OrderRepo } from "@/modules/order/order.repo";
 import { OrderUserRepo } from "./order.user.repo";
 import { OrderUserController } from "./order.user.controller";
+import { actionLimiter } from "@/middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -20,9 +21,9 @@ const controller = new OrderUserController(orderUserService);
 router.get("/", controller.getOrders);
 router.get("/:orderCode", controller.getOrder);
 
-router.post("/:orderCode/cancel", controller.cancelOrder);
-router.post("/:orderCode/deliver", controller.confirmDelivered);
+router.post("/:orderCode/cancel", actionLimiter, controller.cancelOrder);
+router.post("/:orderCode/deliver", actionLimiter, controller.confirmDelivered);
 
-router.post("/:orderCode/snap-token", controller.createSnapToken);
+router.post("/:orderCode/snap-token", actionLimiter, controller.createSnapToken);
 
 export default router;

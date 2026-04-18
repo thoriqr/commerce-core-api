@@ -17,7 +17,8 @@ import {
   verifyAdminInvite,
   verifyEmailSchema
 } from "./auth.schema";
-import { clearAuthCookies, setAuthCookies } from "@/utils/set-auth-cookie";
+import { getCookieNames } from "@/utils/auth-cookies";
+import { clearAuth, setAuth } from "@/utils/auth-helpers";
 
 export class AuthController {
   constructor(private readonly service: AuthService) {}
@@ -44,9 +45,9 @@ export class AuthController {
   acceptAdminInvite = async (req: Request, res: Response) => {
     const payload = verifyAdminInvite.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.acceptAdminInvite(payload);
+    const tokens = await this.service.acceptAdminInvite(payload);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req, "admin");
 
     sendSuccess(res, 200, {
       message: "Admin access granted"
@@ -78,9 +79,9 @@ export class AuthController {
   verifyEmail = async (req: Request, res: Response) => {
     const payload = verifyEmailSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.verifyEmail(payload);
+    const tokens = await this.service.verifyEmail(payload);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Email verified successfully"
@@ -90,9 +91,9 @@ export class AuthController {
   login = async (req: Request, res: Response) => {
     const payload = loginSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.login(payload);
+    const tokens = await this.service.login(payload);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Logged in successfully"
@@ -100,15 +101,18 @@ export class AuthController {
   };
 
   refresh = async (req: Request, res: Response) => {
-    const refreshToken = req.cookies?.refresh_token;
+    const client = req.client ?? "store";
+    const cookies = getCookieNames(client);
+
+    const refreshToken = req.cookies?.[cookies.refresh];
 
     if (!refreshToken) {
       throw AppError.unauthorized("Refresh token missing");
     }
 
-    const { accessToken, refreshToken: newRefresh } = await this.service.refresh(refreshToken);
+    const tokens = await this.service.refresh(refreshToken);
 
-    setAuthCookies(res, accessToken, newRefresh);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Session refreshed"
@@ -116,13 +120,7 @@ export class AuthController {
   };
 
   logout = async (req: Request, res: Response) => {
-    const refreshToken = req.cookies?.refresh_token;
-
-    if (refreshToken) {
-      await this.service.logout(refreshToken);
-    }
-
-    clearAuthCookies(res);
+    clearAuth(res, req);
 
     sendSuccess(res, 200, {
       message: "Logged out successfully"
@@ -142,9 +140,9 @@ export class AuthController {
   resetPassword = async (req: Request, res: Response) => {
     const payload = resetPasswordSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.resetPassword(payload);
+    const tokens = await this.service.resetPassword(payload);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Password reset successfully"
@@ -158,9 +156,9 @@ export class AuthController {
 
     const payload = setPasswordSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.setPassword(req.user.id, payload.password);
+    const tokens = await this.service.setPassword(req.user.id, payload.password);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Password set successfully"
@@ -174,9 +172,9 @@ export class AuthController {
 
     const payload = changePasswordSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.changePassword(req.user.id, payload.currentPassword, payload.newPassword);
+    const tokens = await this.service.changePassword(req.user.id, payload.currentPassword, payload.newPassword);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Password changed successfully"
@@ -200,9 +198,9 @@ export class AuthController {
   confirmEmailChange = async (req: Request, res: Response) => {
     const payload = confirmEmailChangeSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.confirmEmailChange(payload.token);
+    const tokens = await this.service.confirmEmailChange(payload.token);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Email changed successfully"
@@ -212,9 +210,9 @@ export class AuthController {
   googleLogin = async (req: Request, res: Response) => {
     const payload = googleLoginSchema.parse(req.body);
 
-    const { accessToken, refreshToken } = await this.service.googleLogin(payload);
+    const tokens = await this.service.googleLogin(payload);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuth(res, tokens, req);
 
     sendSuccess(res, 200, {
       message: "Login successful"

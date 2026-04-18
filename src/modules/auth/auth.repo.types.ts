@@ -7,6 +7,7 @@ export type UserDetailRow = {
   role: UserRole;
   status: UserStatus;
   display_name: string | null;
+  is_demo: boolean;
 };
 
 export type VerificationType = "REGISTER" | "RESET_PASSWORD" | "INVITE" | "CHANGE_EMAIL";

@@ -3,6 +3,7 @@ import { ShippingService } from "./shipping.service";
 import { RajaOngkirClient } from "./rajaongkir.client";
 import { ShippingController } from "./shipping.controller";
 import { requireAuth } from "@/middlewares/auth.middleware";
+import { actionLimiter } from "@/middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -14,6 +15,6 @@ router.use(requireAuth);
 router.get("/provinces", controller.getProvinces);
 router.get("/cities/:provinceId", controller.getCities);
 router.get("/districts/:cityId", controller.getDistricts);
-router.post("/cost", controller.calculateDomesticCost);
+router.post("/cost", actionLimiter, controller.calculateDomesticCost);
 
 export default router;

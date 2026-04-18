@@ -32,6 +32,10 @@ export class AuthService {
       // Reject if email already exists
       const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
 
+      if (existingUser && existingUser.is_demo) {
+        throw AppError.forbidden("Demo account cannot be invited");
+      }
+
       if (existingUser && (existingUser.role === "ADMIN" || existingUser.role === "SUPER")) {
         throw AppError.conflict("User is already an admin");
       }
@@ -104,6 +108,10 @@ export class AuthService {
         user = await this.repo.findUserById(pending.user_id, trx);
       } else {
         user = await this.repo.findUserByEmailOrNull(pending.email, trx);
+      }
+
+      if (user && user.is_demo) {
+        throw AppError.forbidden("Demo account cannot accept invite");
       }
 
       // safety check
@@ -313,6 +321,10 @@ export class AuthService {
         }
       }
 
+      if (user.is_demo) {
+        throw AppError.forbidden("Demo account cannot be used for login");
+      }
+
       if (user.status === "SUSPENDED") {
         throw AppError.forbidden("Account suspended");
       }
@@ -404,6 +416,10 @@ export class AuthService {
         return; // silent success
       }
 
+      if (user.is_demo) {
+        return; //  silent block for demo
+      }
+
       // Delete old pending reset
       await this.repo.deletePendingByEmailAndType(trx, email, "RESET_PASSWORD");
 
@@ -468,6 +484,10 @@ export class AuthService {
         throw AppError.unauthorized("User not found");
       }
 
+      if (user.is_demo) {
+        throw AppError.forbidden("Demo account cannot reset password");
+      }
+
       if (user.status !== "ACTIVE") {
         throw AppError.forbidden("Account not active");
       }
@@ -516,6 +536,10 @@ export class AuthService {
 
       if (!user) {
         throw AppError.unauthorized();
+      }
+
+      if (user.is_demo) {
+        throw AppError.forbidden("Demo account cannot change password");
       }
 
       // Google user / OAuth user
@@ -583,6 +607,10 @@ export class AuthService {
         throw AppError.unauthorized();
       }
 
+      if (user.is_demo) {
+        throw AppError.forbidden("Demo account cannot set password");
+      }
+
       // user has password
       if (user.password_hash) {
         throw AppError.badRequest("Password already set");
@@ -628,6 +656,10 @@ export class AuthService {
 
       if (!user) {
         throw AppError.unauthorized();
+      }
+
+      if (user.is_demo) {
+        throw AppError.forbidden("Demo account cannot change email");
       }
 
       if (user.email === email) {
@@ -698,6 +730,10 @@ export class AuthService {
         throw AppError.unauthorized();
       }
 
+      if (user.is_demo) {
+        throw AppError.forbidden("Demo account cannot confirm email change");
+      }
+
       const oldEmail = user.email;
 
       // update email
@@ -750,7 +786,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
-      displayName: user.display_name
+      displayName: user.display_name,
+      isDemo: user.is_demo
     };
   }
 
@@ -769,7 +806,8 @@ export class AuthService {
   private issueAccessToken(user: UserDetailRow): string {
     return signAccessToken({
       sub: String(user.id),
-      role: user.role
+      role: user.role,
+      isDemo: user.is_demo
     });
   }
 

@@ -12,7 +12,7 @@ export class AuthRepo {
 
     const { rows } = await executor.raw<{ rows: UserDetailRow[] }>(
       `
-    SELECT id, email, password_hash, role, status, display_name
+    SELECT *
     FROM users
     WHERE id = :userId
     `,
@@ -29,7 +29,7 @@ export class AuthRepo {
       rows: UserDetailRow[];
     }>(
       `
-    SELECT id, email, password_hash, role, status, display_name
+    SELECT *
     FROM users
     WHERE email = :email
     `,
@@ -74,7 +74,7 @@ export class AuthRepo {
       rows: UserDetailRow[];
     }>(
       `
-    SELECT u.id, u.email, u.password_hash, u.role, u.status, u.display_name
+    SELECT u.*
     FROM user_providers p
     JOIN users u ON u.id = p.user_id
     WHERE p.provider = :provider

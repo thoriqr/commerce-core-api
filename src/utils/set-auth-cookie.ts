@@ -1,5 +1,7 @@
 import { Response } from "express";
 import { env } from "@/config/env";
+import { getCookieNames } from "./auth-cookies";
+import { AppClient } from "@/types/app-client";
 
 const isProd = env.NODE_ENV === "production";
 
@@ -9,27 +11,31 @@ const baseCookieOptions = {
   path: "/"
 };
 
-export function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
-  res.cookie("access_token", accessToken, {
+export function setAuthCookies(res: Response, accessToken: string, refreshToken: string, client: AppClient) {
+  const cookies = getCookieNames(client);
+
+  res.cookie(cookies.access, accessToken, {
     ...baseCookieOptions,
     httpOnly: true,
-    maxAge: 15 * 60 * 1000
+    maxAge: 15 * 60 * 1000 // 15 minutes
   });
 
-  res.cookie("refresh_token", refreshToken, {
+  res.cookie(cookies.refresh, refreshToken, {
     ...baseCookieOptions,
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   });
 }
 
-export function clearAuthCookies(res: Response) {
-  res.clearCookie("access_token", {
+export function clearAuthCookies(res: Response, client: AppClient) {
+  const cookies = getCookieNames(client);
+
+  res.clearCookie(cookies.access, {
     ...baseCookieOptions,
     httpOnly: true
   });
 
-  res.clearCookie("refresh_token", {
+  res.clearCookie(cookies.refresh, {
     ...baseCookieOptions,
     httpOnly: true
   });

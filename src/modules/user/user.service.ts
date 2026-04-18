@@ -5,6 +5,7 @@ import { ShippingService } from "../shipping/shipping.service";
 import { AppError } from "@/errors/app-error";
 import { MAX_USER_ADDRESSES } from "./user.constants";
 import { mapUserAddresses } from "./user.mapper";
+import { AuthContext } from "../auth/auth.types";
 
 export class UserService {
   constructor(
@@ -157,8 +158,12 @@ export class UserService {
     });
   };
 
-  updateProfile = async (userId: number, input: UpdateProfileInput) => {
-    await this.userRepo.updateProfile(userId, input);
+  updateProfile = async (user: AuthContext, input: UpdateProfileInput) => {
+    if (user.isDemo) {
+      throw AppError.forbidden("Demo account cannot update profile");
+    }
+
+    await this.userRepo.updateProfile(user.id, input);
   };
 
   getUserProfile = async (userId: number) => {

@@ -9,6 +9,7 @@ export class ProductController {
   constructor(private service: ProductService) {}
 
   getAll = async (req: Request, res: Response) => {
+    console.log("all product, isDemo:", req.user?.isDemo);
     const qParams = productQueryParams.parse(req.query);
     const { data, meta } = await this.service.getall(qParams);
     sendSuccess(res, 200, { data, meta });

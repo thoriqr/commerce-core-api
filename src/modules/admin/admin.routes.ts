@@ -10,10 +10,11 @@ import userAdminRouter from "./user/user.admin.routes";
 import { ADMIN_ROUTES } from "./admin.constants";
 import { requireRole } from "@/middlewares/role.middleware";
 import { requireAuth } from "@/middlewares/auth.middleware";
+import { blockDemoWrite } from "@/middlewares/block-demo-write.middleware";
 
 const router = Router();
 
-router.use(requireAuth, requireRole("ADMIN", "SUPER"));
+router.use(requireAuth, requireRole("ADMIN", "SUPER"), blockDemoWrite);
 
 router.use(ADMIN_ROUTES.PRODUCT, productRouter);
 router.use(ADMIN_ROUTES.CATEGORY, categoryRouter);

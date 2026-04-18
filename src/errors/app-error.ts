@@ -62,6 +62,13 @@ export class AppError extends Error {
     });
   }
 
+  static tooManyRequests(message = "Too many attempts, please try again later") {
+    return new AppError(message, {
+      code: ERROR_CODE.TOO_MANY_REQUESTS,
+      statusCode: 429
+    });
+  }
+
   static internal(message = "Internal Server Error") {
     return new AppError(message, {
       code: ERROR_CODE.INTERNAL_SERVER_ERROR,

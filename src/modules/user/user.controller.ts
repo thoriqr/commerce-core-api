@@ -54,11 +54,9 @@ export class UserController {
   };
 
   updateProfile = async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-
     const input = updateProfileSchema.parse(req.body);
 
-    await this.service.updateProfile(userId, input);
+    await this.service.updateProfile(req.user!, input);
 
     sendSuccess(res, 200, {
       message: "Profile updated"

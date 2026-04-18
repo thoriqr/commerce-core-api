@@ -11,6 +11,7 @@ import { OrderUserRepo } from "../order/order.user.repo";
 import { CheckoutUserRepo } from "./checkout.user.repo";
 import { RajaOngkirClient } from "@/modules/shipping/rajaongkir.client";
 import { ShippingService } from "@/modules/shipping/shipping.service";
+import { actionLimiter } from "@/middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -42,16 +43,16 @@ const checkoutUserService = new CheckoutUserService(
 
 const controller = new CheckoutUserController(checkoutUserService);
 
-router.post("/", controller.createCheckoutSession);
+router.post("/", actionLimiter, controller.createCheckoutSession);
 
 router.get("/:sessionId", controller.getCheckoutSession);
 
-router.patch("/:sessionId/address", controller.setAddress);
+router.patch("/:sessionId/address", actionLimiter, controller.setAddress);
 
-router.post("/:sessionId/shipping-cost", controller.calculateShippingCost);
+router.post("/:sessionId/shipping-cost", actionLimiter, controller.calculateShippingCost);
 
-router.patch("/:sessionId/shipping-method", controller.setShippingMethod);
+router.patch("/:sessionId/shipping-method", actionLimiter, controller.setShippingMethod);
 
-router.post("/:sessionId/confirm", controller.confirmCheckout);
+router.post("/:sessionId/confirm", actionLimiter, controller.confirmCheckout);
 
 export default router;

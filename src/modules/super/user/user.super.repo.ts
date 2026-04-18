@@ -43,6 +43,7 @@ export class UserSuperRepo {
         email: string;
         role: string;
         status: string;
+        is_demo: boolean;
         created_at: Date;
       }[];
     }>(
@@ -52,6 +53,7 @@ export class UserSuperRepo {
         email,
         role,
         status,
+        is_demo,
         created_at
       FROM users
       ${whereSql}

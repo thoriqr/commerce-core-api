@@ -1,4 +1,3 @@
-import { UserAdminQuery } from "@/modules/admin/user/user.admin.schema";
 import { UserSuperRepo } from "./user.super.repo";
 import { AppError } from "@/errors/app-error";
 import { UserSuperQuery } from "./user.super.schema";
@@ -15,6 +14,7 @@ export class UserSuperService {
         email: r.email,
         status: r.status,
         role: r.role,
+        isDemo: r.is_demo,
         createdAt: r.created_at
       })),
       meta: {

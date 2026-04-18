@@ -8,6 +8,7 @@ import {
   VariantDetailDTO
 } from "./product.dto";
 import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, ProductFilterRow, VariantDetailRow, VariantRow } from "./product.types";
+import { ProductStatus } from "@/shared/product/product.types";
 
 export function mapProductListing(rows: ProductCardRow[], nextCursor: string | null, hasMore: boolean): ProductListingDTO {
   return {
@@ -27,22 +28,20 @@ function mapProductCard(row: ProductCardRow): ProductCardDTO {
   };
 }
 
-export function getProductWarning(status: string): string | null {
-  if (status === "ARCHIVED" || status === "INACTIVE") {
+export function getProductWarning(status: ProductStatus): string | null {
+  if (status !== "ACTIVE") {
     return "UNAVAILABLE";
   }
   return null;
 }
 
 export function getVariantWarning(row: VariantDetailRow): string | null {
-  if (row.product_status === "ARCHIVED" || row.product_status === "INACTIVE") {
+  // availability (single source of truth)
+  if (row.product_status !== "ACTIVE" || row.variant_status !== "ACTIVE") {
     return "UNAVAILABLE";
   }
 
-  if (row.variant_status !== "ACTIVE") {
-    return "UNAVAILABLE";
-  }
-
+  // stock
   if (row.stock <= 0) {
     return "OUT_OF_STOCK";
   }
