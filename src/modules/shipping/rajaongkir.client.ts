@@ -70,7 +70,12 @@ export class RajaOngkirClient {
     return json.data;
   }
 
-  async calculateDomesticCost(input: { origin: number; destination: number; weight: number; courier: string }): Promise<ShippingCost[]> {
+  async calculateDomesticCost(input: {
+    origin: number; // district_id
+    destination: number; // district_id
+    weight: number;
+    courier: string;
+  }): Promise<ShippingCost[]> {
     const body = new URLSearchParams({
       origin: String(input.origin),
       destination: String(input.destination),
@@ -79,7 +84,7 @@ export class RajaOngkirClient {
       price: "lowest"
     });
 
-    const res = await fetch(`${RAJAONGKIR_BASE_URL}/calculate/domestic-cost`, {
+    const res = await fetch(`${RAJAONGKIR_BASE_URL}/calculate/district/domestic-cost`, {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -97,10 +102,6 @@ export class RajaOngkirClient {
       data: ShippingCost[] | null;
     };
 
-    if (!json.data) {
-      return [];
-    }
-
-    return json.data;
+    return json.data ?? [];
   }
 }

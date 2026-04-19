@@ -31,12 +31,17 @@ export class WarehouseService {
       shippingProvinceName: warehouse.shipping_province_name,
 
       shippingCityId: warehouse.shipping_city_id,
-      shippingCityName: warehouse.shipping_city_name
+      shippingCityName: warehouse.shipping_city_name,
+
+      shippingDistrictId: warehouse.shipping_district_id,
+      shippingDistrictName: warehouse.shipping_district_name,
+
+      postalCode: warehouse.postal_code ?? ""
     };
   };
 
   upsertWarehouse = async (input: UpsertWarehouseInput) => {
-    // 1. VALIDATE PROVINCE
+    //  VALIDATE PROVINCE
     const provinces = await this.shippingService.getProvinces();
     const province = provinces.find((p) => p.id === input.shippingProvinceId);
 
@@ -44,7 +49,7 @@ export class WarehouseService {
       throw AppError.badRequest("Invalid province");
     }
 
-    // 2. VALIDATE CITY
+    // VALIDATE CITY
     const cities = await this.shippingService.getCities(input.shippingProvinceId);
     const city = cities.find((c) => c.id === input.shippingCityId);
 
@@ -52,13 +57,24 @@ export class WarehouseService {
       throw AppError.badRequest("Invalid city");
     }
 
-    // 3. PREPARE DATA (snapshot)
+    // VALIDATE DISTRICT
+    const districts = await this.shippingService.getDistricts(city.id);
+    const district = districts.find((d) => d.id === input.shippingDistrictId);
+
+    if (!district) {
+      throw AppError.badRequest("Invalid district");
+    }
+
+    // PREPARE DATA (snapshot)
     const data: InputWarehouse = {
       name: input.name,
       provinceId: province.id,
       provinceName: province.name,
       cityId: city.id,
-      cityName: city.name
+      cityName: city.name,
+      districtId: district.id,
+      districtName: district.name,
+      postalCode: input.postalCode ?? null
     };
 
     // 4. TRANSACTION
@@ -72,6 +88,6 @@ export class WarehouseService {
       }
     });
 
-    await redis.del(REDIS_KEYS.WAREHOUSE_ORIGIN);
+    await redis.del(REDIS_KEYS.WAREHOUSE_ORIGIN_DISTRICT);
   };
 }

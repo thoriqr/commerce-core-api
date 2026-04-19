@@ -9,7 +9,7 @@ import {
   VerifyAdminInvite,
   VerifyEmailInput
 } from "./auth.schema";
-import { AuthUser } from "./auth.types";
+import { AuthContext, AuthUser } from "./auth.types";
 import { AppError } from "@/errors/app-error";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import bcrypt from "bcrypt";
@@ -27,7 +27,11 @@ export class AuthService {
     private readonly repo: AuthRepo
   ) {}
 
-  inviteAdmin = async (email: string): Promise<void> => {
+  inviteAdmin = async (user: AuthContext, email: string): Promise<void> => {
+    if (user.isDemo) {
+      throw AppError.forbidden("Demo account cannot invite admin");
+    }
+
     return this.tm.transaction(async (trx) => {
       // Reject if email already exists
       const existingUser = await this.repo.findUserByEmailOrNull(email, trx);

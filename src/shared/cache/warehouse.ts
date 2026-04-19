@@ -4,8 +4,8 @@ import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { REDIS_TTL } from "./redis.ttl";
 
-export async function getWarehouseOriginCityId(): Promise<number> {
-  const cacheKey = REDIS_KEYS.WAREHOUSE_ORIGIN;
+export async function getWarehouseOriginDistrictId(): Promise<number> {
+  const cacheKey = REDIS_KEYS.WAREHOUSE_ORIGIN_DISTRICT;
 
   const cached = await redis.get(cacheKey);
 
@@ -16,28 +16,28 @@ export async function getWarehouseOriginCityId(): Promise<number> {
       return parsed;
     }
 
-    await redis.del(cacheKey); // cleanup invalid cache
+    await redis.del(cacheKey);
   }
 
   const { rows } = await db.raw<{
-    rows: { shipping_city_id: number }[];
+    rows: { shipping_district_id: number }[];
   }>(`
-    SELECT shipping_city_id
+    SELECT shipping_district_id
     FROM warehouses
     LIMIT 1
   `);
 
   const row = rows[0];
 
-  if (!row) {
+  if (!row || !row.shipping_district_id) {
     throw AppError.badRequest("Shipping is not configured. Please contact admin.");
   }
 
-  const cityId = row.shipping_city_id;
+  const districtId = row.shipping_district_id;
 
-  await redis.set(cacheKey, String(cityId), {
+  await redis.set(cacheKey, String(districtId), {
     EX: REDIS_TTL.WAREHOUSE_ORIGIN
   });
 
-  return cityId;
+  return districtId;
 }

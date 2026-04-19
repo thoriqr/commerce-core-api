@@ -12,6 +12,7 @@ import { CheckoutUserRepo } from "./checkout.user.repo";
 import { RajaOngkirClient } from "@/modules/shipping/rajaongkir.client";
 import { ShippingService } from "@/modules/shipping/shipping.service";
 import { actionLimiter } from "@/middlewares/rate-limit.middleware";
+import { WarehouseRepo } from "@/modules/warehouse/warehouse.repo";
 
 const router = Router();
 
@@ -31,6 +32,8 @@ const productStockRepo = new ProductStockRepo();
 const productImageRepo = new ProductImageRepo();
 const productImageService = new ProductImageService(productImageRepo);
 
+const warehouseRepo = new WarehouseRepo();
+
 const checkoutUserService = new CheckoutUserService(
   tm,
   userRepo,
@@ -38,7 +41,8 @@ const checkoutUserService = new CheckoutUserService(
   checkoutUserRepo,
   shippingService,
   productStockRepo,
-  productImageService
+  productImageService,
+  warehouseRepo
 );
 
 const controller = new CheckoutUserController(checkoutUserService);

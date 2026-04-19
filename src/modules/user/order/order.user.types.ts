@@ -28,6 +28,12 @@ export type OrderDetailRow = {
   payment_status: OrderPaymentStatus;
   status: OrderStatus;
 
+  origin_name: string;
+  origin_province_name: string;
+  origin_city_name: string;
+  origin_district_name: string;
+  origin_postal_code: string;
+
   recipient_name: string;
   phone: string;
   province_name: string;
@@ -85,6 +91,11 @@ export type CreateOrderInput = CreateOrderBaseInput & {
   expiresAt: Date;
   orderCode: string;
   email: string;
+  originName: string;
+  originProvinceName: string;
+  originCityName: string;
+  originDistrictName: string;
+  originPostalCode: string | null;
 };
 
 export type ShipmentInput = {

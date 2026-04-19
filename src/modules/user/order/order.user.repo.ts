@@ -253,6 +253,11 @@ export class OrderUserRepo {
         city_name,
         district_name,
         postal_code,
+        origin_name,
+        origin_province_name,
+        origin_city_name,
+        origin_district_name,
+        origin_postal_code,
         note,
         expires_at
       )
@@ -270,6 +275,11 @@ export class OrderUserRepo {
         :cityName,
         :districtName,
         :postalCode,
+        :originName,
+        :originProvinceName,
+        :originCityName,
+        :originDistrictName,
+        :originPostalCode,
         :note,
         :expiresAt
       )

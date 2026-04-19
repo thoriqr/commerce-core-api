@@ -12,6 +12,7 @@ import { ProductStockRepo } from "@/modules/product/product-stock.repo";
 import { buildAddressSnapshot, mapCheckoutSession } from "./checkout.user.mapper";
 import { ShippingService } from "@/modules/shipping/shipping.service";
 import { CheckoutSessionItemRow } from "./checkout.user.types";
+import { WarehouseRepo } from "@/modules/warehouse/warehouse.repo";
 
 export class CheckoutUserService {
   constructor(
@@ -21,7 +22,8 @@ export class CheckoutUserService {
     private readonly checkoutUserRepo: CheckoutUserRepo,
     private readonly shippingService: ShippingService,
     private readonly productStockRepo: ProductStockRepo,
-    private readonly productImageService: ProductImageService
+    private readonly productImageService: ProductImageService,
+    private readonly warehouseRepo: WarehouseRepo
   ) {}
 
   createCheckoutSession = async (userId: number) => {
@@ -120,7 +122,7 @@ export class CheckoutUserService {
 
     const address = await this.checkoutUserRepo.getCheckoutAddress(sessionId, userId);
 
-    if (!address || !address.shipping_city_id) {
+    if (!address || !address.shipping_district_id) {
       throw AppError.badRequest("Please select a valid address before calculating shipping");
     }
 
@@ -130,7 +132,7 @@ export class CheckoutUserService {
 
     const weight = Math.max(totalWeight, 1000); // minimal 1kg rule
 
-    const result = await this.shippingService.calculateDomesticCost(address.shipping_city_id, weight, courier);
+    const result = await this.shippingService.calculateDomesticCost(address.shipping_district_id, weight, courier);
 
     return {
       courier,
@@ -149,7 +151,7 @@ export class CheckoutUserService {
 
     const address = await this.checkoutUserRepo.getCheckoutAddress(sessionId, userId);
 
-    if (!address || !address.shipping_city_id) {
+    if (!address || !address.shipping_district_id) {
       throw AppError.badRequest("Please select a valid address before choosing shipping");
     }
 
@@ -159,7 +161,7 @@ export class CheckoutUserService {
 
     const weight = Math.max(totalWeight, 1000);
 
-    const services = await this.shippingService.calculateDomesticCost(address.shipping_city_id, weight, courierCode);
+    const services = await this.shippingService.calculateDomesticCost(address.shipping_district_id, weight, courierCode);
 
     const selected = services.find((s) => s.service === courierService);
 
@@ -191,7 +193,7 @@ export class CheckoutUserService {
 
   confirmCheckout = async (userId: number, sessionId: number) => {
     return this.tm.transaction(async (trx) => {
-      // 1. GET SESSION
+      // GET SESSION
       const session = await this.checkoutUserRepo.getCheckoutSessionForUpdate(sessionId, userId, trx);
 
       if (!session) {
@@ -204,17 +206,17 @@ export class CheckoutUserService {
 
       assertCheckoutReady(session);
 
-      // 2. GET ITEMS + LOCK STOCK
+      // GET ITEMS + LOCK STOCK
       const items = await this.checkoutUserRepo.getCheckoutSessionItemsForUpdate(sessionId, trx);
 
       if (items.length === 0) {
         throw AppError.badRequest("No items");
       }
 
-      // 3. VALIDATE ITEMS
+      // VALIDATE ITEMS
       assertItemsValid(items);
 
-      // 5. PREPARE DATA
+      // PREPARE DATA
       const enrichedItems = await this.enrichItemsWithImages(items);
 
       const user = await this.userRepo.getUserById(userId, trx);
@@ -223,8 +225,11 @@ export class CheckoutUserService {
         throw AppError.notFound("User not found");
       }
 
-      // 6. LOCK SESSION
-      await this.checkoutUserRepo.markSessionConverted(sessionId, trx);
+      const warehouse = await this.warehouseRepo.getWarehouse(trx);
+
+      if (!warehouse || !warehouse.shipping_district_id) {
+        throw AppError.badRequest("Warehouse is not properly configured");
+      }
 
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
@@ -234,16 +239,21 @@ export class CheckoutUserService {
         ...base,
         email: user.email,
         expiresAt,
-        orderCode: generateOrderCode()
+        orderCode: generateOrderCode(),
+        originName: warehouse.name,
+        originProvinceName: warehouse.shipping_province_name,
+        originCityName: warehouse.shipping_city_name,
+        originDistrictName: warehouse.shipping_district_name,
+        originPostalCode: warehouse.postal_code
       };
 
       // 7. CREATE ORDER
       const order = await this.orderUserRepo.createOrder(input, trx);
 
-      // 8. INSERT ITEMS
+      // INSERT ITEMS
       await this.orderUserRepo.insertOrderItems(order.id, enrichedItems, trx);
 
-      // 9. SHIPMENT
+      // SHIPMENT
       await this.orderUserRepo.insertShipment(
         {
           orderId: order.id,
@@ -256,8 +266,11 @@ export class CheckoutUserService {
         trx
       );
 
-      // LAST
+      // REDUCE STOCK
       await this.productStockRepo.reduceStock(items, trx);
+
+      // MARK SESSION
+      await this.checkoutUserRepo.markSessionConverted(sessionId, trx);
 
       return order.order_code;
     });

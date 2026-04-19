@@ -4,6 +4,9 @@ export type InputWarehouse = {
   provinceName: string;
   cityId: number;
   cityName: string;
+  districtId: number;
+  districtName: string;
+  postalCode: string | null;
 };
 
 export type WarehousesRow = {
@@ -13,6 +16,9 @@ export type WarehousesRow = {
   shipping_city_name: string;
   shipping_province_id: number;
   shipping_province_name: string;
+  shipping_district_id: number;
+  shipping_district_name: string;
+  postal_code: string | null;
   created_at: Date;
   updated_at: Date | null;
 };

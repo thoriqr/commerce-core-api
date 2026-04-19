@@ -2,8 +2,8 @@ import { redis } from "@/libs/redis";
 import { RajaOngkirClient } from "./rajaongkir.client";
 import { SHIPPING_CACHE_KEY, SHIPPING_CACHE_TTL } from "./shipping.constants";
 import { City, District, Province, ShippingCost } from "./shipping.types";
-import { getWarehouseOriginCityId } from "@/shared/cache/warehouse";
-import { sortByName } from "./shipping.util";
+import { sortByName } from "./shipping.utils";
+import { getWarehouseOriginDistrictId } from "@/shared/cache/warehouse";
 
 export class ShippingService {
   constructor(private readonly client: RajaOngkirClient) {}
@@ -78,7 +78,7 @@ export class ShippingService {
   }
 
   async calculateDomesticCost(destination: number, weight: number, courier: string): Promise<ShippingCost[]> {
-    const origin = await getWarehouseOriginCityId();
+    const origin = await getWarehouseOriginDistrictId();
 
     const cacheKey = SHIPPING_CACHE_KEY.COST(origin, destination, weight, courier);
 

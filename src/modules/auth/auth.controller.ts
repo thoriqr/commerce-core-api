@@ -26,7 +26,7 @@ export class AuthController {
   inviteAdmin = async (req: Request, res: Response) => {
     const payload = registerSchema.parse(req.body);
 
-    await this.service.inviteAdmin(payload.email);
+    await this.service.inviteAdmin(req.user!, payload.email);
 
     sendSuccess(res, 200, {
       message: "Verification email sent"

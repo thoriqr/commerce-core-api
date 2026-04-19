@@ -192,20 +192,20 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
       status: order.shipment_status
     }),
 
-    //  optional raw (KEEP for flexibility)
+    // optional raw (KEEP for flexibility)
     rawStatus: order.status,
     paymentStatus: order.payment_status,
 
-    //  timing
+    // timing
     expiresAt: order.expires_at,
     paidAt: order.paid_at,
     cancelledAt: order.cancelled_at ?? null,
 
-    //  action state
+    // action state
     canPay,
     canConfirm: canConfirmOrder(order),
 
-    //  address
+    // address
     address: {
       recipientName: order.recipient_name,
       phone: order.phone,
@@ -216,16 +216,23 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
       postalCode: order.postal_code ?? ""
     },
 
-    // 🚚 shipping
+    // shipping
     shipping: {
       courierCode: order.courier_code,
       courierName: order.courier_name,
       courierService: order.courier_service,
       etd: order.shipping_etd,
 
-      // 🔥 tambahan (berguna banget untuk FE)
       trackingNumber: order.tracking_number,
       status: order.shipment_status
+    },
+
+    originWarehouse: {
+      name: order.origin_name,
+      provinceName: order.origin_province_name,
+      cityName: order.origin_city_name,
+      districtName: order.origin_district_name,
+      postalCode: order.origin_postal_code ?? ""
     },
 
     timeline: buildOrderTimeline(order),

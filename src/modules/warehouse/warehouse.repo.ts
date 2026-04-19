@@ -20,14 +20,20 @@ export class WarehouseRepo {
       shipping_province_id,
       shipping_province_name,
       shipping_city_id,
-      shipping_city_name
+      shipping_city_name,
+      shipping_district_id,
+      shipping_district_name,
+      postal_code
     )
     VALUES (
       :name,
       :provinceId,
       :provinceName,
       :cityId,
-      :cityName
+      :cityName,
+      :districtId,
+      :districtName,
+      :postalCode
     )
     RETURNING id
   `,
@@ -36,7 +42,10 @@ export class WarehouseRepo {
         provinceId: input.provinceId,
         provinceName: input.provinceName,
         cityId: input.cityId,
-        cityName: input.cityName
+        cityName: input.cityName,
+        districtId: input.districtId,
+        districtName: input.districtName,
+        postalCode: input.postalCode
       }
     );
 
@@ -52,7 +61,10 @@ export class WarehouseRepo {
       shipping_province_id = :provinceId,
       shipping_province_name = :provinceName,
       shipping_city_id = :cityId,
-      shipping_city_name = :cityName
+      shipping_city_name = :cityName,
+      shipping_district_id = :districtId,
+      shipping_district_name = :districtName,
+      postal_code = :postalCode
     WHERE id = :id
   `,
       {
@@ -61,7 +73,10 @@ export class WarehouseRepo {
         provinceId: input.provinceId,
         provinceName: input.provinceName,
         cityId: input.cityId,
-        cityName: input.cityName
+        cityName: input.cityName,
+        districtId: input.districtId,
+        districtName: input.districtName,
+        postalCode: input.postalCode
       }
     );
   };
