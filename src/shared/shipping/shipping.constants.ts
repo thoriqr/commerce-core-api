@@ -1,1 +1,1 @@
-export const SUPPORTED_COURIERS = ["jne", "jnt", "pos", "tiki"];
+export const SUPPORTED_COURIERS = ["jne", "sicepat", "anteraja", "ninja", "pos", "jnt", "wahana"];

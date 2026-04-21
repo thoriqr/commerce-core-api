@@ -179,6 +179,18 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
 
   const canPay = order.payment_status === "UNPAID" && !isFinalState && !isExpired;
 
+  const hasOrigin = order.origin_name || order.origin_province_name || order.origin_city_name || order.origin_district_name;
+
+  const warehouseOrigin = hasOrigin
+    ? {
+        name: order.origin_name,
+        province: order.origin_province_name,
+        city: order.origin_city_name,
+        district: order.origin_district_name,
+        postalCode: order.origin_postal_code ?? ""
+      }
+    : null;
+
   return {
     orderCode: order.order_code,
 
@@ -227,13 +239,7 @@ export function mapOrder(order: OrderDetailRow, items: OrderItemDetailRow[]) {
       status: order.shipment_status
     },
 
-    originWarehouse: {
-      name: order.origin_name,
-      provinceName: order.origin_province_name,
-      cityName: order.origin_city_name,
-      districtName: order.origin_district_name,
-      postalCode: order.origin_postal_code ?? ""
-    },
+    warehouseOrigin,
 
     timeline: buildOrderTimeline(order),
     items: mappedItems

@@ -75,4 +75,10 @@ export class CheckoutUserController {
       data: { orderCode }
     });
   };
+
+  getWarehouseOrigin = async (req: Request, res: Response) => {
+    const data = await this.service.getWarehouseOrigin();
+
+    sendSuccess(res, 200, { data });
+  };
 }

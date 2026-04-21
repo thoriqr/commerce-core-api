@@ -7,6 +7,7 @@
     "dev": "cross-env NODE_ENV=development tsx watch src/server.ts",
     "dev:prod": "cross-env NODE_ENV=production tsx watch src/server.ts",
     "worker:dev": "cross-env NODE_ENV=development tsx watch src/workers/app.worker.ts",
+    "worker:prod": "cross-env NODE_ENV=production tsx watch src/workers/app.worker.ts",
     "worker": "node dist/workers/app.worker.js",
     "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
     "start": "node dist/server.js",

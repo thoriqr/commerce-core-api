@@ -13,6 +13,7 @@ import { buildAddressSnapshot, mapCheckoutSession } from "./checkout.user.mapper
 import { ShippingService } from "@/modules/shipping/shipping.service";
 import { CheckoutSessionItemRow } from "./checkout.user.types";
 import { WarehouseRepo } from "@/modules/warehouse/warehouse.repo";
+import { CartRepo } from "@/modules/cart/cart.repo";
 
 export class CheckoutUserService {
   constructor(
@@ -23,7 +24,8 @@ export class CheckoutUserService {
     private readonly shippingService: ShippingService,
     private readonly productStockRepo: ProductStockRepo,
     private readonly productImageService: ProductImageService,
-    private readonly warehouseRepo: WarehouseRepo
+    private readonly warehouseRepo: WarehouseRepo,
+    private readonly cartRepo: CartRepo
   ) {}
 
   createCheckoutSession = async (userId: number) => {
@@ -272,8 +274,24 @@ export class CheckoutUserService {
       // MARK SESSION
       await this.checkoutUserRepo.markSessionConverted(sessionId, trx);
 
+      // CLEAR CART
+      await this.cartRepo.clearCartByUserId(userId, trx);
+
       return order.order_code;
     });
+  };
+
+  getWarehouseOrigin = async () => {
+    const warehouse = await this.warehouseRepo.getWarehouse();
+
+    if (!warehouse) return null;
+
+    return {
+      name: warehouse.name,
+      province: warehouse.shipping_province_name,
+      city: warehouse.shipping_city_name,
+      district: warehouse.shipping_district_name
+    };
   };
 
   private enrichItemsWithImages = async (items: CheckoutSessionItemRow[]) => {

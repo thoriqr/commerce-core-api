@@ -13,6 +13,7 @@ import { RajaOngkirClient } from "@/modules/shipping/rajaongkir.client";
 import { ShippingService } from "@/modules/shipping/shipping.service";
 import { actionLimiter } from "@/middlewares/rate-limit.middleware";
 import { WarehouseRepo } from "@/modules/warehouse/warehouse.repo";
+import { CartRepo } from "@/modules/cart/cart.repo";
 
 const router = Router();
 
@@ -34,6 +35,8 @@ const productImageService = new ProductImageService(productImageRepo);
 
 const warehouseRepo = new WarehouseRepo();
 
+const cartRepo = new CartRepo();
+
 const checkoutUserService = new CheckoutUserService(
   tm,
   userRepo,
@@ -42,12 +45,15 @@ const checkoutUserService = new CheckoutUserService(
   shippingService,
   productStockRepo,
   productImageService,
-  warehouseRepo
+  warehouseRepo,
+  cartRepo
 );
 
 const controller = new CheckoutUserController(checkoutUserService);
 
 router.post("/", actionLimiter, controller.createCheckoutSession);
+
+router.get("/origin", controller.getWarehouseOrigin);
 
 router.get("/:sessionId", controller.getCheckoutSession);
 

@@ -20,7 +20,6 @@ export const expireOrdersJob = {
             payment_status = 'UNPAID'
             AND status = 'PENDING'
             AND expires_at < NOW()
-          FOR UPDATE SKIP LOCKED
           LIMIT 500
         `);
 

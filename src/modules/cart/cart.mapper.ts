@@ -10,14 +10,14 @@ function getCartWarning(row: CartItemRow): string | null {
     return "UNAVAILABLE";
   }
 
-  // cart-specific
-  if (row.stock < row.quantity) {
-    return "INSUFFICIENT_STOCK";
-  }
-
   // stock-based
   if (row.stock <= 0) {
     return "OUT_OF_STOCK";
+  }
+
+  // cart-specific
+  if (row.stock < row.quantity) {
+    return "INSUFFICIENT_STOCK";
   }
 
   if (row.stock <= PRODUCT_LOW_STOCK_THRESHOLD) {

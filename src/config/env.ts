@@ -28,8 +28,6 @@ const envSchema = z.object({
   ADMIN_ORIGIN: z.string().min(1),
   STOREFRONT_ORIGIN: z.string().min(1),
 
-  REDIS_HOST: z.string().min(1),
-  REDIS_PORT: z.coerce.number().default(6379),
   REDIS_URL: z.string().min(1),
 
   R2_ACCOUNT_ID: z.string().min(1),

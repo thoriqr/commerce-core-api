@@ -54,6 +54,13 @@ export type OrderDetailRow = {
   payment_code: string | null;
   transaction_time: Date | null;
   settlement_time: Date | null;
+
+  // warehouse origin snapshot
+  origin_name: string | null;
+  origin_province_name: string | null;
+  origin_city_name: string | null;
+  origin_district_name: string | null;
+  origin_postal_code: string | null;
 };
 
 export type OrderItemRow = {

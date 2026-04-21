@@ -204,4 +204,18 @@ export class CartRepo {
       { cartId }
     );
   }
+
+  async clearCartByUserId(userId: number, trx?: Knex.Transaction) {
+    const executor = trx ?? db;
+
+    await executor.raw(
+      `
+        DELETE FROM cart_items ci
+        USING carts c
+        WHERE ci.cart_id = c.id
+          AND c.user_id = :userId
+      `,
+      { userId }
+    );
+  }
 }

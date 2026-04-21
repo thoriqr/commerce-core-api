@@ -87,6 +87,18 @@ export function mapAdminOrderDetail(order: OrderDetailRow, items: OrderItemRow[]
   const status = mapAdminOrderStatus(order);
   const actions = getOrderActions(order);
 
+  const hasOrigin = order.origin_name || order.origin_province_name || order.origin_city_name || order.origin_district_name;
+
+  const warehouseOrigin = hasOrigin
+    ? {
+        name: order.origin_name,
+        province: order.origin_province_name,
+        city: order.origin_city_name,
+        district: order.origin_district_name,
+        postalCode: order.origin_postal_code ?? ""
+      }
+    : null;
+
   return {
     orderCode: order.order_code,
 
@@ -145,6 +157,8 @@ export function mapAdminOrderDetail(order: OrderDetailRow, items: OrderItemRow[]
       imageKey: item.image_key,
       options: item.option_snapshot ?? []
     })),
+
+    warehouseOrigin,
 
     actions
   };
