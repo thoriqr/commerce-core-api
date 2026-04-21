@@ -1,6 +1,6 @@
 import { AppError } from "@/errors/app-error";
 import { Knex } from "knex";
-import { CheckoutSessionItemRow } from "../checkout/checkout.types";
+import { CheckoutSessionItemRow } from "../user/checkout/checkout.user.types";
 
 export class ProductStockRepo {
   reduceStock = async (items: CheckoutSessionItemRow[], trx: Knex.Transaction) => {
