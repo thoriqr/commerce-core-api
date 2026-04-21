@@ -37,6 +37,10 @@ app.use(
 app.use(globalLimiter);
 app.use(attachClient);
 
+app.get("/health", (_req, res) => {
+  res.send("OK");
+});
+
 app.use(ROUTES.STORE, storeRouter);
 app.use(ROUTES.CART, cartRouter);
 app.use(ROUTES.AUTH, authRouter);
