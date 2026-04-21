@@ -19,7 +19,7 @@ export const cleanupOrphanProductImagesJob = {
           SELECT pi2.id
           FROM product_images pi2
           WHERE pi2.is_orphan = true
-            AND pi2.created_at < NOW() - INTERVAL '30 minutes'
+            AND pi2.created_at < NOW() - INTERVAL '6 hours'
 
             -- PROTECT: order_items
             AND NOT EXISTS (
@@ -28,6 +28,7 @@ export const cleanupOrphanProductImagesJob = {
               WHERE oi.image_id = pi2.image_id
             )
 
+          ORDER BY pi2.created_at ASC, id ASC
           LIMIT 50
         )
         AND pi.image_id = im.id

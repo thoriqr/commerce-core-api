@@ -20,6 +20,7 @@ import { Knex } from "knex";
 import { logger } from "@/libs/logger";
 import { validatePending } from "./auth-utils";
 import { env } from "@/config/env";
+import { mailer } from "@/libs/mailer";
 
 export class AuthService {
   constructor(
@@ -32,9 +33,11 @@ export class AuthService {
       throw AppError.forbidden("Demo account cannot invite admin");
     }
 
-    return this.tm.transaction(async (trx) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const verifyUrl = await this.tm.transaction(async (trx) => {
       // Reject if email already exists
-      const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
+      const existingUser = await this.repo.findUserByEmailOrNull(normalizedEmail, trx);
 
       if (existingUser && existingUser.is_demo) {
         throw AppError.forbidden("Demo account cannot be invited");
@@ -45,30 +48,41 @@ export class AuthService {
       }
 
       // Delete old pending invites
-      await this.repo.deletePendingByEmailAndType(trx, email, "INVITE");
+      await this.repo.deletePendingByEmailAndType(trx, normalizedEmail, "INVITE");
 
       // Generate token
-      const rawToken = generateRefreshToken(); // reuse util
+      const rawToken = generateRefreshToken();
       const tokenHash = hashRefreshToken(rawToken);
 
       const expiresAt = this.getShortExpiry(15);
 
       // Insert pending verification
       await this.repo.insertPendingVerification(trx, {
-        email,
+        email: normalizedEmail,
         tokenHash,
         type: "INVITE",
         expiresAt,
         userId: existingUser?.id ?? null
       });
 
-      // 5️⃣ TODO: send email with token
-      // await mailer.sendInvite(email, token);
-
-      const verifyUrl = `${env.ADMIN_ORIGIN}/invite?token=${rawToken}`;
-
-      console.log("invite url:", verifyUrl);
+      // return URL
+      return `${env.ADMIN_ORIGIN}/invite?token=${rawToken}`;
     });
+
+    // OUTSIDE transaction
+    const emailSent = await mailer({
+      to: normalizedEmail,
+      subject: "You're invited as an admin",
+      html: `
+      <p>You have been invited to become an admin.</p>
+      <p>Click the link below to accept the invitation:</p>
+      <a href="${verifyUrl}">${verifyUrl}</a>
+    `
+    });
+
+    if (!emailSent) {
+      logger.warn(`Admin invite email failed to send to ${normalizedEmail}`);
+    }
   };
 
   validateAdminInvite = async (token: string) => {
@@ -183,24 +197,20 @@ export class AuthService {
   register = async (input: RegisterInput): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
-    return this.tm.transaction(async (trx) => {
-      // Check if already exists
+    const verifyUrl = await this.tm.transaction(async (trx) => {
       const existingUser = await this.repo.findUserByEmailOrNull(email, trx);
 
       if (existingUser) {
         throw AppError.conflict("Email already registered");
       }
 
-      // Delete old pending
       await this.repo.deletePendingByEmailAndType(trx, email, "REGISTER");
 
-      // Generate token
-      const rawToken = generateRefreshToken(); // reuse util
+      const rawToken = generateRefreshToken();
       const tokenHash = hashRefreshToken(rawToken);
 
       const expiresAt = this.getShortExpiry(15);
 
-      // insert pending verification
       await this.repo.insertPendingVerification(trx, {
         email,
         tokenHash,
@@ -208,12 +218,23 @@ export class AuthService {
         expiresAt
       });
 
-      // TODO: Send magic link via mailer
-      // link example:
-      const verifyUrl = `${env.STOREFRONT_ORIGIN}/verify?token=${rawToken}`;
-
-      console.log("VERIFY URL:", verifyUrl);
+      // return
+      return `${env.STOREFRONT_ORIGIN}/verify?token=${rawToken}`;
     });
+
+    // OUTSIDE transaction
+    const emailSent = await mailer({
+      to: email,
+      subject: "Verify your account",
+      html: `
+      <p>Click the link below to verify your account:</p>
+      <a href="${verifyUrl}">${verifyUrl}</a>
+    `
+    });
+
+    if (!emailSent) {
+      logger.warn(`Verification email failed to send to ${email}`);
+    }
   };
 
   checkVerificationToken = async (input: { token: string; type: "REGISTER" | "RESET_PASSWORD" }) => {
@@ -280,9 +301,9 @@ export class AuthService {
         throw AppError.unauthorized("Invalid email or password");
       }
 
-      if (user.status === "SUSPENDED") {
-        throw AppError.forbidden("Account suspended");
-      }
+      // if (user.status === "SUSPENDED") {
+      //   throw AppError.forbidden("Account suspended");
+      // }
 
       await this.repo.updateLastLoginAt(trx, user.id);
 
@@ -412,16 +433,16 @@ export class AuthService {
   requestPasswordReset = async (input: RequestPasswordResetInput): Promise<void> => {
     const email = input.email.trim().toLowerCase();
 
-    return this.tm.transaction(async (trx) => {
-      // Check user (optional, silent)
+    const resetUrl = await this.tm.transaction(async (trx) => {
+      // Check user (silent)
       const user = await this.repo.findUserByEmailOrNull(email);
 
       if (!user) {
-        return; // silent success
+        return null; // silent success
       }
 
       if (user.is_demo) {
-        return; //  silent block for demo
+        return null; // silent block
       }
 
       // Delete old pending reset
@@ -442,12 +463,28 @@ export class AuthService {
         userId: user.id
       });
 
-      // TODO: send reset email with rawToken
-      // reset link
-      const resetUrl = `${env.STOREFRONT_ORIGIN}/reset-password?token=${rawToken}`;
-
-      console.log("RESET URL:", resetUrl);
+      // return URL
+      return `${env.STOREFRONT_ORIGIN}/reset-password?token=${rawToken}`;
     });
+
+    // if null, do not send email
+    if (!resetUrl) {
+      return;
+    }
+
+    // OUTSIDE transaction
+    const emailSent = await mailer({
+      to: email,
+      subject: "Reset your password",
+      html: `
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetUrl}">${resetUrl}</a>
+    `
+    });
+
+    if (!emailSent) {
+      logger.warn(`Password reset email failed to send to ${email}`);
+    }
   };
 
   resetPassword = async (

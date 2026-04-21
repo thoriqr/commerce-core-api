@@ -1,4 +1,3 @@
-import { db } from "@/infra/db/knex";
 import { JOB_NAMES } from "@/shared/queues/job-names";
 import { runCleanup } from "./cleanup.helper";
 
@@ -15,6 +14,7 @@ export const cleanupPendingVerificationsJob = {
         FROM pending_verifications
         WHERE used_at IS NULL
           AND expires_at < NOW()
+        ORDER BY expires_at ASC, id ASC
         LIMIT 500
       )
       RETURNING id

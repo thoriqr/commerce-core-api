@@ -19,7 +19,7 @@ export const cleanupOrphanVariantImagesJob = {
           SELECT pvi2.id
           FROM product_variant_images pvi2
           WHERE pvi2.is_orphan = true
-            AND pvi2.created_at < NOW() - INTERVAL '30 minutes'
+            AND pvi2.created_at < NOW() - INTERVAL '6 hours'
 
             -- PROTECT order_items image_id
             AND NOT EXISTS (
@@ -28,6 +28,7 @@ export const cleanupOrphanVariantImagesJob = {
               WHERE oi.image_id = pvi2.image_id
             )
 
+          ORDER BY pvi2.created_at ASC, id ASC
           LIMIT 50
         )
         AND pvi.image_id = im.id
@@ -56,7 +57,6 @@ export const cleanupOrphanVariantImagesJob = {
 
       const duration = Date.now() - start;
 
-      // 🔥 hanya log kalau ada perubahan
       if (rows.length > 0) {
         logger.info("Cleanup orphan variant images", {
           jobName: JOB_NAMES.CLEANUP_ORPHAN_VARIANT_IMAGES,

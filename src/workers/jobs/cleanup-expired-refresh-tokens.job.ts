@@ -19,6 +19,7 @@ export const cleanupExpiredRefreshTokensJob = {
             revoked_at IS NOT NULL
             AND revoked_at < NOW() - INTERVAL '7 days'
           )
+        ORDER BY expires_at ASC, revoked_at ASC
         LIMIT 500
       )
       RETURNING id

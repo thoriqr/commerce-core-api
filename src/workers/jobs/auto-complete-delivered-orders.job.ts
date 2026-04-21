@@ -24,7 +24,8 @@ export const autoCompleteDeliveredOrdersJob = {
 
             AND o.payment_status = 'PAID'
             AND o.status NOT IN ('CANCELLED', 'COMPLETED')
-
+            
+          ORDER BY os.shipped_at ASC
           FOR UPDATE SKIP LOCKED
           LIMIT 200
         `);

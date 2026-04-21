@@ -14,6 +14,7 @@ export const cleanupAbandonedGuestCartsJob = {
         FROM carts
         WHERE user_id IS NULL
           AND updated_at < NOW() - INTERVAL '7 days'
+        ORDER BY updated_at ASC, id ASC
         LIMIT 500
       )
       RETURNING id

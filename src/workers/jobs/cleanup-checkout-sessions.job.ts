@@ -29,6 +29,7 @@ export const cleanupCheckoutSessionsJob = {
               revoked_at IS NOT NULL
               AND revoked_at < NOW() - INTERVAL '1 hour'
             )
+          ORDER BY expires_at ASC
           LIMIT 500
         )
         RETURNING id;

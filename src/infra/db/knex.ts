@@ -8,10 +8,15 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (value: string) => {
 
 export const db = knex({
   client: "pg",
-  connection: env.DATABASE_URL,
+  connection: {
+    connectionString: env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  },
   pool: {
-    min: 2,
-    max: 10
+    min: 0,
+    max: 5
   },
   migrations: {
     tableName: "knex_migrations"
