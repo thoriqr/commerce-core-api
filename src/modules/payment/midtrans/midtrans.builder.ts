@@ -6,16 +6,15 @@ import { env } from "@/config/env";
 function formatDateToMidtrans(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
 
-  const yyyy = date.getFullYear();
-  const mm = pad(date.getMonth() + 1);
-  const dd = pad(date.getDate());
-  const hh = pad(date.getHours());
-  const mi = pad(date.getMinutes());
-  const ss = pad(date.getSeconds());
+  const yyyy = date.getUTCFullYear();
+  const mm = pad(date.getUTCMonth() + 1);
+  const dd = pad(date.getUTCDate());
+  const hh = pad(date.getUTCHours());
+  const mi = pad(date.getUTCMinutes());
+  const ss = pad(date.getUTCSeconds());
 
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} +0700`;
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} +0000`;
 }
-
 function formatOptionSnapshot(option: OptionSnapshot[] | null): string {
   if (!option || option.length === 0) return "";
 
