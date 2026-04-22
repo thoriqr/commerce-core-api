@@ -8,8 +8,14 @@ if (!process.env.NODE_ENV) {
   throw new Error("NODE_ENV is required");
 }
 
-if (!fs.existsSync(envFile)) {
-  throw new Error(`Env file not found: ${envFile}`);
+if (process.env.NODE_ENV !== "production") {
+  const envFile = `.env.${process.env.NODE_ENV}`;
+
+  if (!fs.existsSync(envFile)) {
+    throw new Error(`Env file not found: ${envFile}`);
+  }
+
+  dotenv.config({ path: envFile });
 }
 
 dotenv.config({ path: envFile });
