@@ -64,14 +64,12 @@ export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItem
 
   // REMAINING TIME
   const now = new Date();
-  const remainingMs = order.expires_at.getTime() - now.getTime();
+  const expiresAt = new Date(order.expires_at);
+
+  const remainingMs = expiresAt.getTime() - now.getTime();
 
   const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
-
-  // const isDev = env.NODE_ENV !== "production";
-
-  // const duration = isDev ? 2 : remainingMinutes;
-  const duration = remainingMinutes;
+  const duration = Math.max(remainingMinutes, 1);
 
   return {
     transaction_details: {
