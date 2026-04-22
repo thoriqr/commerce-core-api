@@ -7,10 +7,10 @@ const isProd = env.NODE_ENV === "production";
 
 const baseCookieOptions = {
   secure: isProd,
-  sameSite: "lax" as const,
-  path: "/"
+  sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+  path: "/",
+  domain: isProd ? ".commerce.web.id" : undefined
 };
-
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string, client: AppClient) {
   const cookies = getCookieNames(client);
 
