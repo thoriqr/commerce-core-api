@@ -3,9 +3,25 @@ import { redisConnection } from "@/libs/redis-bullmq";
 import { jobRegistry } from "./job-registry";
 import { registerJobs } from "./scheduler";
 import { logger } from "@/libs/logger";
+import { env } from "@/config/env";
+import { startCronJobs } from "./cron";
 
 async function startWorker() {
-  logger.info("Worker starting...");
+  logger.info("Worker starting...", {
+    driver: env.SCHEDULER_DRIVER
+  });
+
+  // CRON MODE
+  if (env.SCHEDULER_DRIVER === "cron") {
+    startCronJobs();
+
+    logger.info("Running in CRON mode (no BullMQ)");
+
+    return;
+  }
+
+  // BULL MODE (existing code)
+  logger.info("Running in BULLMQ mode");
 
   await registerJobs();
 
@@ -32,11 +48,9 @@ async function startWorker() {
       try {
         const result = await handler(job.data);
 
-        const duration = Date.now() - start;
-
         return {
           result,
-          duration
+          duration: Date.now() - start
         };
       } catch (error) {
         logger.error("Job execution error", {
@@ -49,16 +63,18 @@ async function startWorker() {
     },
     {
       connection: redisConnection,
-      concurrency: 1
+      concurrency: 1,
+
+      // optional improvement
+      blockingConnection: true,
+      drainDelay: 30
     }
   );
 
-  // Connected
   worker.on("ready", () => {
     logger.info("Worker connected to Redis");
   });
 
-  // Error
   worker.on("failed", (job, err) => {
     logger.error("Job failed", {
       jobName: job?.name,
@@ -67,7 +83,6 @@ async function startWorker() {
     });
   });
 
-  // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info("Worker shutting down...", { signal });
 
