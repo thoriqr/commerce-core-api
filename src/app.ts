@@ -29,7 +29,7 @@ app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(
   cors({
-    origin: env.CLIENT_ORIGINS,
+    origin: [...env.CLIENT_ORIGINS, /^https:\/\/commerce-web-storefront.*\.vercel\.app$/],
     credentials: true
   })
 );
