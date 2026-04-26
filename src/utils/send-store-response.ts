@@ -1,13 +1,15 @@
 import { Request, Response } from "express";
 
-type StoreResponseOptions<T> = {
+type StoreResponseOptions<T, M = unknown> = {
   req: Request;
   res: Response;
   data: T;
   etag: string;
+  maxAge?: number;
+  meta?: M;
 };
 
-export function sendStoreResponse<T>({ req, res, data, etag, maxAge = 60 }: StoreResponseOptions<T> & { maxAge?: number }) {
+export function sendStoreResponse<T, M = unknown>({ req, res, data, etag, maxAge = 60, meta }: StoreResponseOptions<T, M>) {
   const clientETag = req.headers["if-none-match"];
 
   if (clientETag && clientETag === etag) {
@@ -19,6 +21,7 @@ export function sendStoreResponse<T>({ req, res, data, etag, maxAge = 60 }: Stor
 
   return res.status(200).json({
     success: true,
-    data
+    data,
+    ...(meta !== undefined ? { meta } : {})
   });
 }

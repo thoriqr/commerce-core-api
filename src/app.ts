@@ -16,6 +16,8 @@ import cookieParser from "cookie-parser";
 import { attachClient } from "./middlewares/attach-client.middleware";
 import helmet from "helmet";
 import { globalLimiter } from "./middlewares/rate-limit.middleware";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./docs/swagger/swagger";
 
 const app = express();
 
@@ -40,6 +42,23 @@ app.use(attachClient);
 app.get("/health", (_req, res) => {
   res.send("OK");
 });
+
+app.use(
+  ROUTES.DOCS,
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    swaggerOptions: {
+      supportedSubmitMethods: [], // disable "Try it out"
+      tagsSorter: "alpha",
+      operationsSorter: "method",
+      docExpansion: "none"
+    },
+    customSiteTitle: "Commerce API Docs",
+    customCss: `
+      .swagger-ui .topbar { display: none }
+    `
+  })
+);
 
 app.use(ROUTES.STORE, storeRouter);
 app.use(ROUTES.CART, cartRouter);

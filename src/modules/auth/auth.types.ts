@@ -1,13 +1,8 @@
 import { UserRole } from "@/shared/user/user.types";
 import { VerificationType } from "./auth.repo.types";
+import { AuthUserSchema } from "./auth.schema";
 
-export type AuthUser = {
-  id: number;
-  email: string;
-  role: UserRole;
-  displayName: string | null;
-  isDemo: boolean;
-};
+export type AuthUser = AuthUserSchema;
 
 export type LoginResponse = {
   user: AuthUser;

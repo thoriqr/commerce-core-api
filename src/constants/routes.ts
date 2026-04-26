@@ -1,4 +1,4 @@
-export const API_PREFIX = "/api";
+export const API_PREFIX = "/v1";
 
 export const PREFIX = {
   SUPER: "/super",
@@ -9,7 +9,8 @@ export const PREFIX = {
   SHIPPING: "/shipping",
   PAYMENT: "/payments",
   CART: "/cart",
-  WAREHOUSE: "/warehouse"
+  WAREHOUSE: "/warehouse",
+  DOCS: "/docs"
 } as const;
 
 export const ROUTES = {
@@ -21,5 +22,6 @@ export const ROUTES = {
   SHIPPING: `${API_PREFIX}${PREFIX.SHIPPING}`,
   PAYMENT: `${API_PREFIX}${PREFIX.PAYMENT}`,
   CART: `${API_PREFIX}${PREFIX.CART}`,
-  WAREHOUSE: `${API_PREFIX}${PREFIX.WAREHOUSE}`
+  WAREHOUSE: `${API_PREFIX}${PREFIX.WAREHOUSE}`,
+  DOCS: `${API_PREFIX}${PREFIX.DOCS}`
 } as const;

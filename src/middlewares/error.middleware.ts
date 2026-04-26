@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { FieldError } from "@/types/api-response.ts";
 import { PG_ERROR_CODE } from "@/constants/pg-error-code";
 import { Request, Response, NextFunction } from "express";
+import { ERROR_CODE } from "@/constants/error-code";
 
 function mapZodError(error: ZodError): FieldError[] {
   return error.issues.map((issue) => ({
@@ -22,7 +23,7 @@ export function errorMiddleware(err: any, req: Request, res: Response, _next: Ne
   // ZOD VALIDATION
   if (err instanceof ZodError) {
     statusCode = 400;
-    code = "VALIDATION_ERROR";
+    code = ERROR_CODE.VALIDATION_ERROR;
     message = "Invalid request payload";
     errors = mapZodError(err);
   }
@@ -51,7 +52,7 @@ export function errorMiddleware(err: any, req: Request, res: Response, _next: Ne
   }
 
   /**
-   * 🔥 LOG LEVEL CONTROL
+   *  LOG LEVEL CONTROL
    */
   const logPayload = {
     path: req.path,
@@ -65,7 +66,7 @@ export function errorMiddleware(err: any, req: Request, res: Response, _next: Ne
   if (statusCode >= 500) {
     logger.error("request error", logPayload);
   } else if (statusCode === 401) {
-    // 🔥 auth flow (expected)
+    //  auth flow (expected)
     logger.info("unauthorized request", logPayload);
   } else if (statusCode >= 400) {
     logger.warn("client error", logPayload);
