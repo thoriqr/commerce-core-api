@@ -13,7 +13,9 @@ const passwordSchema = z.string().min(8).max(72).meta({
   description: "User password"
 });
 
-const tokenSchema = z.string().min(10, "Invalid token");
+const tokenSchema = z.string().min(10).meta({
+  example: "a8f3c9e2b7d4f1a6c0e9"
+});
 
 export const registerSchema = z.object({
   email: emailSchema
@@ -21,7 +23,10 @@ export const registerSchema = z.object({
 
 export const verifyEmailSchema = z.object({
   token: tokenSchema,
-  displayName: z.string().trim().min(2).max(100),
+  displayName: z.string().trim().min(2).max(100).meta({
+    example: "John Doe",
+    description: "User display name"
+  }),
   password: passwordSchema
 });
 
@@ -45,11 +50,16 @@ export const setPasswordSchema = z.object({
 
 export const changePasswordSchema = z.object({
   currentPassword: passwordSchema,
-  newPassword: passwordSchema
+  newPassword: passwordSchema.meta({
+    example: "newStrongPassword123"
+  })
 });
 
 export const googleLoginSchema = z.object({
-  idToken: z.string().min(10)
+  idToken: z.string().min(10).meta({
+    example: "eyJhbGciOiJSUzI1NiIsImtpZCI6Ij...dummy.google.id.token...",
+    description: "Google ID token obtained from Google Sign-In"
+  })
 });
 
 export const changeEmailSchema = z.object({
@@ -61,13 +71,20 @@ export const confirmEmailChangeSchema = z.object({
 });
 
 export const validateAdminInviteSchema = z.object({
-  token: tokenSchema
+  token: tokenSchema.meta({
+    example: "inv_abc123token"
+  })
 });
 
 export const verifyAdminInvite = z.object({
   token: tokenSchema,
-  displayName: z.string().trim().min(2).max(100).optional(),
-  password: passwordSchema.optional()
+  displayName: z.string().trim().min(2).max(100).optional().meta({
+    example: "John Doe",
+    description: "User display name"
+  }),
+  password: passwordSchema.optional().meta({
+    description: "Required if the user does not already have a password"
+  })
 });
 
 export const loginSchema = z.object({
@@ -91,6 +108,23 @@ export const authUserSchema = z.object({
   role: z.enum(["USER", "ADMIN", "SUPER"]),
   displayName: z.string().nullable(),
   isDemo: z.boolean()
+});
+
+export const verifyTokenDataSchema = z.object({
+  expiresAt: z.string()
+});
+
+export const validateAdminSchemaData = z.object({
+  email: z.email().meta({
+    example: "admin@example.com"
+  }),
+  displayName: z.string().meta({
+    example: "John Doe"
+  }),
+  hasPassword: z.boolean().meta({
+    example: false,
+    description: "Indicates whether the user already has a password set"
+  })
 });
 
 export type AuthUserSchema = z.infer<typeof authUserSchema>;

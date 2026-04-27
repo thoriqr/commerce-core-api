@@ -29,7 +29,7 @@ export class AuthController {
     await this.service.inviteAdmin(req.user!, payload.email);
 
     sendSuccess(res, 200, {
-      message: "Verification email sent"
+      message: "Admin invitation email sent"
     });
   };
 

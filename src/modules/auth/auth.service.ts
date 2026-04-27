@@ -218,7 +218,6 @@ export class AuthService {
         expiresAt
       });
 
-      // return
       return `${env.STOREFRONT_ORIGIN}/verify?token=${rawToken}`;
     });
 
@@ -350,9 +349,9 @@ export class AuthService {
         throw AppError.forbidden("Demo account cannot be used for login");
       }
 
-      if (user.status === "SUSPENDED") {
-        throw AppError.forbidden("Account suspended");
-      }
+      // if (user.status === "SUSPENDED") {
+      //   throw AppError.forbidden("Account suspended");
+      // }
 
       // always ensure provider link exists
       await this.repo.insertUserProviderIfNotExists(trx, {

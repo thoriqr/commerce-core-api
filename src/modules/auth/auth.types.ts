@@ -20,6 +20,13 @@ export type AccessTokenPayload = {
   isDemo: boolean;
 };
 
-export type PendingVerificationRow = { id: number; expires_at: Date; used_at: Date | null; user_id: number; email: string; type: VerificationType };
+export type PendingVerificationRow = {
+  id: number;
+  expires_at: string;
+  used_at: string | null;
+  user_id: number;
+  email: string;
+  type: VerificationType;
+};
 
 export type AuthClient = "admin" | "store";
