@@ -26,7 +26,12 @@ export const presetDimensionValueReorderSchema = z
   .min(1);
 
 export const presetDimensionIdParams = z.object({ dimensionPresetId: z.coerce.number() });
-export const presetDimensionNameParams = z.object({ dimensionPresetName: z.string().max(VARIANT_LIMITS.DIMENSION_NAME_MAX) });
+export const presetDimensionNameParams = z.object({
+  dimensionPresetName: z.string().max(VARIANT_LIMITS.DIMENSION_NAME_MAX).meta({
+    example: "color",
+    description: "Dimension preset name (e.g. color, size)"
+  })
+});
 
 export type PresetDimensionUpsertSchema = z.infer<typeof presetDimensionUpsertSchema>;
 export type PresetDimensionValueSchema = z.infer<typeof presetDimensionValueSchema>;

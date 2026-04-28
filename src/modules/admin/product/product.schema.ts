@@ -199,16 +199,46 @@ export const productIdParams = z.object({
 
 export const productQueryParams = z
   .object({
-    q: z.string().trim().min(1).optional(),
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(10),
-    status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).optional(),
-    isVariant: z.coerce.boolean().optional(),
-    stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional(),
-    priceMin: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional(),
-    priceMax: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional(),
-    sortBy: z.enum(["created_at", "name", "price", "stock"]).default("created_at"),
-    sortDir: z.enum(["asc", "desc"]).default("desc")
+    q: z.string().trim().min(1).optional().meta({
+      example: "hoodie",
+      description: "Search keyword"
+    }),
+
+    page: z.coerce.number().min(1).default(1).meta({
+      example: 1
+    }),
+
+    limit: z.coerce.number().min(1).max(100).default(10).meta({
+      example: 10
+    }),
+
+    status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).optional().meta({
+      example: "ACTIVE"
+    }),
+
+    isVariant: z.coerce.boolean().optional().meta({
+      example: true
+    }),
+
+    stock: z.enum(["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"]).optional().meta({
+      example: "IN_STOCK"
+    }),
+
+    priceMin: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional().meta({
+      example: 100000
+    }),
+
+    priceMax: z.coerce.number().min(0).max(PRODUCT_LIMITS.PRICE_MAX).optional().meta({
+      example: 500000
+    }),
+
+    sortBy: z.enum(["created_at", "name", "price", "stock"]).default("created_at").meta({
+      example: "created_at"
+    }),
+
+    sortDir: z.enum(["asc", "desc"]).default("desc").meta({
+      example: "desc"
+    })
   })
   .superRefine((data, ctx) => {
     if (data.priceMin !== undefined && data.priceMax !== undefined && data.priceMin > data.priceMax) {
@@ -221,8 +251,18 @@ export const productQueryParams = z
   });
 
 export const updateProductStatusSchema = z.object({
-  status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]),
-  productIds: z.array(z.number()).min(1)
+  status: z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]).meta({
+    example: "INACTIVE",
+    description: "New status to apply to selected products"
+  }),
+
+  productIds: z
+    .array(z.number())
+    .min(1)
+    .meta({
+      example: [1, 2, 3],
+      description: "List of product IDs to update"
+    })
 });
 
 export type ProductUpsertSchema = z.infer<typeof productUpsertSchema>;
@@ -233,6 +273,68 @@ export type VariantDimensionSchema = z.infer<typeof variantDimensionSchema>;
 export type UpdateProductStatusSchema = z.infer<typeof updateProductStatusSchema>;
 
 // FOR DOCS
+
+export const productResponseExample = {
+  productId: "78",
+  name: "Basic T-Shirt",
+  description: "Comfortable cotton t-shirt",
+  isVariant: true,
+  status: "ACTIVE",
+  categoryId: "10",
+  collectionIds: ["1", "2"],
+
+  images: [
+    {
+      id: "101",
+      imageKey: "products/main-image.webp",
+      sortOrder: 1
+    }
+  ],
+
+  variantDimension: [
+    {
+      id: "color",
+      name: "Color",
+      options: [
+        {
+          id: "red",
+          value: "Red",
+          hexColor: "#FF0000"
+        },
+        {
+          id: "blue",
+          value: "Blue",
+          hexColor: "#0000FF"
+        }
+      ]
+    }
+  ],
+
+  variants: [
+    {
+      id: 1,
+      clientId: "1",
+      price: 100000,
+      stock: 10,
+      weight: 300,
+      sku: "TS-RED",
+      isPrimary: true,
+      status: "ACTIVE",
+      options: [{ dimensionId: "color", optionId: "red" }]
+    },
+    {
+      id: 2,
+      clientId: "2",
+      price: 100000,
+      stock: 8,
+      weight: 300,
+      sku: "TS-BLUE",
+      isPrimary: false,
+      status: "ACTIVE",
+      options: [{ dimensionId: "color", optionId: "blue" }]
+    }
+  ]
+};
 
 export const productUpsertExample = {
   name: "T-Shirt Basic",
@@ -282,6 +384,28 @@ export const productUpsertExample = {
     {
       clientId: "temp-2",
       price: 100000,
+      stock: 8,
+      status: "ACTIVE",
+      isPrimary: false,
+      options: [
+        { dimensionId: "color", optionId: "red" },
+        { dimensionId: "size", optionId: "l" }
+      ]
+    },
+    {
+      clientId: "temp-3",
+      price: 100000,
+      stock: 6,
+      status: "ACTIVE",
+      isPrimary: false,
+      options: [
+        { dimensionId: "color", optionId: "blue" },
+        { dimensionId: "size", optionId: "m" }
+      ]
+    },
+    {
+      clientId: "temp-4",
+      price: 100000,
       stock: 5,
       status: "ACTIVE",
       isPrimary: false,
@@ -292,10 +416,9 @@ export const productUpsertExample = {
     }
   ]
 };
-
 const bytesToMB = (bytes: number) => bytes / (1024 * 1024);
 
-export const createProductRequestSchema = z.object({
+export const upsertProductRequestSchema = z.object({
   payload: z.string().meta({
     description: `
 JSON stringified product payload.
