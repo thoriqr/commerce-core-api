@@ -3,6 +3,7 @@ import { env } from "../../config/env";
 import { createDocument } from "zod-openapi";
 import { API_PREFIX } from "@/constants/routes";
 import { adminProductSwagger } from "@/modules/admin/product/product.swagger";
+import { adminCategorySwagger } from "@/modules/admin/category/category.swagger";
 
 export const swaggerSpec = createDocument({
   openapi: "3.1.0",
@@ -31,7 +32,8 @@ export const swaggerSpec = createDocument({
 
   paths: {
     ...authSwagger.paths,
-    ...adminProductSwagger.paths
+    ...adminProductSwagger.paths,
+    ...adminCategorySwagger.paths
     // ...productSwagger.paths
   }
 });

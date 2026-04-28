@@ -32,20 +32,20 @@ export class CategoryController {
   update = async (req: Request, res: Response) => {
     const params = categoryIdParams.parse(req.params);
     const payload = categoryUpdateSchema.parse(req.body);
-    const data = await this.service.update(params.categoryId, payload);
-    sendSuccess(res, 200, { data, message: "Category updated" });
+    await this.service.update(params.categoryId, payload);
+    sendSuccess(res, 200, { message: "Category updated" });
   };
 
   reorderCategory = async (req: Request, res: Response) => {
     const params = categoryParentIdParams.parse(req.params);
     const payload = categoryReorderSchema.parse(req.body);
-    const data = await this.service.reorderCategory(params.parentId, payload);
-    sendSuccess(res, 200, { data, message: "Category reordered" });
+    await this.service.reorderCategory(params.parentId, payload);
+    sendSuccess(res, 200, { message: "Category reordered" });
   };
 
   remove = async (req: Request, res: Response) => {
     const params = categoryIdParams.parse(req.params);
-    const data = await this.service.remove(params.categoryId);
-    sendSuccess(res, 200, { data, message: "Category removed" });
+    await this.service.remove(params.categoryId);
+    sendSuccess(res, 200, { message: "Category removed" });
   };
 }
