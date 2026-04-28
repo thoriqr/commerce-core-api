@@ -1,8 +1,9 @@
 import { BANNER_PLACEMENT, BANNER_TARGET_TYPE } from "@/shared/banner/banner.constants";
 
 export const UPLOAD_FILE = {
-  BANNER_FIELD: "bannerImage"
-};
+  BANNER_FIELD: "bannerImage",
+  BANNER_FILE_SIZE: 6 * 1024 * 1024
+} as const;
 
 export const BANNER_PLACEMENT_OPTIONS = Object.values(BANNER_PLACEMENT).map((value) => ({
   value,

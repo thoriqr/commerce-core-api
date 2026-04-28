@@ -5,6 +5,7 @@ import { API_PREFIX } from "@/constants/routes";
 import { adminProductSwagger } from "@/modules/admin/product/product.swagger";
 import { adminCategorySwagger } from "@/modules/admin/category/category.swagger";
 import { adminCollectionSwagger } from "@/modules/admin/collection/collection.swagger";
+import { adminBannerSwagger } from "@/modules/admin/marketing/banner.swagger";
 
 export const swaggerSpec = createDocument({
   openapi: "3.1.0",
@@ -35,7 +36,8 @@ export const swaggerSpec = createDocument({
     ...authSwagger.paths,
     ...adminProductSwagger.paths,
     ...adminCategorySwagger.paths,
-    ...adminCollectionSwagger.paths
+    ...adminCollectionSwagger.paths,
+    ...adminBannerSwagger.paths
     // ...productSwagger.paths
   }
 });

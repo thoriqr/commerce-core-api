@@ -1,12 +1,12 @@
 import multer from "multer";
-import { ALLOWED_TYPES } from "./banner.constants";
+import { ALLOWED_TYPES, UPLOAD_FILE } from "./banner.constants";
 
 const storage = multer.memoryStorage();
 
 export const bannerImageUpload = multer({
   storage,
   limits: {
-    fileSize: 6 * 1024 * 1024 // 2MB
+    fileSize: UPLOAD_FILE.BANNER_FILE_SIZE
   },
   fileFilter(req, file, cb) {
     if (!ALLOWED_TYPES.includes(file.mimetype as any)) {
