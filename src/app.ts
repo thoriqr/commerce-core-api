@@ -53,10 +53,7 @@ app.use(
       operationsSorter: "method",
       docExpansion: "none"
     },
-    customSiteTitle: "Commerce API Docs",
-    customCss: `
-      .swagger-ui .topbar { display: none }
-    `
+    customSiteTitle: "Commerce API Docs"
   })
 );
 

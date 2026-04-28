@@ -1,5 +1,5 @@
 import z from "zod";
-import { VARIANT_LIMITS } from "./product.constants";
+import { ALLOWED_IMG_FORMAT, ALLOWED_TYPES, UPLOAD_FILE, VARIANT_LIMITS } from "./product.constants";
 import { PRODUCT_LIMITS } from "@/shared/product/product.constants";
 
 const idSchema = z.string().min(1);
@@ -231,3 +231,155 @@ export type ProductQueryParamsSchema = z.infer<typeof productQueryParams>;
 export type VariantSchema = z.infer<typeof variantSchema>;
 export type VariantDimensionSchema = z.infer<typeof variantDimensionSchema>;
 export type UpdateProductStatusSchema = z.infer<typeof updateProductStatusSchema>;
+
+// FOR DOCS
+
+export const productUpsertExample = {
+  name: "T-Shirt Basic",
+  description: "Comfortable cotton t-shirt",
+  status: "ACTIVE",
+  categoryId: 1,
+  collectionIds: [1, 2],
+
+  images: [
+    {
+      sortOrder: 0,
+      originalFileName: "main.jpg"
+    }
+  ],
+
+  variantDimension: [
+    {
+      id: "color",
+      name: "Color",
+      options: [
+        { id: "red", value: "Red", hexColor: "#FF0000" },
+        { id: "blue", value: "Blue", hexColor: "#0000FF" }
+      ]
+    },
+    {
+      id: "size",
+      name: "Size",
+      options: [
+        { id: "m", value: "M" },
+        { id: "l", value: "L" }
+      ]
+    }
+  ],
+
+  variants: [
+    {
+      clientId: "temp-1",
+      price: 100000,
+      stock: 10,
+      status: "ACTIVE",
+      isPrimary: true,
+      options: [
+        { dimensionId: "color", optionId: "red" },
+        { dimensionId: "size", optionId: "m" }
+      ]
+    },
+    {
+      clientId: "temp-2",
+      price: 100000,
+      stock: 5,
+      status: "ACTIVE",
+      isPrimary: false,
+      options: [
+        { dimensionId: "color", optionId: "blue" },
+        { dimensionId: "size", optionId: "l" }
+      ]
+    }
+  ]
+};
+
+const bytesToMB = (bytes: number) => bytes / (1024 * 1024);
+
+export const createProductRequestSchema = z.object({
+  payload: z.string().meta({
+    description: `
+JSON stringified product payload.
+
+### Structure overview
+
+- \`name\`: string
+- \`description\`: string
+- \`status\`: ACTIVE | INACTIVE | ARCHIVED
+- \`categoryId\`: number
+- \`collectionIds\`: number[]
+
+- \`images\`: array of product images (min 1 required)
+- \`variants\`: array of variants (must have exactly one primary)
+- \`variantDimension\`: variant dimensions and options
+
+### Important rules
+
+Product must have at least one image.  
+Exactly one variant must be marked as isPrimary.  
+If product is ACTIVE, the primary variant must also be ACTIVE.  
+Variant product must have options.  
+Single product must not have options.
+
+### Example (before stringify)
+
+\`\`\`json
+${JSON.stringify(productUpsertExample, null, 2)}
+\`\`\`
+
+### Example usage
+
+\`\`\`js
+formData.append("payload", JSON.stringify(product));
+\`\`\`
+`
+  }),
+
+  productImages: z
+    .array(
+      z
+        .file()
+        .max(UPLOAD_FILE.PRODUCT_FILE_SIZE)
+        .mime([...ALLOWED_TYPES])
+    )
+    .max(UPLOAD_FILE.MAX_PRODUCT_IMG)
+    .meta({
+      description: `
+Product images (max ${UPLOAD_FILE.MAX_PRODUCT_IMG} files).
+
+Accepts multiple files
+Supported formats: ${ALLOWED_IMG_FORMAT.join(", ")}
+Max size: ${bytesToMB(UPLOAD_FILE.PRODUCT_FILE_SIZE)}MB per file
+
+Example:
+Use multiple form-data fields with the same name:
+
+\`\`\`
+productImages: file1.jpg
+productImages: file2.png
+\`\`\`
+`
+    }),
+
+  variantImages: z
+    .array(
+      z
+        .file()
+        .max(UPLOAD_FILE.PRODUCT_FILE_SIZE)
+        .mime([...ALLOWED_TYPES])
+    )
+    .max(UPLOAD_FILE.MAX_VARIANT_IMG)
+    .optional()
+    .meta({
+      description: `
+Variant images (optional, max ${UPLOAD_FILE.MAX_VARIANT_IMG} files).
+
+Accepts multiple files
+Same behavior as \`productImages\`
+
+\`\`\`
+variantImages: variant1.jpg
+variantImages: variant2.png
+\`\`\`
+`
+    })
+});

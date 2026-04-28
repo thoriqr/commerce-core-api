@@ -103,3 +103,10 @@ export const tooManyRequestsError = (message = "Too many attempts, please try ag
     code: ERROR_CODE.TOO_MANY_REQUESTS,
     message
   });
+
+export const serverError = (message = "Internal server error") =>
+  errorResponse({
+    description: "Internal server error",
+    code: ERROR_CODE.INTERNAL_SERVER_ERROR,
+    message
+  });

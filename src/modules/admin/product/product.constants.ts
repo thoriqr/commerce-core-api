@@ -4,8 +4,9 @@ export const UPLOAD_FILE = {
   PRODUCT_FIELD: "productImages",
   VARIANT_FIELD: "variantImages",
   MAX_PRODUCT_IMG: 5,
-  MAX_VARIANT_IMG: 10
-};
+  MAX_VARIANT_IMG: 10,
+  PRODUCT_FILE_SIZE: 2 * 1024 * 1024
+} as const;
 
 export const VARIANT_LIMITS = {
   // schema
