@@ -18,6 +18,6 @@ const controller = new OrderController(service);
 router.get("/", controller.getOrders);
 router.get("/:orderId", controller.getOrder);
 router.post("/:orderId/ship", controller.markAsShipped);
-router.post("/:orderId/deliver", controller.markAsDelivered);
+// router.post("/:orderId/deliver", controller.markAsDelivered);
 
 export default router;

@@ -19,6 +19,6 @@ router.post("/", controller.create);
 router.get("/:dimensionPresetId", controller.getById);
 router.put("/:dimensionPresetId", controller.update);
 router.delete("/:dimensionPresetId", controller.remove);
-router.put("/actions/reorder", controller.reorderDimensionValues);
+// router.put("/actions/reorder", controller.reorderDimensionValues);
 
 export default router;

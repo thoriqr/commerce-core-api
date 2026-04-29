@@ -1,7 +1,10 @@
 import z from "zod";
 
 export const shipmentSchema = z.object({
-  trackingNumber: z.string().min(5).max(100)
+  trackingNumber: z.string().min(5).max(100).meta({
+    description: "Shipment tracking number (simulated)",
+    example: "TRX-9F3K2L8M1N"
+  })
 });
 
 export const getOrdersQuerySchema = z.object({

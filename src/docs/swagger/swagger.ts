@@ -7,6 +7,7 @@ import { adminCategorySwagger } from "@/modules/admin/category/category.swagger"
 import { adminCollectionSwagger } from "@/modules/admin/collection/collection.swagger";
 import { adminBannerSwagger } from "@/modules/admin/marketing/banner.swagger";
 import { adminVariantPresetSwagger } from "@/modules/admin/variant-preset/variant-preset.swagger";
+import { adminOrderSwagger } from "@/modules/admin/order/order.swagger";
 
 export const swaggerSpec = createDocument({
   openapi: "3.1.0",
@@ -39,7 +40,8 @@ export const swaggerSpec = createDocument({
     ...adminCategorySwagger.paths,
     ...adminCollectionSwagger.paths,
     ...adminBannerSwagger.paths,
-    ...adminVariantPresetSwagger.paths
+    ...adminVariantPresetSwagger.paths,
+    ...adminOrderSwagger.paths
     // ...productSwagger.paths
   }
 });
