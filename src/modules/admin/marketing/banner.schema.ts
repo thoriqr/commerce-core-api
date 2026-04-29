@@ -47,11 +47,24 @@ export const imageIdParams = z.object({
 export const bannerReorderSchema = z
   .array(
     z.object({
-      id: z.number().positive(),
-      sortOrder: z.number().positive()
+      id: z.number().positive().meta({
+        description: "Banner ID",
+        example: 1
+      }),
+      sortOrder: z.number().positive().meta({
+        description: "New sort order position",
+        example: 10
+      })
     })
   )
-  .min(1);
+  .min(1)
+  .meta({
+    description: "List of banners with updated sort order",
+    example: [
+      { id: 1, sortOrder: 10 },
+      { id: 2, sortOrder: 20 }
+    ]
+  });
 
 export const bannerImagesQueryParams = z.object({
   page: z.coerce.number().min(1).default(1),

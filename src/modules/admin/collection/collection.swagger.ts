@@ -103,8 +103,7 @@ Collections are used to group products (e.g. promotions, seasonal items).
 
 Note:
 - The \`slug\` must be unique.
-- If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "menswear-2").
-- This endpoint will not return a conflict error for duplicate slugs.
+- If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "new-arrivals-2").
 `,
 
         security: [

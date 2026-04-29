@@ -107,8 +107,9 @@ This endpoint supports:
 - Child category (set \`parentId\` to an existing category ID)
 
 Note:
-- Categories are not recursive in this API.
 - Each category belongs to a single parent (or none for root).
+- The \`slug\` must be unique.
+- If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "menswear-2").
 `,
 
         security: [
@@ -214,6 +215,7 @@ Returns basic category information including parent reference.
           404: notFoundError("Category not found")
         }
       },
+
       put: {
         tags: ["Admin Categories"],
         summary: "Update category",
@@ -221,6 +223,10 @@ Returns basic category information including parent reference.
 Update an existing category.
 
 This endpoint updates category details such as name, slug, description, and status.
+
+Note:
+- The \`slug\` must be unique.
+- If the provided slug conflicts with another category, a unique slug will be automatically generated.
 
 `,
 
@@ -267,6 +273,7 @@ This endpoint updates category details such as name, slug, description, and stat
           404: notFoundError("Category not found")
         }
       },
+
       delete: {
         tags: ["Admin Categories"],
         summary: "Delete category",
