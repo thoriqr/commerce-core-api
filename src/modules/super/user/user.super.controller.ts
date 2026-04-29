@@ -1,4 +1,3 @@
-import { userAdminQuerySchema } from "@/modules/admin/user/user.admin.schema";
 import { Request, Response } from "express";
 import { sendSuccess } from "@/utils/send-success";
 import { UserSuperService } from "./user.super.service";

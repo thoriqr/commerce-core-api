@@ -30,10 +30,9 @@ const AUTH_BASE = ROUTES.AUTH;
 
 export const authSwagger = {
   tags: [
-    {
-      name: "Auth",
-      description: "Authentication endpoints"
-    }
+    { name: "Auth", description: "Authentication endpoints" },
+    { name: "Session", description: "Session management" },
+    { name: "Admin Invitation", description: "Admin invitation flow" }
   ],
 
   paths: {

@@ -8,6 +8,9 @@ import { adminCollectionSwagger } from "@/modules/admin/collection/collection.sw
 import { adminBannerSwagger } from "@/modules/admin/marketing/banner.swagger";
 import { adminVariantPresetSwagger } from "@/modules/admin/variant-preset/variant-preset.swagger";
 import { adminOrderSwagger } from "@/modules/admin/order/order.swagger";
+import { adminDashboardSwagger } from "@/modules/admin/dashboard/dashboard.swagger";
+import { adminUserSwagger } from "@/modules/admin/user/user.admin.swagger";
+import { superUserSwagger } from "@/modules/super/user/user.super.swagger";
 
 export const swaggerSpec = createDocument({
   openapi: "3.1.0",
@@ -22,6 +25,19 @@ export const swaggerSpec = createDocument({
     {
       url: `${env.API_URL}${API_PREFIX}`
     }
+  ],
+
+  tags: [
+    ...authSwagger.tags,
+    ...adminProductSwagger.tags,
+    ...adminCategorySwagger.tags,
+    ...adminCollectionSwagger.tags,
+    ...adminBannerSwagger.tags,
+    ...adminVariantPresetSwagger.tags,
+    ...adminOrderSwagger.tags,
+    ...adminUserSwagger.tags,
+    ...adminDashboardSwagger.tags,
+    ...superUserSwagger.tags
   ],
 
   components: {
@@ -41,7 +57,9 @@ export const swaggerSpec = createDocument({
     ...adminCollectionSwagger.paths,
     ...adminBannerSwagger.paths,
     ...adminVariantPresetSwagger.paths,
-    ...adminOrderSwagger.paths
-    // ...productSwagger.paths
+    ...adminOrderSwagger.paths,
+    ...adminDashboardSwagger.paths,
+    ...adminUserSwagger.paths,
+    ...superUserSwagger.paths
   }
 });
