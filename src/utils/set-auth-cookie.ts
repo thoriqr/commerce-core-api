@@ -5,12 +5,13 @@ import { AppClient } from "@/types/app-client";
 
 const isProd = env.NODE_ENV === "production";
 
-const baseCookieOptions = {
+export const baseCookieOptions = {
   secure: isProd,
   sameSite: (isProd ? "none" : "lax") as "none" | "lax",
   path: "/",
   domain: isProd ? ".commerce.web.id" : undefined
 };
+
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string, client: AppClient) {
   const cookies = getCookieNames(client);
 

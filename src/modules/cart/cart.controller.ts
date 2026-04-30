@@ -2,6 +2,7 @@ import { sendSuccess } from "@/utils/send-success";
 import { CartService } from "./cart.service";
 import { Request, Response } from "express";
 import { addItemSchema, deleteCartItemSchema, updateCartItemSchema } from "./cart.schema";
+import { baseCookieOptions } from "@/utils/set-auth-cookie";
 
 export class CartController {
   constructor(private readonly service: CartService) {}
@@ -14,9 +15,8 @@ export class CartController {
 
     if (created) {
       res.cookie("cart_id", cartId, {
-        httpOnly: false,
-        sameSite: "lax",
-        path: "/"
+        ...baseCookieOptions,
+        httpOnly: false
       });
     }
 
@@ -37,9 +37,8 @@ export class CartController {
 
     if (created) {
       res.cookie("cart_id", cartId, {
-        httpOnly: false,
-        sameSite: "lax",
-        path: "/"
+        ...baseCookieOptions,
+        httpOnly: false
       });
     }
 
@@ -63,9 +62,8 @@ export class CartController {
 
     if (created) {
       res.cookie("cart_id", cartId, {
-        httpOnly: false,
-        sameSite: "lax",
-        path: "/"
+        ...baseCookieOptions,
+        httpOnly: false
       });
     }
 
@@ -88,9 +86,8 @@ export class CartController {
 
     if (created) {
       res.cookie("cart_id", cartId, {
-        httpOnly: false,
-        sameSite: "lax",
-        path: "/"
+        ...baseCookieOptions,
+        httpOnly: false
       });
     }
 

@@ -14,6 +14,10 @@ import { superUserSwagger } from "@/modules/super/user/user.super.swagger";
 import { warehouseSwagger } from "@/modules/warehouse/warehouse.swagger";
 import { shippingSwagger } from "@/modules/shipping/shipping.swagger";
 import { paymentSwagger } from "@/modules/payment/payment.swagger";
+import { cartSwagger } from "@/modules/cart/cart.swagger";
+import { userSwagger } from "@/modules/user/user.swagger";
+import { userCheckoutSwagger } from "@/modules/user/checkout/checkout.user.swagger";
+import { userOrderSwagger } from "@/modules/user/order/order.user.swagger";
 
 export const swaggerSpec = createDocument({
   openapi: "3.1.0",
@@ -43,7 +47,11 @@ export const swaggerSpec = createDocument({
     ...superUserSwagger.tags,
     ...warehouseSwagger.tags,
     ...shippingSwagger.tags,
-    ...paymentSwagger.tags
+    ...paymentSwagger.tags,
+    ...cartSwagger.tags,
+    ...userSwagger.tags,
+    ...userCheckoutSwagger.tags,
+    ...userOrderSwagger.tags
   ],
 
   components: {
@@ -69,6 +77,10 @@ export const swaggerSpec = createDocument({
     ...superUserSwagger.paths,
     ...warehouseSwagger.paths,
     ...shippingSwagger.paths,
-    ...paymentSwagger.paths
+    ...paymentSwagger.paths,
+    ...cartSwagger.paths,
+    ...userSwagger.paths,
+    ...userCheckoutSwagger.paths,
+    ...userOrderSwagger.paths
   }
 });
