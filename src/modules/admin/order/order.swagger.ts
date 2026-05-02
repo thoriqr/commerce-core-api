@@ -437,13 +437,14 @@ Includes pricing breakdown, shipping details, payment information, and ordered i
         description: `
 Mark an order as shipped.
 
-This endpoint is used to simulate the shipping process in the system.
-It updates the shipment status and records the provided tracking number.
+This endpoint is used to simulate the shipping process in the system.  
+It updates the shipment status and records the provided tracking number.  
 
 Note:
-- This is a simulated operation and does not integrate with any external shipping or tracking service.
-- The tracking number is stored for reference purposes only.
-- Once marked as shipped, the order can later be completed by the customer.
+
+This is a simulated operation and does not integrate with any external shipping or tracking service.  
+The tracking number is stored for reference purposes only.  
+Once marked as shipped, the order can later be completed by the customer.
 `,
 
         security: [

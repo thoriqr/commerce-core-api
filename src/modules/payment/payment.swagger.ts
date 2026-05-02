@@ -22,12 +22,13 @@ Receive payment status notifications from Midtrans.
 
 This endpoint is called automatically by Midtrans after a transaction status changes.
 
-Note:
-- Payload structure follows Midtrans API specification.
-- Requests are verified using a signature key.
-- Invalid or unverified payloads will be ignored.
-- Maps external payment status to internal order state.
-- This endpoint is idempotent and always returns a success response to prevent retries.
+Note:  
+
+Payload structure follows Midtrans API specification.  
+Requests are verified using a signature key.  
+Invalid or unverified payloads will be ignored.  
+Maps external payment status to internal order state.  
+This endpoint is idempotent and always returns a success response to prevent retries.
 `,
 
         requestBody: {

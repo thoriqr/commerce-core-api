@@ -24,8 +24,9 @@ Retrieve all collections.
 
 This endpoint returns a flat list of collections along with the number of products in each collection.
 
-Used for:
-- selecting collections when assigning products
+Used for:  
+
+Selecting collections when assigning products.
 `,
 
         security: [
@@ -101,9 +102,10 @@ Create a new collection.
 
 Collections are used to group products (e.g. promotions, seasonal items).
 
-Note:
-- The \`slug\` must be unique.
-- If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "new-arrivals-2").
+Note:  
+
+The \`slug\` must be unique.  
+If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "new-arrivals-2").
 `,
 
         security: [
@@ -206,9 +208,10 @@ Update an existing collection.
 
 This endpoint updates collection details such as name, slug, description, and status.
 
-Note:
-- The \`slug\` must be unique.
-- If the provided slug conflicts with another collection, a unique slug will be automatically generated.
+Note:  
+
+The \`slug\` must be unique.  
+If the provided slug conflicts with another collection, a unique slug will be automatically generated.
 `,
 
         security: [
@@ -254,9 +257,10 @@ Note:
         description: `
 Delete a collection by its ID.
 
-Note:
-- A collection cannot be deleted if it is still used by other resources (e.g. marketing banners).
-- This validation is handled at the application level.
+Note: 
+
+A collection cannot be deleted if it is still used by other resources (e.g. marketing banners).  
+This validation is handled at the application level.  
 
 Make sure the collection is not referenced before deleting.
 `,
@@ -304,9 +308,10 @@ Reorder collections.
 
 This endpoint is typically used for drag-and-drop sorting in the admin UI.
 
-Note:
-- This operation updates only the \`sortOrder\` field.
-- The request is processed in batch.
+Note:  
+
+This operation updates only the \`sortOrder\` field.  
+The request is processed in batch.
 `,
 
         security: [

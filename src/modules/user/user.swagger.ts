@@ -158,7 +158,7 @@ Includes account details, default address, and linked authentication providers.
         description: `
 Update the authenticated user's profile information.
 
-Currently supports updating display name.
+Currently supports updating display name.  
 Additional fields may be added in the future.
 `,
 
@@ -321,9 +321,10 @@ Create a new address for the authenticated user.
 
 Used for storing shipping addresses.
 
-Note:
-- Address count may be limited based on system configuration.
-- Default address handling may be managed separately.
+Note:  
+
+Address count may be limited based on system configuration.  
+Default address handling may be managed separately.
 `,
 
         security: [
@@ -366,7 +367,7 @@ Note:
         description: `
 Retrieve a specific address for the authenticated user.
 
-This endpoint is typically used to populate address forms for editing.
+This endpoint is typically used to populate address forms for editing.  
 Returns location identifiers (province, city, district) instead of display names.
 `,
 
@@ -445,8 +446,9 @@ Update an existing address for the authenticated user.
 
 All fields follow the same structure as create address.
 
-Note:
-- Default address handling may be managed separately.
+Note:  
+
+Default address handling may be managed separately.
 `,
 
         security: [

@@ -39,7 +39,9 @@ Create a new product with images and variants.
 
 This endpoint accepts **multipart/form-data**.
 
-Note: The \`payload\` field must be sent as a JSON string.
+Note:  
+
+The \`payload\` field must be sent as a JSON string.  
 
 Refer to the request body fields below for detailed structure and examples.
 `,
@@ -83,11 +85,12 @@ Retrieve a paginated list of products with filtering and sorting.
 
 This endpoint is used in the product listing page.
 
-Supports:
-- search (q)
-- filtering (status, stock, price range, variant type)
-- sorting
-- pagination
+Supports:  
+
+search (q)  
+filtering (status, stock, price range, variant type)  
+sorting  
+pagination  
 `,
 
         security: [
@@ -176,9 +179,10 @@ Retrieve a product by its ID.
 
 The response includes product details, images, variants, and variant dimensions.
 
-This endpoint supports both:
-- Single product (no variants)
-- Variant product (with dimensions and options)
+This endpoint supports both:  
+
+Single product (no variants).  
+Variant product (with dimensions and options).
 `,
 
         security: [
@@ -224,9 +228,11 @@ Update an existing product with images and variants.
 
 This endpoint accepts **multipart/form-data**.
 
-Note: The \`payload\` field must be sent as a JSON string.
+Note:  
 
-The payload structure is the same as create product. Existing data will be updated based on the provided payload.
+The \`payload\` field must be sent as a JSON string.  
+
+The payload structure is the same as create product. Existing data will be updated based on the provided payload.  
 
 Refer to the request body fields below for detailed structure and examples.
 `,
@@ -322,9 +328,10 @@ Retrieve category options for product selection.
 
 This endpoint is used in product create/update forms to populate category dropdowns.
 
-Each option includes:
-- \`value\`: category ID
-- \`label\`: full category path (e.g. "Menswear / Men Clothes / Hoodies")
+Each option includes:  
+
+\`value\`: category ID  
+\`label\`: full category path (e.g. "Menswear / Men Clothes / Hoodies")  
 `,
 
         security: [
@@ -383,9 +390,10 @@ Retrieve collection options for product selection.
 
 This endpoint is used in product create/update forms to populate collection selectors.
 
-Each option includes:
-- \`value\`: collection ID
-- \`label\`: collection name
+Each option includes:  
+
+\`value\`: collection ID  
+\`label\`: collection name  
 `,
 
         security: [
@@ -440,13 +448,16 @@ Retrieve predefined variant dimension presets.
 
 This endpoint is used in product create/update forms to quickly select common dimensions (e.g. Color, Size).
 
-Note:
-- Presets are optional helpers.
-- Custom dimensions can still be defined manually in the product payload.
+Note:  
 
-Each option includes:
-- \`value\`: preset ID
-- \`label\`: dimension name
+Presets are optional helpers.  
+Custom dimensions can still be defined manually in the product payload.  
+
+Each option includes:  
+
+
+\`value\`: preset ID  
+\`label\`: dimension name
 `,
 
         security: [
@@ -496,14 +507,18 @@ Retrieve available values for a specific dimension preset.
 
 This endpoint is used in product create/update forms after selecting a dimension preset (e.g. Color → Red, Blue).
 
-Note:
-- Always returns 200.
-- Returns an empty array if no values are found.
+Note:  
 
-Each option may include:
-- \`value\`: option ID
-- \`label\`: option value (e.g. Red, Blue)
-- \`hexColor\`: optional color representation
+
+Always returns 200.  
+Returns an empty array if no values are found. 
+
+Each option may include:  
+
+
+\`value\`: option ID  
+\`label\`: option value (e.g. Red, Blue)  
+\`hexColor\`: optional color representation
 `,
 
         security: [

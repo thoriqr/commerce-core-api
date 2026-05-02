@@ -21,13 +21,15 @@ export const cartSwagger = {
         description: `
 Retrieve the current cart.
 
-This endpoint supports both guest and authenticated users:
-- If authenticated, the cart is linked to the user.
-- If not authenticated, a guest cart is managed using a cookie (\`cart_id\`).
-- When a guest logs in, the cart will be merged automatically.
+This endpoint supports both guest and authenticated users:  
 
-Note:
-- This endpoint always returns a cart and does not return an error.
+If authenticated, the cart is linked to the user.  
+If not authenticated, a guest cart is managed using a cookie (\`cart_id\`).  
+When a guest logs in, the cart will be merged automatically.
+
+Note:  
+
+This endpoint always returns a cart and does not return an error.
 `,
 
         security: [
@@ -167,8 +169,8 @@ Note:
         description: `
 Add a product variant to the cart.
 
-This endpoint supports both guest and authenticated users.
-A cart will be created automatically if none exists.
+This endpoint supports both guest and authenticated users.  
+A cart will be created automatically if none exists.  
 If the same variant already exists in the cart, the quantity will be updated.
 `,
 
@@ -211,11 +213,12 @@ If the same variant already exists in the cart, the quantity will be updated.
         description: `
 Update the quantity of a cart item.
 
-This endpoint supports both guest and authenticated users.
+This endpoint supports both guest and authenticated users.  
 A cart will be created automatically if none exists.
 
-Note:
-- Setting quantity to 0 will remove the item from the cart.
+Note:  
+
+Setting quantity to 0 will remove the item from the cart.
 `,
 
         security: [
@@ -259,11 +262,12 @@ Note:
         description: `
 Remove a specific item from the cart.
 
-This endpoint supports both guest and authenticated users.
+This endpoint supports both guest and authenticated users.  
 A cart will be created automatically if none exists.
 
-Note:
-- This is equivalent to setting the item quantity to 0 using the update endpoint.
+Note:  
+
+This is equivalent to setting the item quantity to 0 using the update endpoint.
 `,
 
         security: [

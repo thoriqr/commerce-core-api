@@ -1,21 +1,10 @@
 import { PRODUCT_LOW_STOCK_THRESHOLD } from "@/shared/product/product.constants";
-import {
-  ProductCardDTO,
-  ProductDetailDTO,
-  ProductFilterDimensionDTO,
-  ProductFilterValueDTO,
-  ProductListingDTO,
-  VariantDetailDTO
-} from "./product.dto";
+import { ProductCardDTO, ProductDetailDTO, ProductFilterDimensionDTO, ProductFilterValueDTO, VariantDetailDTO } from "./product.dto";
 import { DimensionRow, ImageRow, ProductBasicRow, ProductCardRow, ProductFilterRow, VariantDetailRow, VariantRow } from "./product.types";
 import { ProductStatus } from "@/shared/product/product.types";
 
-export function mapProductListing(rows: ProductCardRow[], nextCursor: string | null, hasMore: boolean): ProductListingDTO {
-  return {
-    items: rows.map((r) => mapProductCard(r)),
-    nextCursor,
-    hasMore
-  };
+export function mapProductListing(rows: ProductCardRow[]): ProductCardDTO[] {
+  return rows.map((r) => mapProductCard(r));
 }
 
 function mapProductCard(row: ProductCardRow): ProductCardDTO {

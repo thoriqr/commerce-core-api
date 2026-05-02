@@ -22,7 +22,7 @@ export const superUserSwagger = {
         description: `
 Retrieve a paginated list of users.
 
-This endpoint provides full visibility for super admins, including user roles and demo status.
+This endpoint provides full visibility for super admins, including user roles and demo status.  
 Supports basic search by email.
 `,
 
@@ -141,10 +141,11 @@ Supports basic search by email.
         description: `
 Revoke all active sessions for a specific user.
 
-This action forces the user to be logged out from all devices.
+This action forces the user to be logged out from all devices.  
 
-Note:
-- Typically used for security purposes (e.g. compromised accounts or forced logout).
+Note:  
+
+Typically used for security purposes (e.g. compromised accounts or forced logout).
 `,
 
         security: [

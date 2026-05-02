@@ -23,11 +23,12 @@ Retrieve a list of collections with a limited set of product previews.
 
 This endpoint is primarily used for storefront sections such as the homepage, where collections are displayed with a small subset of products.
 
-Note:
-- Each collection includes a limited number of products (controlled internally).
-- This endpoint is optimized for display purposes and not intended for full product listing.
-- The \`hasMoreProducts\` flag indicates whether more products are available in the collection.
-- Supports HTTP caching via ETag.
+Note:  
+
+Each collection includes a limited number of products (controlled internally).  
+This endpoint is optimized for display purposes and not intended for full product listing.  
+The \`hasMoreProducts\` flag indicates whether more products are available in the collection.  
+Supports HTTP caching via ETag.
 `,
 
         responses: {
@@ -147,13 +148,14 @@ Note:
         description: `
 Retrieve detailed information for a specific collection.
 
-This endpoint provides basic collection metadata such as name and description.
+This endpoint provides basic collection metadata such as name and description.  
 
-Note:
-- This endpoint does not return product listings.
-- Intended to be used together with collection product endpoints.
-- Description may be a fallback value if not explicitly defined.
-- Supports HTTP caching via ETag.
+Note:  
+
+This endpoint does not return product listings.  
+Intended to be used together with collection product endpoints.  
+Description may be a fallback value if not explicitly defined.  
+Supports HTTP caching via ETag.
 `,
 
         requestParams: {

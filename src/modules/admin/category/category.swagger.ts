@@ -32,12 +32,14 @@ Retrieve all parent (root) categories.
 
 This endpoint returns only categories with no parent (parentId = null).
 
-Used for:
-- category listing (top-level)
-- selecting parent when creating a new category
+Used for:  
+
+Category listing (top-level).  
+Selecting parent when creating a new category.
 
 Note:
-- This endpoint does not return child categories
+
+This endpoint does not return child categories
 `,
 
         security: [
@@ -102,14 +104,16 @@ Note:
         description: `
 Create a new category.
 
-This endpoint supports:
-- Root category (set \`parentId\` to null)
-- Child category (set \`parentId\` to an existing category ID)
+This endpoint supports:  
+
+Root category (set \`parentId\` to null).  
+Child category (set \`parentId\` to an existing category ID)  
 
 Note:
-- Each category belongs to a single parent (or none for root).
-- The \`slug\` must be unique.
-- If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "menswear-2").
+
+Each category belongs to a single parent (or none for root).  
+The \`slug\` must be unique.  
+If a duplicate slug is detected, the system will automatically generate a unique slug (e.g. "menswear-2").
 `,
 
         security: [
@@ -161,7 +165,7 @@ Note:
         tags: ["Admin Categories"],
         summary: "Get category by ID",
         description: `
-Retrieve a single category by its ID.
+Retrieve a single category by its ID.  
 
 Returns basic category information including parent reference.
 `,
@@ -225,8 +229,9 @@ Update an existing category.
 This endpoint updates category details such as name, slug, description, and status.
 
 Note:
-- The \`slug\` must be unique.
-- If the provided slug conflicts with another category, a unique slug will be automatically generated.
+
+The \`slug\` must be unique.  
+If the provided slug conflicts with another category, a unique slug will be automatically generated.
 
 `,
 
@@ -283,8 +288,9 @@ Delete a category by its ID.
 A category can only be deleted if it has no dependencies.
 
 Deletion will fail if the category:
-- is assigned to any products
-- has child categories (acts as a parent)
+
+Is assigned to any products.  
+Has child categories (acts as a parent).
 
 Ensure all references are removed or reassigned before deletion.
 `,
@@ -333,15 +339,17 @@ Retrieve a category along with all its descendant categories (tree structure).
 
 This endpoint returns a nested structure using the \`children\` field recursively.
 
-Used for:
-- category hierarchy display
-- tree view UI
-- nested category selection
+Used for:  
 
-Note:
-- The response always includes the requested parent as the root node.
-- Each category may contain a \`children\` array.
-- Leaf nodes will have an empty \`children\` array.
+Category hierarchy display.  
+Tree view UI.  
+Nested category selection.  
+
+Note:  
+
+The response always includes the requested parent as the root node.  
+Each category may contain a \`children\` array.  
+Leaf nodes will have an empty \`children\` array.  
 `,
 
         security: [
@@ -448,10 +456,11 @@ Reorder categories within the same parent.
 
 This endpoint is typically used for drag-and-drop reordering in the UI.
 
-Note:
-- All categories must belong to the specified parent.
-- Only \`sortOrder\` will be updated.
-- This operation is applied in batch.
+Note:  
+
+All categories must belong to the specified parent.  
+Only \`sortOrder\` will be updated.  
+This operation is applied in batch.  
 `,
 
         security: [

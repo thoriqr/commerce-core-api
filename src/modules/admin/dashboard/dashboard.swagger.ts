@@ -21,7 +21,7 @@ export const adminDashboardSwagger = {
         description: `
 Retrieve dashboard statistics and analytics.
 
-Includes summary metrics, charts, best selling products, and recent orders.
+Includes summary metrics, charts, best selling products, and recent orders.  
 Supports optional date filtering.
 `,
 

@@ -423,11 +423,12 @@ Includes pricing breakdown, shipping info, timeline, and ordered items.
         description: `
 Cancel an order before it is paid or finalized.
 
-Note:
-- Only the order owner can perform this action.
-- Orders that are already paid cannot be cancelled.
-- This operation is idempotent. Cancelling an already cancelled order will still return success.
-- Once cancelled, an order cannot be restored.
+Note:  
+
+Only the order owner can perform this action.  
+Orders that are already paid cannot be cancelled.  
+This operation is idempotent. Cancelling an already cancelled order will still return success.  
+Once cancelled, an order cannot be restored.
 `,
 
         security: [
@@ -469,11 +470,12 @@ Confirm that the order has been received by the user.
 
 This will mark the shipment as delivered and complete the order.
 
-Note:
-- Only the order owner can perform this action.
-- The order must be in a shipped state.
-- This operation is idempotent. If the order is already marked as delivered, it will still return success.
-- This action finalizes the order and cannot be reversed.
+Note:  
+
+Only the order owner can perform this action.  
+The order must be in a shipped state.  
+This operation is idempotent. If the order is already marked as delivered, it will still return success.  
+This action finalizes the order and cannot be reversed.
 `,
 
         security: [
@@ -515,10 +517,11 @@ Generate or retrieve a Midtrans Snap token for the order.
 
 This token is used to initiate the payment process on the client side.
 
-Note:
-- Only unpaid and active orders can request a payment token.
-- If a token already exists, the same token will be returned.
-- The token can be used with Midtrans Snap (popup or redirect flow).
+Note:  
+
+Only unpaid and active orders can request a payment token.  
+If a token already exists, the same token will be returned.  
+The token can be used with Midtrans Snap (popup or redirect flow). 
 `,
 
         security: [

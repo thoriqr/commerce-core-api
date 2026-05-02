@@ -82,8 +82,9 @@ Retrieve a list of cities for a given province.
 
 Used when selecting address or warehouse location.
 
-Note:
-- Returns an empty array if no cities are found.
+Note:  
+
+Returns an empty array if no cities are found.
 `,
 
         security: [
@@ -149,8 +150,9 @@ Retrieve a list of districts for a given city.
 
 Used when selecting address or warehouse location.
 
-Note:
-- Returns an empty array if no districts are found.
+Note:  
+
+Returns an empty array if no districts are found.
 `,
 
         security: [

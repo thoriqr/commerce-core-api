@@ -193,7 +193,7 @@ export class ProductRepo {
     const etagSeed = await this.buildProductListingETagSeed(`category:${idPath}`, result.whereSql, result.bindings, qParams);
 
     return {
-      items: result.items,
+      rows: result.items,
       nextCursor: result.nextCursor,
       hasMore: result.hasMore,
       etagSeed
@@ -236,7 +236,7 @@ export class ProductRepo {
     const etagSeed = await this.buildProductListingETagSeed(`collection:${slug}`, result.whereSql, result.bindings, qParams);
 
     return {
-      items: result.items,
+      rows: result.items,
       nextCursor: result.nextCursor,
       hasMore: result.hasMore,
       etagSeed
@@ -270,7 +270,7 @@ export class ProductRepo {
     const etagSeed = await this.buildProductListingETagSeed(`search:${q}`, result.whereSql, result.bindings, qParams);
 
     return {
-      items: result.items,
+      rows: result.items,
       nextCursor: result.nextCursor,
       hasMore: result.hasMore,
       etagSeed

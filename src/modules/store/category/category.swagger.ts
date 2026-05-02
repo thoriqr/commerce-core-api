@@ -21,12 +21,13 @@ export const storeCategorySwagger = {
         description: `
 Retrieve hierarchical category data for storefront navigation (mega menu).
 
-This endpoint returns categories in a nested tree structure.
+This endpoint returns categories in a nested tree structure.  
 
-Caching:
-- This endpoint supports HTTP caching via ETag.
-- Clients may use the \`If-None-Match\` header to receive a 304 response when data has not changed.
-- Some frameworks may handle caching independently.
+Caching:  
+
+This endpoint supports HTTP caching via ETag.  
+Clients may use the \`If-None-Match\` header to receive a 304 response when data has not changed.  
+Some frameworks may handle caching independently.
 `,
 
         responses: {
@@ -165,9 +166,10 @@ Retrieve a list of popular categories based on sales.
 
 Categories are ranked by total sold items.
 
-Note:
-- Categories with zero sales may still appear as fallback results.
-- Supports HTTP caching via ETag.
+Note:  
+
+Categories with zero sales may still appear as fallback results.  
+Supports HTTP caching via ETag.
 `,
 
         responses: {
@@ -264,13 +266,14 @@ Note:
         description: `
 Retrieve detailed information for a category based on its slug path.
 
-This endpoint provides category metadata, breadcrumb navigation, and direct child categories.
+This endpoint provides category metadata, breadcrumb navigation, and direct child categories.  
 
-Note:
-- This endpoint does not return product listings.
-- Intended to be used together with category product endpoints.
-- Category description may be a fallback value if not explicitly defined.
-- Supports HTTP caching via ETag.
+Note:  
+
+This endpoint does not return product listings.  
+Intended to be used together with category product endpoints.  
+Category description may be a fallback value if not explicitly defined.  
+Supports HTTP caching via ETag.
 `,
 
         requestParams: {
@@ -403,13 +406,14 @@ Note:
         description: `
 Retrieve available filter options for a category based on its slug path.
 
-This endpoint returns variant dimensions (e.g. color, size) along with their available values and product counts.
+This endpoint returns variant dimensions (e.g. color, size) along with their available values and product counts. 
 
-Note:
-- This endpoint does not return product listings.
-- Intended to be used together with category product endpoints.
-- Filter values include a count indicating how many products match each option.
-- Supports HTTP caching via ETag.
+Note:  
+
+This endpoint does not return product listings.  
+Intended to be used together with category product endpoints.  
+Filter values include a count indicating how many products match each option.  
+Supports HTTP caching via ETag.
 `,
 
         requestParams: {

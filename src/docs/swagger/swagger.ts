@@ -21,6 +21,7 @@ import { userOrderSwagger } from "@/modules/user/order/order.user.swagger";
 import { storeCategorySwagger } from "@/modules/store/category/category.swagger";
 import { storeCollectionSwagger } from "@/modules/store/collection/collection.swagger";
 import { storeBannerSwagger } from "@/modules/store/marketing/banner-swagger";
+import { storeProductSwagger } from "@/modules/store/product/product.swagger";
 
 export const swaggerSpec = createDocument({
   openapi: "3.1.0",
@@ -57,7 +58,8 @@ export const swaggerSpec = createDocument({
     ...userOrderSwagger.tags,
     ...storeCategorySwagger.tags,
     ...storeCollectionSwagger.tags,
-    ...storeBannerSwagger.tags
+    ...storeBannerSwagger.tags,
+    ...storeProductSwagger.tags
   ],
 
   components: {
@@ -90,6 +92,7 @@ export const swaggerSpec = createDocument({
     ...userOrderSwagger.paths,
     ...storeCategorySwagger.paths,
     ...storeCollectionSwagger.paths,
-    ...storeBannerSwagger.paths
+    ...storeBannerSwagger.paths,
+    ...storeProductSwagger.paths
   }
 });

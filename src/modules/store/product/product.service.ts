@@ -27,30 +27,30 @@ export class ProductService {
   getByCategory = async (qParams: ProductByCategoryQueryParams) => {
     const idPath = await this.repo.getIdPathBySlugPath(qParams.slugPath);
 
-    const { items, nextCursor, hasMore, etagSeed } = await this.repo.getByCategoryIdPath(idPath, qParams);
+    const { rows, nextCursor, hasMore, etagSeed } = await this.repo.getByCategoryIdPath(idPath, qParams);
 
-    const dto = mapProductListing(items, nextCursor, hasMore);
+    const dto = mapProductListing(rows);
     const etag = generateETag(etagSeed);
 
-    return { dto, etag };
+    return { data: dto, meta: { hasMore, nextCursor }, etag };
   };
 
   getByCollection = async (qParams: ProductByCollectionQueryParams) => {
-    const { items, nextCursor, hasMore, etagSeed } = await this.repo.getByCollectionSlug(qParams);
+    const { rows, nextCursor, hasMore, etagSeed } = await this.repo.getByCollectionSlug(qParams);
 
-    const dto = mapProductListing(items, nextCursor, hasMore);
+    const dto = mapProductListing(rows);
     const etag = generateETag(etagSeed);
 
-    return { dto, etag };
+    return { data: dto, meta: { hasMore, nextCursor }, etag };
   };
 
   getBySearch = async (qParams: ProductBySearchQueryParams) => {
-    const { items, nextCursor, hasMore, etagSeed } = await this.repo.getBySearch(qParams);
+    const { rows, nextCursor, hasMore, etagSeed } = await this.repo.getBySearch(qParams);
 
-    const dto = mapProductListing(items, nextCursor, hasMore);
+    const dto = mapProductListing(rows);
     const etag = generateETag(etagSeed);
 
-    return { dto, etag };
+    return { data: dto, meta: { hasMore, nextCursor }, etag };
   };
 
   getSearchFilters = async (q: string) => {

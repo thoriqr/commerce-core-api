@@ -44,12 +44,13 @@ export class ProductController {
   getByCategory = async (req: Request, res: Response) => {
     const qParams = productByCategoryQueryParams.parse(req.query);
 
-    const { dto, etag } = await this.service.getByCategory(qParams);
+    const { data, meta, etag } = await this.service.getByCategory(qParams);
 
     sendStoreResponse({
       req,
       res,
-      data: dto,
+      data,
+      meta,
       etag,
       maxAge: 60
     });
@@ -58,12 +59,13 @@ export class ProductController {
   getByCollection = async (req: Request, res: Response) => {
     const qParams = productByCollectionQueryParams.parse(req.query);
 
-    const { dto, etag } = await this.service.getByCollection(qParams);
+    const { data, meta, etag } = await this.service.getByCollection(qParams);
 
     sendStoreResponse({
       req,
       res,
-      data: dto,
+      data,
+      meta,
       etag,
       maxAge: 60
     });
@@ -72,12 +74,13 @@ export class ProductController {
   getBySearch = async (req: Request, res: Response) => {
     const qParams = productBySearchQueryParams.parse(req.query);
 
-    const { dto, etag } = await this.service.getBySearch(qParams);
+    const { data, meta, etag } = await this.service.getBySearch(qParams);
 
     sendStoreResponse({
       req,
       res,
-      data: dto,
+      data,
+      meta,
       etag,
       maxAge: 60
     });

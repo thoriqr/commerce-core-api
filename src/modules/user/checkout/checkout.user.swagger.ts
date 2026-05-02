@@ -21,11 +21,12 @@ export const userCheckoutSwagger = {
         description: `
 Create a new checkout session from the current user's cart.
 
-This endpoint initializes the checkout process by capturing the current cart state.
+This endpoint initializes the checkout process by capturing the current cart state.  
 
-Note:
-- The checkout session prepares order data such as items, address, and shipping.
-- Payment is handled separately during the order process.
+Note:  
+
+The checkout session prepares order data such as items, address, and shipping.  
+Payment is handled separately during the order process.
 `,
 
         security: [
@@ -127,11 +128,12 @@ This is typically displayed during checkout to inform users where the order will
         description: `
 Retrieve a checkout session with its current state.
 
-This endpoint returns all information required to complete checkout, including items, address, and shipping selection.
+This endpoint returns all information required to complete checkout, including items, address, and shipping selection.  
 
-Note:
-- The session must be active (not expired, revoked, or completed).
-- The response includes a \`canPlaceOrder\` flag and \`reason\` to indicate whether the order can be placed.
+Note:  
+
+The session must be active (not expired, revoked, or completed).  
+The response includes a \`canPlaceOrder\` flag and \`reason\` to indicate whether the order can be placed.
 `,
 
         security: [
@@ -274,7 +276,7 @@ When null, the checkout session is ready to place an order.
         description: `
 Select an address for the checkout session.
 
-This assigns a shipping address to the current checkout session.
+This assigns a shipping address to the current checkout session.  
 It does not change the user's default address.
 `,
 
@@ -325,9 +327,10 @@ Calculate available shipping services and costs for the checkout session.
 
 This endpoint returns a list of available courier services based on the selected address and cart weight.
 
-Note:
-- A valid address must be selected before calculating shipping.
-- The result should be used for selecting a courier service in the next step.
+Note:  
+
+A valid address must be selected before calculating shipping.  
+The result should be used for selecting a courier service in the next step.
 `,
 
         security: [
@@ -439,8 +442,9 @@ Select a shipping method for the checkout session.
 
 This assigns the selected courier service to the checkout session and updates shipping cost and delivery estimation.
 
-Note:
-- The courier service must be selected from the result of the shipping cost calculation.
+Note:  
+
+The courier service must be selected from the result of the shipping cost calculation.
 `,
 
         security: [
@@ -490,16 +494,18 @@ Finalize the checkout session and create an order.
 
 This endpoint validates all checkout data, locks stock, and creates an order from the session.
 
-Note:
-- The checkout session must be complete and valid.
-- All items must be available with sufficient stock.
-- Address and shipping method must be selected.
-- The session must not be expired or already used.
+Note:  
 
-Common reasons:
-- Checkout session expired
-- Items are unavailable or out of stock
-- Address or shipping method not set
+The checkout session must be complete and valid.
+All items must be available with sufficient stock.
+Address and shipping method must be selected.
+The session must not be expired or already used.
+
+Common reasons:  
+
+Checkout session expired
+Items are unavailable or out of stock
+Address or shipping method not set  
 
 On success, an order will be created and the cart will be cleared.
 `,

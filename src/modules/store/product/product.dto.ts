@@ -6,12 +6,6 @@ export interface ProductCardDTO {
   displayPrice: number;
 }
 
-export interface ProductListingDTO {
-  items: ProductCardDTO[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
 export interface VariantDetailDTO {
   variantId: number;
   price: number;

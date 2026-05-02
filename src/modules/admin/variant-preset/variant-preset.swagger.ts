@@ -78,9 +78,10 @@ Create a new variant preset.
 
 A preset consists of a dimension name (e.g. Color, Size) and its predefined values.
 
-Note:
-- The dimension name must be unique.
-- Values can be duplicated across presets and are not required to be unique.
+Note:  
+
+The dimension name must be unique.  
+Values can be duplicated across presets and are not required to be unique.
 `,
 
         security: [
@@ -206,12 +207,13 @@ The response includes the dimension name and its associated values.
         description: `
 Update an existing variant preset.
 
-All fields follow the same structure as create preset.
+All fields follow the same structure as create preset.  
 Existing values will be updated based on the provided input.
 
-Note:
-- The dimension name must remain unique.
-- Values can be duplicated and are not required to be unique.
+Note:  
+
+The dimension name must remain unique.  
+Values can be duplicated and are not required to be unique.
 `,
 
         security: [
@@ -259,9 +261,10 @@ Note:
         description: `
 Delete a variant preset by its ID.
 
-Note:
-- This operation removes the preset along with all its values.
-- This does not affect any existing products that previously used this preset.
+Note:  
+
+This operation removes the preset along with all its values.  
+This does not affect any existing products that previously used this preset.
 `,
 
         security: [

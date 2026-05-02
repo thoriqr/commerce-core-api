@@ -20,13 +20,14 @@ export const storeBannerSwagger = {
         description: `
 Retrieve active banners for a specific placement.
 
-This endpoint is primarily used for displaying promotional banners on the storefront, such as homepage hero sections.
+This endpoint is primarily used for displaying promotional banners on the storefront, such as homepage hero sections.  
 
-Note:
-- Banners are filtered by placement.
-- Currently supports homepage hero banners.
-- The \`url\` field can be used for navigation (e.g. collection or product pages).
-- Supports HTTP caching via ETag.
+Note:  
+
+Banners are filtered by placement.  
+Currently supports homepage hero banners.  
+The \`url\` field can be used for navigation (e.g. collection or product pages).  
+Supports HTTP caching via ETag.
 `,
 
         requestParams: {
