@@ -39,7 +39,7 @@ describe("POST /v1/auth/login", () => {
       password
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500); // force fail
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe("Logged in successfully");
 
