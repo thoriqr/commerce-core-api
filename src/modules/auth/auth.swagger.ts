@@ -119,7 +119,9 @@ export const authSwagger = {
         tags: ["Session"],
         summary: "Refresh session",
         description:
-          "Refresh the user session using a valid refresh_token stored in cookies. Upon success, new authentication cookies (access_token and refresh_token) are issued.",
+          "Refresh the user session using a valid refresh_token stored in cookies. \
+The refresh token is rotated on every request. If a revoked or reused token is detected, \
+all active sessions for the user will be invalidated.",
 
         security: [
           {
@@ -147,7 +149,7 @@ export const authSwagger = {
             }
           },
 
-          401: unauthorizedError("Refresh token missing or invalid")
+          401: unauthorizedError("Refresh token missing, invalid, expired, or reused")
         }
       }
     },
@@ -192,8 +194,18 @@ export const authSwagger = {
       post: {
         tags: ["Auth"],
         summary: "Register user",
-        description:
-          "Register a new user account. A verification email will be sent to the provided email address to complete the registration process.",
+        description: `
+Register a new user account.
+
+A verification email will be sent to the provided email address to complete the registration process.
+
+Notes:
+
+The user is not created immediately.
+Registration creates a pending verification entry.
+
+If the email is already registered (exists in users), the request will be rejected.
+`,
 
         requestBody: {
           required: true,

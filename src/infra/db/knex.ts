@@ -7,6 +7,7 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (value: string) => {
 });
 
 const isProd = env.NODE_ENV === "production";
+const isTest = env.NODE_ENV === "test";
 
 export const db = knex({
   client: "pg",
@@ -20,7 +21,8 @@ export const db = knex({
   },
   pool: {
     min: 0,
-    max: 5
+    max: isTest ? 1 : 5,
+    idleTimeoutMillis: isTest ? 1000 : 30000
   },
   migrations: {
     tableName: "knex_migrations"

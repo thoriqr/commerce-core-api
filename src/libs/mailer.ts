@@ -1,7 +1,13 @@
 import { env } from "@/config/env";
 import { logger } from "./logger";
 
+const isTest = env.NODE_ENV === "test";
+
 export async function mailer(params: { to: string; subject: string; html: string }) {
+  if (isTest) {
+    return true; // pretend success
+  }
+
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {

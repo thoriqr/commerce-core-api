@@ -10,7 +10,15 @@ export const s3Client = new S3Client({
   }
 });
 
+const isTest = env.NODE_ENV === "test";
+
 export function uploadFile(fileBuffer: Buffer, imageKey: string, mimetype: string) {
+  if (isTest) {
+    return Promise.resolve({
+      Key: imageKey
+    });
+  }
+
   return s3Client.send(
     new PutObjectCommand({
       Bucket: env.R2_BUCKET_NAME,
@@ -22,6 +30,10 @@ export function uploadFile(fileBuffer: Buffer, imageKey: string, mimetype: strin
 }
 
 export function deleteFile(imageKey: string) {
+  if (isTest) {
+    return Promise.resolve();
+  }
+
   return s3Client.send(
     new DeleteObjectCommand({
       Bucket: env.R2_BUCKET_NAME,

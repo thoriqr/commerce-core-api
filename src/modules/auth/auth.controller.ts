@@ -120,6 +120,15 @@ export class AuthController {
   };
 
   logout = async (req: Request, res: Response) => {
+    const client = req.client ?? "store";
+    const cookies = getCookieNames(client);
+
+    const refreshToken = req.cookies?.[cookies.refresh];
+
+    if (refreshToken) {
+      await this.service.logout(refreshToken);
+    }
+
     clearAuth(res, req);
 
     sendSuccess(res, 200, {

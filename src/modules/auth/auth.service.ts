@@ -395,9 +395,14 @@ export class AuthService {
 
       const user = await this.repo.findUserById(existingToken.user_id, trx);
 
-      if (!user || user.status === "SUSPENDED") {
+      // if (!user || user.status === "SUSPENDED") {
+      //   await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
+      //   throw AppError.forbidden("Account suspended");
+      // }
+
+      if (!user) {
         await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
-        throw AppError.forbidden("Account suspended");
+        throw AppError.unauthorized("User not found");
       }
 
       await this.repo.revokeRefreshToken(trx, existingToken.id);
@@ -417,7 +422,7 @@ export class AuthService {
     const tokenHash = hashRefreshToken(refreshToken);
 
     await this.tm.transaction(async (trx) => {
-      const existingToken = await this.repo.findRefreshTokenByHash(trx, tokenHash);
+      const existingToken = await this.repo.findRefreshTokenByHashForUpdate(trx, tokenHash);
 
       if (!existingToken) {
         return; // idempotent
@@ -854,7 +859,6 @@ export class AuthService {
   private async issueRefreshToken(trx: Knex.Transaction, userId: number, replacedById: number | null = null): Promise<string> {
     const refreshToken = generateRefreshToken();
 
-    console.log("ISSUE REFRESH RAW:", refreshToken);
     const tokenHash = hashRefreshToken(refreshToken);
     const expiresAt = this.getRefreshTokenExpiryDate();
 
