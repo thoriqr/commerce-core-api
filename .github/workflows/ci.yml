@@ -5,7 +5,7 @@ on:
     branches: [main]
 
   push:
-    branches: [develop]
+    branches: [main]
 
 jobs:
   test:
@@ -59,7 +59,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: "npm"
 
       - run: npm ci
