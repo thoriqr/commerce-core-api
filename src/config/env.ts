@@ -9,11 +9,11 @@ if (!process.env.NODE_ENV) {
 if (process.env.NODE_ENV !== "production") {
   const envFile = `.env.${process.env.NODE_ENV}`;
 
-  if (!fs.existsSync(envFile)) {
-    throw new Error(`Env file not found: ${envFile}`);
+  if (fs.existsSync(envFile)) {
+    dotenv.config({ path: envFile });
+  } else {
+    console.warn(`Env file ${envFile} not found, using process.env`);
   }
-
-  dotenv.config({ path: envFile });
 }
 
 const envSchema = z.object({
