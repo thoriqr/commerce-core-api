@@ -5,6 +5,8 @@ import bcrypt from "bcrypt";
 import app from "../../src/app";
 import { db } from "../../src/infra/db/knex";
 import path from "path";
+import { buildProductPayload } from "../builders/product.builder";
+import { buildVariant } from "../builders/variant.builder";
 
 describe("POST /v1/admin/products", () => {
   // helper: create admin and login to get access_token cookie
@@ -21,6 +23,8 @@ describe("POST /v1/admin/products", () => {
     );
 
     const res = await request(app).post("/v1/auth/login").send({ email, password });
+
+    expect(res.status).toBe(200);
 
     return res.headers["set-cookie"];
   };
@@ -87,49 +91,22 @@ describe("POST /v1/admin/products", () => {
     const categoryId = await createCategory();
     const collectionId = await createCollection();
 
-    const payload = {
-      name: "Test Product",
-      description: "Valid product description", // must be >= 5 chars
-      status: "ACTIVE",
+    const payload = buildProductPayload({
       categoryId,
-      collectionIds: [collectionId], // required
-      images: [
-        {
-          sortOrder: 0,
-          originalFileName: "test-image.png" // MUST match attach filename
-        }
-      ],
-      variantDimension: [
-        {
-          id: "color",
-          name: "Color",
-          options: [
-            { id: "red", value: "Red" },
-            { id: "blue", value: "Blue" }
-          ]
-        }
-      ],
+      collectionIds: [collectionId],
       variants: [
-        {
+        buildVariant({
           clientId: "v1",
-          price: 10000,
-          stock: 10,
-          weight: 100,
-          status: "ACTIVE",
           isPrimary: true,
           options: [{ dimensionId: "color", optionId: "red" }]
-        },
-        {
+        }),
+        buildVariant({
           clientId: "v2",
-          price: 10000,
-          stock: 5,
-          weight: 100,
-          status: "ACTIVE",
           isPrimary: false,
           options: [{ dimensionId: "color", optionId: "blue" }]
-        }
+        })
       ]
-    };
+    });
 
     const res = await request(app)
       .post("/v1/admin/products")
@@ -145,31 +122,18 @@ describe("POST /v1/admin/products", () => {
     const categoryId = await createCategory();
     const collectionId = await createCollection();
 
-    const payload = {
+    const payload = buildProductPayload({
       name: "No Primary",
-      description: "Valid description",
-      status: "ACTIVE",
       categoryId,
       collectionIds: [collectionId],
-      images: [
-        {
-          sortOrder: 0,
-          originalFileName: "test-image.png"
-        }
-      ],
-      variantDimension: [], // SINGLE VARIANT → NO DIMENSION
+      variantDimension: [],
       variants: [
-        {
-          clientId: "v1",
-          price: 10000,
-          stock: 10,
-          weight: 100,
-          status: "ACTIVE",
-          isPrimary: false, // no primary
+        buildVariant({
+          isPrimary: false,
           options: []
-        }
+        })
       ]
-    };
+    });
 
     const res = await request(app)
       .post("/v1/admin/products")
@@ -185,31 +149,17 @@ describe("POST /v1/admin/products", () => {
     const categoryId = await createCategory();
     const collectionId = await createCollection();
 
-    const payload = {
+    const payload = buildProductPayload({
       name: "Missing Image",
-      description: "Valid description",
-      status: "ACTIVE",
       categoryId,
       collectionIds: [collectionId],
-      images: [
-        {
-          sortOrder: 0,
-          originalFileName: "test-image.png"
-        }
-      ],
       variantDimension: [],
       variants: [
-        {
-          clientId: "v1",
-          price: 10000,
-          stock: 10,
-          weight: 100,
-          status: "ACTIVE",
-          isPrimary: true,
+        buildVariant({
           options: []
-        }
+        })
       ]
-    };
+    });
 
     const res = await request(app).post("/v1/admin/products").set("Cookie", cookies).field("payload", JSON.stringify(payload)); // no attach
 
@@ -220,31 +170,17 @@ describe("POST /v1/admin/products", () => {
     const cookies = await createAdminAndLogin();
     const collectionId = await createCollection();
 
-    const payload = {
+    const payload = buildProductPayload({
       name: "Invalid Category",
-      description: "Valid description",
-      status: "ACTIVE",
-      categoryId: 999999, //  invalid
+      categoryId: 999999,
       collectionIds: [collectionId],
-      images: [
-        {
-          sortOrder: 0,
-          originalFileName: "test-image.png"
-        }
-      ],
       variantDimension: [],
       variants: [
-        {
-          clientId: "v1",
-          price: 10000,
-          stock: 10,
-          weight: 100,
-          status: "ACTIVE",
-          isPrimary: true,
+        buildVariant({
           options: []
-        }
+        })
       ]
-    };
+    });
 
     const res = await request(app)
       .post("/v1/admin/products")
@@ -252,6 +188,199 @@ describe("POST /v1/admin/products", () => {
       .field("payload", JSON.stringify(payload))
       .attach("productImages", imagePath);
 
-    expect(res.status).toBe(404); // now will hit service
+    expect(res.status).toBe(404);
+  });
+
+  it("should fail if multiple primary variants exist", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          clientId: "v1",
+          isPrimary: true,
+          options: [{ dimensionId: "color", optionId: "red" }]
+        }),
+        buildVariant({
+          clientId: "v2",
+          isPrimary: true, //  duplicate primary
+          options: [{ dimensionId: "color", optionId: "blue" }]
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should allow duplicate variant option combinations", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          clientId: "v1",
+          isPrimary: true,
+          options: [{ dimensionId: "color", optionId: "red" }]
+        }),
+        buildVariant({
+          clientId: "v2",
+          isPrimary: false,
+          options: [{ dimensionId: "color", optionId: "red" }] // duplicate combination allowed
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(201);
+  });
+
+  it("should fail if primary variant is inactive while product is ACTIVE", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          clientId: "v1",
+          isPrimary: true,
+          status: "INACTIVE", //  invalid
+          options: [{ dimensionId: "color", optionId: "red" }]
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should fail if option does not belong to dimension", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          options: [
+            {
+              dimensionId: "color",
+              optionId: "invalid-option" // invalid option not defined in dimension
+            }
+          ]
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should fail if variant price is zero", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          price: 0, // invalid
+          options: [{ dimensionId: "color", optionId: "red" }]
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should fail if variant stock is negative", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          stock: -1, // invalid
+          options: [{ dimensionId: "color", optionId: "red" }]
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should fail if variant weight is zero", async () => {
+    const cookies = await createAdminAndLogin();
+    const categoryId = await createCategory();
+    const collectionId = await createCollection();
+
+    const payload = buildProductPayload({
+      categoryId,
+      collectionIds: [collectionId],
+      variants: [
+        buildVariant({
+          weight: 0, // invalid
+          options: [{ dimensionId: "color", optionId: "red" }]
+        })
+      ]
+    });
+
+    const res = await request(app)
+      .post("/v1/admin/products")
+      .set("Cookie", cookies)
+      .field("payload", JSON.stringify(payload))
+      .attach("productImages", imagePath);
+
+    expect(res.status).toBe(400);
   });
 });
