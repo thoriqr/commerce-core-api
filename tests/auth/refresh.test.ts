@@ -46,12 +46,12 @@ describe("POST /v1/auth/refresh", () => {
     await db.destroy();
   });
 
-  it("should refresh session and rotate token", async () => {
+  it("should refresh session, rotate token, and invalidate old token", async () => {
     const { rawToken } = await createUserWithToken();
 
     const res = await request(app)
       .post("/v1/auth/refresh")
-      .set("Cookie", [`refresh_token=${rawToken}`]); // important
+      .set("Cookie", [`refresh_token=${rawToken}`]);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -60,13 +60,70 @@ describe("POST /v1/auth/refresh", () => {
     const cookies = res.headers["set-cookie"] as unknown as string[];
 
     expect(cookies).toBeDefined();
-    expect(cookies.some((c) => c.includes("access"))).toBe(true);
-    expect(cookies.some((c) => c.includes("refresh"))).toBe(true);
 
-    // old token should be revoked
-    const old = await db.raw(`SELECT revoked_at FROM refresh_tokens`);
+    const accessCookie = cookies.find((c) => c.includes("access"));
+    const refreshCookie = cookies.find((c) => c.includes("refresh"));
 
-    expect(old.rows.some((r: any) => r.revoked_at !== null)).toBe(true);
+    expect(accessCookie).toBeDefined();
+    expect(refreshCookie).toBeDefined();
+
+    // ensure refresh token rotated (different from old)
+    expect(refreshCookie).not.toContain(rawToken);
+
+    // ensure old token revoked
+    const tokens = await db.raw(`
+    SELECT token_hash, revoked_at FROM refresh_tokens
+  `);
+
+    const revokedTokens = tokens.rows.filter((r: any) => r.revoked_at !== null);
+    const activeTokens = tokens.rows.filter((r: any) => r.revoked_at === null);
+
+    expect(revokedTokens.length).toBeGreaterThanOrEqual(1);
+    expect(activeTokens.length).toBe(1); // only one active token
+  });
+
+  it("should allow using newly rotated refresh token", async () => {
+    const { rawToken } = await createUserWithToken();
+
+    const first = await request(app)
+      .post("/v1/auth/refresh")
+      .set("Cookie", [`refresh_token=${rawToken}`]);
+
+    const cookies = first.headers["set-cookie"] as unknown as string[];
+
+    expect(cookies).toBeDefined();
+
+    const newRefresh = cookies
+      .find((c) => c.includes("refresh_token"))!
+      .split(";")[0]
+      .split("=")[1];
+
+    // use new token again
+    const second = await request(app)
+      .post("/v1/auth/refresh")
+      .set("Cookie", [`refresh_token=${newRefresh}`]);
+
+    expect(second.status).toBe(200);
+    expect(second.body.success).toBe(true);
+  });
+
+  it("should reject reused old refresh token after rotation", async () => {
+    const { rawToken } = await createUserWithToken();
+
+    // first refresh
+    const first = await request(app)
+      .post("/v1/auth/refresh")
+      .set("Cookie", [`refresh_token=${rawToken}`]);
+
+    expect(first.status).toBe(200);
+
+    // try reuse old token
+    const res = await request(app)
+      .post("/v1/auth/refresh")
+      .set("Cookie", [`refresh_token=${rawToken}`]);
+
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
   });
 
   it("should return 401 if refresh token missing", async () => {
@@ -116,7 +173,7 @@ describe("POST /v1/auth/refresh", () => {
     expect(res.body.success).toBe(false);
   });
 
-  it("should detect token reuse (revoked token)", async () => {
+  it("should reject manually revoked refresh token", async () => {
     const { rawToken } = await createUserWithToken();
     const tokenHash = hashRefreshToken(rawToken);
 
