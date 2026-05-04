@@ -20,7 +20,6 @@ import {
 import { CategoryRepo } from "../category/category.repo";
 import { CollectionRepo } from "../collection/collection.repo";
 import { VariantPresetRepo } from "../variant-preset/variant-preset.repo";
-import { redis } from "@/libs/redis";
 import { REDIS_KEYS } from "@/shared/cache/redis-keys";
 import { mapProductList } from "./product.mapper";
 import { cache } from "@/libs/cache";
