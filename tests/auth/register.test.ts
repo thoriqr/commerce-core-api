@@ -14,11 +14,6 @@ describe("POST /v1/auth/register", () => {
     await db.raw("TRUNCATE users, pending_verifications CASCADE");
   });
 
-  afterAll(async () => {
-    await db.raw("TRUNCATE users, pending_verifications CASCADE");
-    await db.destroy();
-  });
-
   it("should send verification email", async () => {
     const payload = createPayload();
 

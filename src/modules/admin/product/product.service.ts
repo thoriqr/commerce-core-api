@@ -23,6 +23,7 @@ import { VariantPresetRepo } from "../variant-preset/variant-preset.repo";
 import { redis } from "@/libs/redis";
 import { REDIS_KEYS } from "@/shared/cache/redis-keys";
 import { mapProductList } from "./product.mapper";
+import { cache } from "@/libs/cache";
 
 export class ProductService {
   constructor(
@@ -317,10 +318,11 @@ export class ProductService {
   }
 
   private async invalidateVariantCache() {
-    await redis.del([REDIS_KEYS.VARIANT_DIMENSIONS, REDIS_KEYS.VARIANT_VALUES]);
+    await cache.del(REDIS_KEYS.VARIANT_DIMENSIONS, REDIS_KEYS.VARIANT_VALUES);
   }
 
   private async invalidateVariantImageCache(productId: number) {
-    await redis.del(REDIS_KEYS.VARIANT_IMAGES(productId));
+    if (process.env.NODE_ENV === "test") return;
+    await cache.del(REDIS_KEYS.VARIANT_IMAGES(productId));
   }
 }

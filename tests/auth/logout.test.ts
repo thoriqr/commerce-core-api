@@ -39,11 +39,6 @@ describe("POST /v1/auth/logout", () => {
     await db.raw("TRUNCATE users, refresh_tokens CASCADE");
   });
 
-  afterAll(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens CASCADE");
-    await db.destroy();
-  });
-
   it("should clear cookies and revoke refresh token", async () => {
     const { rawToken, tokenHash } = await createUserWithRefreshToken();
 

@@ -24,11 +24,6 @@ describe("POST /v1/auth/login", () => {
     await db.raw("TRUNCATE users, refresh_tokens CASCADE");
   });
 
-  afterAll(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens CASCADE");
-    await db.destroy();
-  });
-
   it("should login successfully, set cookies, and persist refresh token", async () => {
     const email = `login_${Date.now()}@mail.com`;
     const password = "password123";

@@ -16,11 +16,6 @@ describe("POST /v1/auth/verify-email", () => {
     await db.raw("TRUNCATE users, pending_verifications, refresh_tokens CASCADE");
   });
 
-  afterAll(async () => {
-    await db.raw("TRUNCATE users, pending_verifications, refresh_tokens CASCADE");
-    await db.destroy();
-  });
-
   it("should verify email, create user, and mark token as used", async () => {
     const { rawToken, tokenHash } = createTokenData();
     const email = `verify_${Date.now()}@mail.com`;

@@ -41,11 +41,6 @@ describe("POST /v1/auth/refresh", () => {
     await db.raw("TRUNCATE users, refresh_tokens CASCADE");
   });
 
-  afterAll(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens CASCADE");
-    await db.destroy();
-  });
-
   it("should refresh session, rotate token, and invalidate old token", async () => {
     const { rawToken } = await createUserWithToken();
 
