@@ -7,7 +7,7 @@ import { db } from "../../src/infra/db/knex";
 import { generateRefreshToken, hashRefreshToken } from "../../src/shared/jwt/refresh-token.util";
 
 describe("POST /v1/auth/logout", () => {
-  const createUserWithToken = async () => {
+  const createUserWithRefreshToken = async () => {
     const email = `logout_${Date.now()}@mail.com`;
     const passwordHash = await bcrypt.hash("password123", 10);
 
@@ -45,7 +45,7 @@ describe("POST /v1/auth/logout", () => {
   });
 
   it("should clear cookies and revoke refresh token", async () => {
-    const { rawToken, tokenHash } = await createUserWithToken();
+    const { rawToken, tokenHash } = await createUserWithRefreshToken();
 
     const res = await request(app)
       .post("/v1/auth/logout")
@@ -55,14 +55,16 @@ describe("POST /v1/auth/logout", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe("Logged out successfully");
 
-    // check cookies cleared
     const cookies = res.headers["set-cookie"] as unknown as string[];
 
     expect(cookies).toBeDefined();
-    expect(cookies.some((c) => c.includes("access"))).toBe(true);
-    expect(cookies.some((c) => c.includes("refresh"))).toBe(true);
 
-    // check token revoked in DB
+    // ensure cookies are CLEARED (not just set)
+    expect(cookies.some((c) => c.includes("access") && (c.includes("Max-Age=0") || c.includes("Expires=")))).toBe(true);
+
+    expect(cookies.some((c) => c.includes("refresh") && (c.includes("Max-Age=0") || c.includes("Expires=")))).toBe(true);
+
+    // token revoked
     const token = await db.raw(`SELECT revoked_at FROM refresh_tokens WHERE token_hash = :tokenHash`, { tokenHash });
 
     expect(token.rows[0].revoked_at).not.toBeNull();
@@ -75,10 +77,16 @@ describe("POST /v1/auth/logout", () => {
     expect(res.body.success).toBe(true);
   });
 
-  it("should not fail if token already revoked", async () => {
-    const { rawToken, tokenHash } = await createUserWithToken();
+  it("should still return 200 with invalid token", async () => {
+    const res = await request(app).post("/v1/auth/logout").set("Cookie", [`refresh_token=invalid_token`]);
 
-    // revoke manually first
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it("should not fail if token already revoked", async () => {
+    const { rawToken, tokenHash } = await createUserWithRefreshToken();
+
     await db.raw(
       `UPDATE refresh_tokens
        SET revoked_at = NOW()
@@ -93,7 +101,6 @@ describe("POST /v1/auth/logout", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    // still revoked (no change)
     const token = await db.raw(`SELECT revoked_at FROM refresh_tokens WHERE token_hash = :tokenHash`, { tokenHash });
 
     expect(token.rows[0].revoked_at).not.toBeNull();
