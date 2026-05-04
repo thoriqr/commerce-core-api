@@ -1,3 +1,4 @@
+import { env } from "@/config/env";
 import { AppError } from "@/errors/app-error";
 import rateLimit from "express-rate-limit";
 
@@ -16,7 +17,8 @@ export const authLimiter = rateLimit({
   max: 10,
   handler: (_req, _res, next) => {
     next(AppError.tooManyRequests());
-  }
+  },
+  skip: () => env.NODE_ENV === "test"
 });
 
 export const actionLimiter = rateLimit({
