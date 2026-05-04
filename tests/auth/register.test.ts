@@ -29,16 +29,34 @@ describe("POST /v1/auth/register", () => {
     expect(res.body.message).toBe("Verification email sent");
   });
 
-  it("should allow multiple registration attempts", async () => {
+  it("should replace existing pending verification on re-register", async () => {
     const payload = createPayload();
 
-    const res1 = await request(app).post("/v1/auth/register").send(payload);
+    // first registration
+    await request(app).post("/v1/auth/register").send(payload);
 
-    const res2 = await request(app).post("/v1/auth/register").send(payload);
+    const first = await db.raw(`SELECT id, token_hash FROM pending_verifications WHERE email = :email`, { email: payload.email });
 
-    expect(res1.status).toBe(200);
-    expect(res2.status).toBe(200);
-    expect(res2.body.success).toBe(true);
+    // second registration (should replace previous pending verification)
+    await request(app).post("/v1/auth/register").send(payload);
+
+    const second = await db.raw(`SELECT id, token_hash FROM pending_verifications WHERE email = :email`, { email: payload.email });
+
+    // should only have one record
+    expect(second.rows.length).toBe(1);
+
+    // should be a new record (delete + insert, not update)
+    expect(second.rows[0].id).not.toBe(first.rows[0].id);
+    expect(second.rows[0].token_hash).not.toBe(first.rows[0].token_hash);
+  });
+
+  it("should return 400 for invalid email format", async () => {
+    const res = await request(app).post("/v1/auth/register").send({
+      email: "invalid-email",
+      password: "password123"
+    });
+
+    expect(res.status).toBe(400);
   });
 
   it("should return 409 if email already registered", async () => {
