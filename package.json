@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test npm run migrate:test && jest --runInBand",
+    "test": "cross-env NODE_ENV=test npm run migrate:test && jest --runInBand --detectOpenHandles",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
     "migrate:test": "cross-env NODE_ENV=test knex --knexfile knexfile.ts migrate:latest",
     "test:reset": "cross-env NODE_ENV=test knex --knexfile knexfile.ts migrate:rollback --all && npm run migrate:test",

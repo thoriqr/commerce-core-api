@@ -13,6 +13,11 @@ export const cache = {
     return redis.get(key);
   },
 
+  async mget(keys: string[]) {
+    if (isTest) return keys.map(() => null);
+    return redis.mGet(keys);
+  },
+
   async set(key: string, value: string, ttl?: number) {
     if (isTest) return;
 

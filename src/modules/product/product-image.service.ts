@@ -1,9 +1,9 @@
-import { redis } from "@/libs/redis";
 import { ProductImageRepo } from "./product-image.repo";
 import { buildImageMap } from "@/shared/variant-image/resolver";
 import { ImageSignature } from "@/shared/variant-image/types";
 import { REDIS_KEYS } from "@/shared/cache/redis-keys";
 import { REDIS_TTL } from "@/shared/cache/redis.ttl";
+import { cache } from "@/libs/cache";
 
 export class ProductImageService {
   constructor(private readonly repo: ProductImageRepo) {}
@@ -24,7 +24,7 @@ export class ProductImageService {
 
     const keys = uniqueIds.map((id) => REDIS_KEYS.VARIANT_IMAGES(id));
 
-    const cacheResults = await redis.mGet(keys);
+    const cacheResults = await cache.mget(keys);
 
     const missingIds: number[] = [];
 
@@ -41,7 +41,7 @@ export class ProductImageService {
           result.set(productId, parsed);
         } catch {
           // optional cleanup
-          redis.del(REDIS_KEYS.VARIANT_IMAGES(productId));
+          cache.del(REDIS_KEYS.VARIANT_IMAGES(productId));
           missingIds.push(productId);
         }
       } else {
@@ -72,7 +72,7 @@ export class ProductImageService {
             fallback: fallbackMap.get(productId) ?? null
           };
 
-          await redis.set(REDIS_KEYS.VARIANT_IMAGES(productId), JSON.stringify(data), { EX: REDIS_TTL.VARIANT_IMAGES });
+          await cache.set(REDIS_KEYS.VARIANT_IMAGES(productId), JSON.stringify(data), REDIS_TTL.VARIANT_IMAGES);
 
           result.set(productId, data);
         })
