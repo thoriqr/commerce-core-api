@@ -35,8 +35,6 @@ describe("POST /v1/user/checkout-sessions/:sessionId/confirm", () => {
         orders,
         order_items,
         order_shipments,
-        carts,
-        cart_items,
         warehouses
       RESTART IDENTITY CASCADE
     `);
