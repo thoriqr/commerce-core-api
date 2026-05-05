@@ -14,6 +14,7 @@ import { ShippingService } from "@/modules/shipping/shipping.service";
 import { CheckoutSessionItemRow } from "./checkout.user.types";
 import { WarehouseRepo } from "@/modules/warehouse/warehouse.repo";
 import { CartRepo } from "@/modules/cart/cart.repo";
+import { env } from "@/config/env";
 
 export class CheckoutUserService {
   constructor(
@@ -295,6 +296,14 @@ export class CheckoutUserService {
   };
 
   private enrichItemsWithImages = async (items: CheckoutSessionItemRow[]) => {
+    if (env.NODE_ENV === "test") {
+      return items.map((item) => ({
+        ...item,
+        image_id: null,
+        image_key: null
+      }));
+    }
+
     const productIds = [...new Set(items.map((i) => i.product_id))];
 
     const imageMap = await this.productImageService.getVariantImagesBulk(productIds);

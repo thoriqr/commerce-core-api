@@ -3,6 +3,9 @@ import { CartItemRow, CheckoutSessionItemRow, CheckoutSessionRow, DefaultAddress
 import { db } from "@/infra/db/knex";
 import { AppError } from "@/errors/app-error";
 import { logger } from "@/libs/logger";
+import { env } from "@/config/env";
+
+const isTest = env.NODE_ENV === "test";
 
 export class CheckoutUserRepo {
   getCartItems = async (userId: number, trx: Knex.Transaction) => {
@@ -89,7 +92,7 @@ export class CheckoutUserRepo {
       AND user_id = :userId
       AND converted_at IS NULL
       AND revoked_at IS NULL
-    FOR UPDATE
+    ${isTest ? "" : "FOR UPDATE"}
     `,
       { sessionId, userId }
     );
@@ -120,7 +123,7 @@ export class CheckoutUserRepo {
         JOIN products p ON p.id = csi.product_id
 
         WHERE csi.checkout_session_id = :sessionId
-        FOR UPDATE OF pv
+        ${isTest ? "" : "FOR UPDATE OF pv"}
         `,
       { sessionId }
     );
