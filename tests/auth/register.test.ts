@@ -11,7 +11,7 @@ describe("POST /v1/auth/register", () => {
   });
 
   beforeEach(async () => {
-    await db.raw("TRUNCATE users, pending_verifications CASCADE");
+    await db.raw("TRUNCATE users, pending_verifications RESTART IDENTITY CASCADE");
   });
 
   it("should send verification email", async () => {

@@ -30,7 +30,7 @@ export class PaymentService {
       const isFirstTime = !existing;
       const isProgression = existing && existing.transaction_status !== payload.transaction_status;
 
-      console.log("webhook payload:", payload);
+      // console.log("webhook payload:", payload);
 
       // 3. INSERT / UPDATE PAYMENT
       if (isFirstTime) {

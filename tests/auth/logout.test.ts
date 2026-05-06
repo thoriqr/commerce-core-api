@@ -36,7 +36,7 @@ describe("POST /v1/auth/logout", () => {
   };
 
   beforeEach(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens CASCADE");
+    await db.raw("TRUNCATE users, refresh_tokens RESTART IDENTITY CASCADE");
   });
 
   it("should clear cookies and revoke refresh token", async () => {

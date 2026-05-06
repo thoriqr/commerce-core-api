@@ -26,7 +26,7 @@ describe("PUT /v1/admin/products/:id", () => {
         collections,
         users,
         refresh_tokens
-      CASCADE
+      RESTART IDENTITY CASCADE
     `);
   });
 

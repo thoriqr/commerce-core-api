@@ -38,7 +38,7 @@ describe("POST /v1/auth/refresh", () => {
   };
 
   beforeEach(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens CASCADE");
+    await db.raw("TRUNCATE users, refresh_tokens RESTART IDENTITY CASCADE");
   });
 
   it("should refresh session, rotate token, and invalidate old token", async () => {

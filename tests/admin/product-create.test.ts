@@ -24,7 +24,7 @@ describe("POST /v1/admin/products", () => {
     collections,
     users,
     refresh_tokens
-  CASCADE
+  RESTART IDENTITY CASCADE
 `);
   });
 
