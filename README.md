@@ -1,10 +1,12 @@
 # Commerce Core API
 
+[![CI](https://github.com/thoriqr/commerce-core-api/actions/workflows/ci.yml/badge.svg)](https://github.com/thoriqr/commerce-core-api/actions/workflows/ci.yml)
+
 Backend API for a modern e-commerce platform built with Node.js, Express, TypeScript, PostgreSQL, and Redis.
 
 ---
 
-# Overview
+## Overview
 
 This project focuses on building a production-oriented commerce backend with:
 
@@ -20,9 +22,9 @@ The system is designed to prioritize consistency, data integrity, and realistic 
 
 ---
 
-# Features
+## Features
 
-## Admin Dashboard
+### Admin Dashboard
 
 The platform includes an admin dashboard for:
 
@@ -36,7 +38,7 @@ The dashboard is designed to support future expansion for operational and analyt
 
 ---
 
-## Authentication
+### Authentication
 
 - JWT authentication
 - Access token + refresh token flow
@@ -47,7 +49,9 @@ The dashboard is designed to support future expansion for operational and analyt
 - Automatic account linking across authentication providers
 - Email verification flow for password-based registration
 
-## Product Management
+---
+
+### Product Management
 
 - Product variants
 - Variant dimensions and options
@@ -57,17 +61,21 @@ The dashboard is designed to support future expansion for operational and analyt
 - Variant image matching
 - Inventory management
 
-## Checkout System
+---
 
-- Checkout session snapshot
+### Checkout System
+
+- Checkout session snapshots
 - Shipping cost calculation
 - Cached shipping estimation workflow
 - Expiration handling
 - Atomic checkout confirmation
 - Stock validation and reduction
-- Order creation from checkout snapshot
+- Order creation from checkout snapshots
 
-## Order System
+---
+
+### Order System
 
 - Order snapshots
 - Shipment records
@@ -75,7 +83,9 @@ The dashboard is designed to support future expansion for operational and analyt
 - Payment status lifecycle
 - Snap token reuse
 
-## Payment Integration
+---
+
+### Payment Integration
 
 Midtrans integration with:
 
@@ -87,7 +97,9 @@ Midtrans integration with:
 - Expired payment handling
 - Failed payment handling
 
-## Infrastructure
+---
+
+### Infrastructure
 
 - PostgreSQL
 - Redis caching
@@ -99,7 +111,7 @@ Midtrans integration with:
 
 ---
 
-# Tech Stack
+## Tech Stack
 
 | Layer             | Technology       |
 | ----------------- | ---------------- |
@@ -118,9 +130,9 @@ Midtrans integration with:
 
 ---
 
-# Commerce Architecture Highlights
+## Commerce Architecture Highlights
 
-## Snapshot-Based Checkout
+### Snapshot-Based Checkout
 
 Checkout data is persisted as immutable snapshots before order creation.
 
@@ -132,7 +144,7 @@ This prevents:
 
 ---
 
-## Transactional Checkout Confirmation
+### Transactional Checkout Confirmation
 
 Checkout confirmation uses database transactions to ensure:
 
@@ -143,7 +155,7 @@ Checkout confirmation uses database transactions to ensure:
 
 ---
 
-## Payment Webhook Synchronization
+### Payment Webhook Synchronization
 
 Webhook processing includes:
 
@@ -155,7 +167,7 @@ Webhook processing includes:
 
 ---
 
-## Runtime Validation
+### Runtime Validation
 
 All request validation is handled using Zod.
 
@@ -168,7 +180,7 @@ This includes:
 
 ---
 
-## Scheduled Expiration Jobs
+### Scheduled Jobs
 
 The project uses node-cron for scheduled jobs such as:
 
@@ -178,11 +190,10 @@ The project uses node-cron for scheduled jobs such as:
 - Cleaning orphan product images
 - Cleaning orphan variant images
 - Cleaning pending verifications
-- Payment synchronization workflows
 
 ---
 
-## Variant Image Matching
+### Variant Image Matching
 
 Products support image signature matching based on selected variant options.
 
@@ -195,7 +206,7 @@ The system automatically resolves the best matching product image.
 
 ---
 
-## Hierarchical Category System
+### Hierarchical Category System
 
 The platform supports scalable nested category structures.
 
@@ -214,7 +225,7 @@ The category system is designed to support:
 
 ---
 
-## Marketing Banner Targeting
+### Marketing Banner Targeting
 
 Homepage banners can target:
 
@@ -226,7 +237,7 @@ This allows dynamic storefront navigation and promotional routing.
 
 ---
 
-## Image Processing
+### Image Processing
 
 The backend uses Sharp for:
 
@@ -238,18 +249,18 @@ The backend uses Sharp for:
 
 ---
 
-# Testing
+## Testing
 
 The project includes integration tests covering:
 
-## Checkout
+### Checkout
 
 - Successful checkout confirmation
 - Stock validation
 - Expired checkout sessions
 - Invalid checkout state handling
 
-## Payment
+### Payment
 
 - Snap token generation
 - Snap token reuse
@@ -263,18 +274,18 @@ The project includes integration tests covering:
 
 ---
 
-# Continuous Integration
+## Continuous Integration
 
 GitHub Actions automatically runs:
 
-- Database migration
+- Database migrations
 - Full integration test suite
 
 on every push and pull request.
 
 ---
 
-# Deployment
+## Deployment
 
 The platform is deployed using:
 
@@ -285,7 +296,7 @@ The platform is deployed using:
 
 ---
 
-# Project Structure
+## Project Structure
 
 ```txt
 src/
@@ -316,7 +327,7 @@ tests/
 
 ---
 
-# Environment Variables
+## Environment Variables
 
 Example:
 
@@ -333,33 +344,33 @@ R2_SECRET_ACCESS_KEY=
 
 ---
 
-# Running Locally
+## Running Locally
 
-## Install dependencies
+### Install dependencies
 
 ```bash
 npm install
 ```
 
-## Run development migrations
+### Run development migrations
 
 ```bash
 npm run knex migrate:latest
 ```
 
-## Start development server
+### Start development server
 
 ```bash
 npm run dev
 ```
 
-## Start worker
+### Start worker
 
 ```bash
 npm run worker:dev
 ```
 
-## Run tests
+### Run tests
 
 ```bash
 npm test
@@ -367,19 +378,17 @@ npm test
 
 ---
 
-# API Documentation
+## API Documentation
 
 API documentation is available via Swagger/OpenAPI.
 
 Production docs:
 
-```txt
-https://api.commerce.web.id/v1/docs
-```
+[Swagger Docs](https://api.commerce.web.id/v1/docs)
 
 ---
 
-# Future Improvements
+## Future Improvements
 
 Potential future improvements:
 
@@ -394,6 +403,6 @@ Potential future improvements:
 
 ---
 
-# License
+## License
 
 MIT
