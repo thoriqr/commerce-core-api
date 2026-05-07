@@ -1,4 +1,4 @@
-import { JOB_NAMES } from "@/shared/queues/job-names";
+import { JOB_NAMES } from "@/workers/job-names";
 import { runCleanup } from "./cleanup.helper";
 
 export const cleanupAbandonedGuestCartsJob = {

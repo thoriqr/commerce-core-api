@@ -1,12 +1,12 @@
 import cron from "node-cron";
 import { logger } from "@/libs/logger";
-import { jobRegistry } from "./job-registry";
+import { registry } from "./registry";
 import { schedules } from "./schedules";
 
 const runningJobs = new Set<string>();
 
 function runSafeJob(name: string) {
-  const handler = jobRegistry.get(name);
+  const handler = registry.get(name);
 
   if (!handler) {
     logger.error("Job not found", { jobName: name });

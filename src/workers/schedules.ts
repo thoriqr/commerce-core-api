@@ -1,4 +1,4 @@
-import { JOB_NAMES } from "@/shared/queues/job-names";
+import { JOB_NAMES } from "@/workers/job-names";
 
 export const schedules = [
   { name: JOB_NAMES.CLEANUP_ORPHAN_PRODUCT_IMAGES, pattern: "0 */12 * * *" }, // every 12 hours

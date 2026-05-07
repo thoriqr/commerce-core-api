@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/knex";
 import { logger } from "@/libs/logger";
-import { JOB_NAMES } from "@/shared/queues/job-names";
+import { JOB_NAMES } from "@/workers/job-names";
 
 export const cleanupCheckoutSessionsJob = {
   name: JOB_NAMES.CLEANUP_CHECKOUT_SESSIONS,
