@@ -1,7 +1,7 @@
 import { db } from "@/infra/db/knex";
 import { logger } from "@/libs/logger";
 import { deleteFile } from "@/libs/s3-client";
-import { JOB_NAMES } from "@/shared/queues/job-names";
+import { JOB_NAMES } from "@/workers/job-names";
 
 export const cleanupOrphanProductImagesJob = {
   name: JOB_NAMES.CLEANUP_ORPHAN_PRODUCT_IMAGES,

@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/knex";
 import { logger } from "@/libs/logger";
-import { JOB_NAMES } from "@/shared/queues/job-names";
+import { JOB_NAMES } from "@/workers/job-names";
 
 export const autoCompleteDeliveredOrdersJob = {
   name: JOB_NAMES.AUTO_COMPLETE_DELIVERED_ORDERS,

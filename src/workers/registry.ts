@@ -20,4 +20,4 @@ const jobs = [
   autoCompleteDeliveredOrdersJob
 ];
 
-export const jobRegistry = new Map<string, JobHandler>(jobs.map((job) => [job.name, job.handler]));
+export const registry = new Map<string, JobHandler>(jobs.map((job) => [job.name, job.handler]));
