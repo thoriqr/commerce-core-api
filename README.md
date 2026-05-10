@@ -2,23 +2,7 @@
 
 [![CI](https://github.com/thoriqr/commerce-core-api/actions/workflows/ci.yml/badge.svg)](https://github.com/thoriqr/commerce-core-api/actions/workflows/ci.yml)
 
-Backend API for a modern e-commerce platform built with Node.js, Express, TypeScript, PostgreSQL, and Redis.
-
----
-
-## Overview
-
-This project focuses on building a production-oriented commerce backend with:
-
-- Transactional checkout flow
-- Payment webhook synchronization
-- Variant-based products
-- Snapshot-based order architecture
-- Redis caching
-- Integration testing
-- CI automation with GitHub Actions
-
-The system is designed to prioritize consistency, data integrity, and realistic commerce workflows.
+Backend API for an e-commerce system including authentication, product management, checkout, and order processing.
 
 ---
 
@@ -26,88 +10,53 @@ The system is designed to prioritize consistency, data integrity, and realistic 
 
 ### Admin Dashboard
 
-The platform includes an admin dashboard for:
-
-- Revenue monitoring
-- Order analytics
+- Revenue and order analytics
 - Recent order tracking
-- Store activity overview
 - Order management
-
-The dashboard is designed to support future expansion for operational and analytics workflows.
-
----
+- Store overview
 
 ### Authentication
 
 - JWT authentication
-- Access token + refresh token flow
+- Access token and refresh token flow
 - HttpOnly cookie authentication
 - Role-based authorization
-- Demo account restrictions
 - Google OAuth login
 - Automatic account linking across authentication providers
-- Email verification flow for password-based registration
-
----
+- Email verification for password-based registration
 
 ### Product Management
 
-- Product variants
+- Product and variant management
 - Variant dimensions and options
-- Product collections
-- Product categories
-- Product image signatures
-- Variant image matching
-- Inventory management
-
----
+- Product collections and categories
+- Product images
 
 ### Checkout System
 
-- Checkout session snapshots
+- Checkout session handling
 - Shipping cost calculation
-- Cached shipping estimation workflow
-- Expiration handling
-- Atomic checkout confirmation
-- Stock validation and reduction
-- Order creation from checkout snapshots
-
----
+- Redis caching for shipping estimation
+- Checkout expiration handling
+- Stock validation during checkout confirmation
+- Order creation from checkout data
 
 ### Order System
 
 - Order snapshots
 - Shipment records
-- Order status lifecycle
-- Payment status lifecycle
-- Snap token reuse
-
----
+- Order status handling
+- Payment status handling
 
 ### Payment Integration
 
 Midtrans integration with:
 
-- Snap token creation
+- Snap token creation and reuse
 - Payment webhook handling
 - Duplicate webhook protection
-- Payment status progression handling
-- Downgrade protection
-- Expired payment handling
-- Failed payment handling
-
----
-
-### Infrastructure
-
-- PostgreSQL
-- Redis caching
-- Cloudflare R2 integration
-- Scheduled jobs with node-cron
-- GitHub Actions CI
-- Swagger/OpenAPI documentation
-- Zod runtime validation
+- Payment status validation
+- Expired and failed payment handling
 
 ---
 
@@ -119,7 +68,7 @@ Midtrans integration with:
 | Backend Framework | Express.js       |
 | Language          | TypeScript       |
 | Database          | PostgreSQL       |
-| Query Builder     | Knex.js          |
+| Database Tools    | Knex.js          |
 | Cache             | Redis            |
 | Validation        | Zod              |
 | Authentication    | JWT              |
@@ -130,156 +79,74 @@ Midtrans integration with:
 
 ---
 
-## Commerce Architecture Highlights
+## Technical Details
 
 ### Snapshot-Based Checkout
 
-Checkout data is persisted as immutable snapshots before order creation.
-
-This prevents:
-
-- Product name changes affecting existing orders
-- Shipping changes affecting old transactions
-- Variant changes corrupting historical order data
-
----
+Checkout data is stored as immutable snapshots before order creation to preserve historical order data.
 
 ### Transactional Checkout Confirmation
 
-Checkout confirmation uses database transactions to ensure:
+Checkout confirmation uses database transactions for stock validation, order creation, and cart cleanup.
 
-- Stock consistency
-- Atomic order creation
-- Safe payment preparation
-- Cart cleanup synchronization
+### Payment Webhook Handling
 
----
-
-### Payment Webhook Synchronization
-
-Webhook processing includes:
-
-- Signature verification
-- Duplicate prevention
-- Transaction progression handling
-- Downgrade protection
-- Payment state synchronization
-
----
-
-### Runtime Validation
-
-All request validation is handled using Zod.
-
-This includes:
-
-- req.body validation
-- req.query validation
-- req.params validation
-- Type-safe request parsing
-
----
+Payment webhooks include signature verification, duplicate prevention, and payment status validation.
 
 ### Scheduled Jobs
 
-The project uses node-cron for scheduled jobs such as:
+Background jobs are used for:
 
 - Expiring unpaid orders
-- Cleaning abandoned guest carts
 - Cleaning expired refresh tokens
-- Cleaning orphan product images
-- Cleaning orphan variant images
-- Cleaning pending verifications
+- Cleaning abandoned guest carts
+- Cleaning unused product images
 
----
+### Nested Categories
 
-### Variant Image Matching
-
-Products support image signature matching based on selected variant options.
-
-Example:
-
-- Color = Black
-- Size = XL
-
-The system automatically resolves the best matching product image.
-
----
-
-### Hierarchical Category System
-
-The platform supports scalable nested category structures.
-
-Example category path:
+Supports nested category structures such as:
 
 ```txt
 menswear/men-clothes/men-t-shirts
 ```
 
-The category system is designed to support:
-
-- Deep nested storefront navigation
-- Category-based product discovery
-- Marketing banner targeting
-- SEO-friendly category paths
-
----
-
-### Marketing Banner Targeting
-
-Homepage banners can target:
-
-- Product collections
-- Categories
-- Nested category paths
-
-This allows dynamic storefront navigation and promotional routing.
-
----
-
-### Image Processing
-
-The backend uses Sharp for:
-
-- Image optimization
-- Image resizing
-- Image cropping
-- Storage size reduction
-- Variant image preparation
-
 ---
 
 ## Testing
 
-The project includes integration tests covering:
+Integration tests cover flows such as:
+
+### Authentication
+
+- Register
+- Login and logout
+- Token refresh flow
+- Email verification
 
 ### Checkout
 
-- Successful checkout confirmation
+- Checkout confirmation
 - Stock validation
 - Expired checkout sessions
-- Invalid checkout state handling
+- Invalid checkout handling
 
 ### Payment
 
-- Snap token generation
-- Snap token reuse
-- Midtrans webhook lifecycle
-- Duplicate webhook handling
-- Settlement progression
-- Downgrade protection
-- Expired payment handling
-- Failed payment handling
-- Invalid signature protection
+- Snap token generation and reuse
+- Midtrans webhook handling
+- Duplicate webhook prevention
+- Payment status validation
+- Expired and failed payment handling
+- Invalid signature handling
 
 ---
 
 ## Continuous Integration
 
-GitHub Actions automatically runs:
+GitHub Actions runs:
 
 - Database migrations
-- Full integration test suite
+- Integration tests
 
 on every push and pull request.
 
@@ -287,90 +154,44 @@ on every push and pull request.
 
 ## Deployment
 
-The platform is deployed using:
+Services used in deployment:
 
-- Railway for API hosting
-- Neon PostgreSQL for serverless database infrastructure
-- Upstash Redis for caching
-- Cloudflare R2 for object storage
-
----
-
-## Project Structure
-
-```txt
-src/
- ├── config/
- ├── constants/
- ├── docs/
- ├── errors/
- ├── infra/
- ├── libs/
- ├── middlewares/
- ├── modules/
- ├── shared/
- ├── types/
- ├── utils/
- ├── workers/
- ├── app.ts
- └── server.ts
-
-tests/
- ├── admin/
- ├── auth/
- ├── payment/
- ├── user/
- ├── helpers/
- ├── types/
- └── setup.ts
-```
-
----
-
-## Environment Variables
-
-Example:
-
-```env
-DATABASE_URL=
-REDIS_URL=
-JWT_ACCESS_SECRET=
-MIDTRANS_SERVER_KEY=
-RAJAONGKIR_API_KEY=
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-```
+- Railway (API hosting)
+- Neon PostgreSQL (database)
+- Upstash Redis (caching)
+- Cloudflare R2 (object storage)
 
 ---
 
 ## Running Locally
 
-### Install dependencies
+1. Create a `.env` file based on `.env.example`.
+
+2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-### Run development migrations
+3. Run database migrations:
 
 ```bash
 npm run knex migrate:latest
 ```
 
-### Start development server
+4. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-### Start worker
+5. Start the worker:
 
 ```bash
 npm run worker:dev
 ```
 
-### Run tests
+6. Run tests:
 
 ```bash
 npm test
@@ -380,9 +201,7 @@ npm test
 
 ## API Documentation
 
-API documentation is available via Swagger/OpenAPI.
-
-Production docs:
+Swagger/OpenAPI documentation:
 
 [Swagger Docs](https://api.commerce.web.id/v1/docs)
 
@@ -390,16 +209,12 @@ Production docs:
 
 ## Future Improvements
 
-Potential future improvements:
-
-- Discount and promotion engine
-- Best-selling product ranking
-- Homepage recommendation sections
-- Advanced shipment tracking
-- Multi-warehouse inventory support
-- Real-time analytics dashboard
-- Search and filtering improvements
-- Storefront personalization
+- Discount and promotion system
+- Best-selling product features
+- Improved product filtering and search
+- Multi-warehouse stock support
+- Better dashboard analytics
+- Shipment tracking improvements
 
 ---
 
