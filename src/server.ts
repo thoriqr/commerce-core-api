@@ -3,11 +3,7 @@ import { env } from "./config/env";
 import { logger } from "./libs/logger";
 import { redis } from "./libs/redis";
 
-/*
- |----------------------------------------
- | Global process error listeners
- |----------------------------------------
- */
+// Global process error listeners
 
 process.on("uncaughtException", (err) => {
   logger.error("Uncaught Exception:", err);
@@ -18,11 +14,7 @@ process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled Rejection:", reason);
 });
 
-/*
- |----------------------------------------
- | Bootstrap application
- |----------------------------------------
- */
+// Bootstrap application
 
 async function bootstrap() {
   try {
