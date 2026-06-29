@@ -13,7 +13,7 @@ describe("POST /v1/auth/verify-email", () => {
   };
 
   beforeEach(async () => {
-    await db.raw("TRUNCATE users, pending_verifications, refresh_tokens CASCADE");
+    await db.raw("TRUNCATE users, pending_verifications, user_sessions, refresh_tokens CASCADE");
   });
 
   it("should verify email, create user, and mark token as used", async () => {

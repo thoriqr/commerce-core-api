@@ -20,14 +20,24 @@ describe("POST /v1/auth/logout", () => {
 
     const userId = userRes.rows[0].id;
 
+    const sessionRes = await db.raw(
+      `INSERT INTO user_sessions (user_id, client, last_used_at)
+       VALUES (:userId, 'web', NOW())
+       RETURNING id`,
+      { userId }
+    );
+
+    const sessionId = sessionRes.rows[0].id;
+
     const rawToken = generateRefreshToken();
     const tokenHash = hashRefreshToken(rawToken);
 
     await db.raw(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-       VALUES (:userId, :tokenHash, NOW() + interval '7 days')`,
+      `INSERT INTO refresh_tokens (user_id, session_id, token_hash, expires_at)
+       VALUES (:userId, :sessionId, :tokenHash, NOW() + interval '7 days')`,
       {
         userId,
+        sessionId,
         tokenHash
       }
     );
@@ -36,7 +46,7 @@ describe("POST /v1/auth/logout", () => {
   };
 
   beforeEach(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens RESTART IDENTITY CASCADE");
+    await db.raw("TRUNCATE users, user_sessions, refresh_tokens RESTART IDENTITY CASCADE");
   });
 
   it("should clear cookies and revoke refresh token", async () => {

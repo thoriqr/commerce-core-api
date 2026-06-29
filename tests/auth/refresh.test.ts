@@ -21,24 +21,34 @@ describe("POST /v1/auth/refresh", () => {
 
     const userId = userRes.rows[0].id;
 
+    const sessionRes = await db.raw(
+      `INSERT INTO user_sessions (user_id, client, last_used_at)
+       VALUES (:userId, 'web', NOW())
+       RETURNING id`,
+      { userId }
+    );
+
+    const sessionId = sessionRes.rows[0].id;
+
     // create refresh token
     const rawToken = generateRefreshToken();
     const tokenHash = hashRefreshToken(rawToken);
 
     await db.raw(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-       VALUES (:userId, :tokenHash, NOW() + interval '7 days')`,
+      `INSERT INTO refresh_tokens (user_id, session_id, token_hash, expires_at)
+       VALUES (:userId, :sessionId, :tokenHash, NOW() + interval '7 days')`,
       {
         userId,
+        sessionId,
         tokenHash
       }
     );
 
-    return { userId, rawToken };
+    return { userId, sessionId, rawToken };
   };
 
   beforeEach(async () => {
-    await db.raw("TRUNCATE users, refresh_tokens RESTART IDENTITY CASCADE");
+    await db.raw("TRUNCATE users, user_sessions, refresh_tokens RESTART IDENTITY CASCADE");
   });
 
   it("should refresh session, rotate token, and invalidate old token", async () => {
@@ -102,6 +112,21 @@ describe("POST /v1/auth/refresh", () => {
     expect(second.body.success).toBe(true);
   });
 
+  it("should return rotated tokens in response body for mobile refresh", async () => {
+    const { rawToken } = await createUserWithToken();
+
+    const res = await request(app).post("/v1/auth/refresh").set("x-auth-client", "mobile").send({
+      refreshToken: rawToken
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.refreshToken).toBeDefined();
+    expect(res.body.data.refreshToken).not.toBe(rawToken);
+    expect(res.headers["set-cookie"]).toBeUndefined();
+  });
+
   it("should reject reused old refresh token after rotation", async () => {
     const { rawToken } = await createUserWithToken();
 
@@ -119,6 +144,63 @@ describe("POST /v1/auth/refresh", () => {
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
+  });
+
+  it("should revoke only the compromised session when refresh token reuse is detected", async () => {
+    const firstSession = await createUserWithToken();
+
+    const secondRawToken = generateRefreshToken();
+    const secondTokenHash = hashRefreshToken(secondRawToken);
+
+    const sessionRes = await db.raw(
+      `INSERT INTO user_sessions (user_id, client, last_used_at)
+       VALUES (:userId, 'mobile', NOW())
+       RETURNING id`,
+      { userId: firstSession.userId }
+    );
+
+    const secondSessionId = sessionRes.rows[0].id;
+
+    await db.raw(
+      `INSERT INTO refresh_tokens (user_id, session_id, token_hash, expires_at)
+       VALUES (:userId, :sessionId, :tokenHash, NOW() + interval '7 days')`,
+      {
+        userId: firstSession.userId,
+        sessionId: secondSessionId,
+        tokenHash: secondTokenHash
+      }
+    );
+
+    const first = await request(app)
+      .post("/v1/auth/refresh")
+      .set("Cookie", [`refresh_token=${firstSession.rawToken}`]);
+
+    expect(first.status).toBe(200);
+
+    const reused = await request(app)
+      .post("/v1/auth/refresh")
+      .set("Cookie", [`refresh_token=${firstSession.rawToken}`]);
+
+    expect(reused.status).toBe(401);
+
+    const sessions = await db.raw(
+      `
+      SELECT id, revoked_at
+      FROM user_sessions
+      WHERE id = :firstSessionId
+        OR id = :secondSessionId
+      `,
+      {
+        firstSessionId: firstSession.sessionId,
+        secondSessionId
+      }
+    );
+
+    const compromised = sessions.rows.find((s: any) => s.id === firstSession.sessionId);
+    const other = sessions.rows.find((s: any) => s.id === secondSessionId);
+
+    expect(compromised.revoked_at).not.toBeNull();
+    expect(other.revoked_at).toBeNull();
   });
 
   it("should return 401 if refresh token missing", async () => {
@@ -148,14 +230,24 @@ describe("POST /v1/auth/refresh", () => {
 
     const userId = userRes.rows[0].id;
 
+    const sessionRes = await db.raw(
+      `INSERT INTO user_sessions (user_id, client, last_used_at)
+       VALUES (:userId, 'web', NOW())
+       RETURNING id`,
+      { userId }
+    );
+
+    const sessionId = sessionRes.rows[0].id;
+
     const rawToken = generateRefreshToken();
     const tokenHash = hashRefreshToken(rawToken);
 
     await db.raw(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-       VALUES (:userId, :tokenHash, NOW() - interval '1 minute')`,
+      `INSERT INTO refresh_tokens (user_id, session_id, token_hash, expires_at)
+       VALUES (:userId, :sessionId, :tokenHash, NOW() - interval '1 minute')`,
       {
         userId,
+        sessionId,
         tokenHash
       }
     );

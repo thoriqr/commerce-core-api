@@ -1,10 +1,10 @@
 import { AppError } from "@/errors/app-error";
 import { db } from "@/infra/db/knex";
 import { Knex } from "knex";
-import { UserDetailRow, VerificationType } from "./auth.repo.types";
+import { RefreshTokenRow, UserDetailRow, VerificationType } from "./auth.repo.types";
 import { Provider, UserRole, UserStatus } from "@/shared/user/user.types";
 import { logger } from "@/libs/logger";
-import { PendingVerificationRow } from "./auth.types";
+import { PendingVerificationRow, SessionMetadata } from "./auth.types";
 
 export class AuthRepo {
   async findUserById(userId: number, trx?: Knex.Transaction) {
@@ -114,7 +114,7 @@ export class AuthRepo {
     :status,
     :displayName
   )
-  RETURNING id, email, password_hash, role, status, display_name
+  RETURNING id, email, password_hash, role, status, display_name, is_demo
 `,
       {
         email: data.email,
@@ -299,13 +299,99 @@ export class AuthRepo {
     );
   }
 
-  async findRefreshTokenByHash(trx: Knex.Transaction, hash: string) {
-    const { rows } = await trx.raw<{ rows: Array<{ id: number; user_id: number; expires_at: Date; revoked_at: Date | null }> }>(
+  async insertUserSession(trx: Knex.Transaction, userId: number, metadata: SessionMetadata) {
+    const { rows } = await trx.raw<{
+      rows: Array<{ id: number }>;
+    }>(
       `
-    SELECT id, user_id, expires_at, revoked_at
+    INSERT INTO user_sessions (
+      user_id,
+      client,
+      user_agent,
+      ip_address,
+      last_used_at
+    )
+    VALUES (
+      :userId,
+      :client,
+      :userAgent,
+      :ipAddress,
+      NOW()
+    )
+    RETURNING id
+    `,
+      {
+        userId,
+        client: metadata.client,
+        userAgent: metadata.userAgent,
+        ipAddress: metadata.ipAddress
+      }
+    );
+
+    return rows[0];
+  }
+
+  async updateSessionLastUsedAt(trx: Knex.Transaction, sessionId: number) {
+    await trx.raw(
+      `
+    UPDATE user_sessions
+    SET last_used_at = NOW()
+    WHERE id = :sessionId
+    `,
+      { sessionId }
+    );
+  }
+
+  async revokeSession(trx: Knex.Transaction, sessionId: number) {
+    await trx.raw(
+      `
+    UPDATE user_sessions
+    SET revoked_at = NOW()
+    WHERE id = :sessionId
+      AND revoked_at IS NULL
+    `,
+      { sessionId }
+    );
+  }
+
+  async revokeSessionRefreshTokens(trx: Knex.Transaction, sessionId: number) {
+    await trx.raw(
+      `
+    UPDATE refresh_tokens
+    SET revoked_at = NOW()
+    WHERE session_id = :sessionId
+      AND revoked_at IS NULL
+    `,
+      { sessionId }
+    );
+  }
+
+  async revokeAllUserSessions(trx: Knex.Transaction, userId: number) {
+    await trx.raw(
+      `
+    UPDATE user_sessions
+    SET revoked_at = NOW()
+    WHERE user_id = :userId
+      AND revoked_at IS NULL
+    `,
+      { userId }
+    );
+  }
+
+  async findRefreshTokenByHash(trx: Knex.Transaction, hash: string) {
+    const { rows } = await trx.raw<{ rows: RefreshTokenRow[] }>(
+      `
+    SELECT
+      rt.id,
+      rt.user_id,
+      rt.session_id,
+      rt.expires_at,
+      rt.revoked_at,
+      us.revoked_at AS session_revoked_at
     FROM refresh_tokens
-    WHERE token_hash = :hash
-      AND expires_at > NOW()
+    JOIN user_sessions us ON us.id = rt.session_id
+    WHERE rt.token_hash = :hash
+      AND rt.expires_at > NOW()
     `,
       { hash }
     );
@@ -315,17 +401,19 @@ export class AuthRepo {
 
   async findRefreshTokenByHashForUpdate(trx: Knex.Transaction, hash: string) {
     const { rows } = await trx.raw<{
-      rows: Array<{
-        id: number;
-        user_id: number;
-        expires_at: Date;
-        revoked_at: Date | null;
-      }>;
+      rows: RefreshTokenRow[];
     }>(
       `
-    SELECT id, user_id, expires_at, revoked_at
-    FROM refresh_tokens
-    WHERE token_hash = :hash
+    SELECT
+      rt.id,
+      rt.user_id,
+      rt.session_id,
+      rt.expires_at,
+      rt.revoked_at,
+      us.revoked_at AS session_revoked_at
+    FROM refresh_tokens rt
+    JOIN user_sessions us ON us.id = rt.session_id
+    WHERE rt.token_hash = :hash
     FOR UPDATE
     `,
       { hash }
@@ -338,6 +426,7 @@ export class AuthRepo {
     trx: Knex.Transaction,
     data: {
       userId: number;
+      sessionId: number;
       tokenHash: string;
       expiresAt: Date;
       replacedById: number | null;
@@ -349,12 +438,14 @@ export class AuthRepo {
       `
     INSERT INTO refresh_tokens (
       user_id,
+      session_id,
       token_hash,
       expires_at,
       replaced_by_id
     )
     VALUES (
       :userId,
+      :sessionId,
       :tokenHash,
       :expiresAt,
       :replacedById
@@ -363,6 +454,7 @@ export class AuthRepo {
     `,
       {
         userId: data.userId,
+        sessionId: data.sessionId,
         tokenHash: data.tokenHash,
         expiresAt: data.expiresAt,
         replacedById: data.replacedById

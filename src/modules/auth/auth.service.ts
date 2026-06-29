@@ -9,7 +9,7 @@ import {
   VerifyAdminInvite,
   VerifyEmailInput
 } from "./auth.schema";
-import { AuthContext, AuthUser } from "./auth.types";
+import { AuthContext, AuthTokenResult, AuthUser, SessionMetadata } from "./auth.types";
 import { AppError } from "@/errors/app-error";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import bcrypt from "bcrypt";
@@ -111,7 +111,7 @@ export class AuthService {
     };
   };
 
-  acceptAdminInvite = async (input: VerifyAdminInvite) => {
+  acceptAdminInvite = async (input: VerifyAdminInvite, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
@@ -184,13 +184,7 @@ export class AuthService {
       // mark used
       await this.repo.markPendingVerificationUsed(trx, pending.id);
 
-      const accessToken = this.issueAccessToken(user);
-      const refreshToken = await this.issueRefreshToken(trx, user.id);
-
-      return {
-        accessToken,
-        refreshToken
-      };
+      return this.issueAuthTokens(trx, user, metadata);
     });
   };
 
@@ -248,7 +242,7 @@ export class AuthService {
     };
   };
 
-  verifyEmail = async (input: VerifyEmailInput) => {
+  verifyEmail = async (input: VerifyEmailInput, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
@@ -271,22 +265,14 @@ export class AuthService {
 
       await this.repo.markPendingVerificationUsed(trx, pending.id);
 
-      const accessToken = this.issueAccessToken(user);
-      const refreshToken = await this.issueRefreshToken(trx, user.id);
-
-      return {
-        accessToken,
-        refreshToken
-      };
+      return this.issueAuthTokens(trx, user, metadata);
     });
   };
 
   login = async (
-    input: LoginInput
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+    input: LoginInput,
+    metadata: SessionMetadata
+  ): Promise<AuthTokenResult> => {
     return this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserByEmailOrNull(input.email, trx);
 
@@ -306,17 +292,11 @@ export class AuthService {
 
       await this.repo.updateLastLoginAt(trx, user.id);
 
-      const accessToken = this.issueAccessToken(user);
-      const refreshToken = await this.issueRefreshToken(trx, user.id);
-
-      return {
-        accessToken,
-        refreshToken
-      };
+      return this.issueAuthTokens(trx, user, metadata);
     });
   };
 
-  googleLogin = async (input: GoogleLoginInput) => {
+  googleLogin = async (input: GoogleLoginInput, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     const google = await verifyGoogleIdToken(input.idToken);
 
     if (!google.email_verified) {
@@ -363,21 +343,14 @@ export class AuthService {
         providerAvatarUrl: google.picture ?? null
       });
 
-      const accessToken = this.issueAccessToken(user);
-      const refreshToken = await this.issueRefreshToken(trx, user.id);
-
-      return {
-        user: this.buildAuthUser(user),
-        accessToken,
-        refreshToken
-      };
+      return this.issueAuthTokens(trx, user, metadata);
     });
   };
 
   refresh = async (refreshToken: string) => {
     const tokenHash = hashRefreshToken(refreshToken);
 
-    return this.tm.transaction(async (trx) => {
+    const result = await this.tm.transaction(async (trx) => {
       const existingToken = await this.repo.findRefreshTokenByHashForUpdate(trx, tokenHash);
 
       if (!existingToken) {
@@ -385,12 +358,19 @@ export class AuthService {
       }
 
       if (existingToken.revoked_at) {
-        await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
-        throw AppError.unauthorized("Refresh token reuse detected");
+        await this.repo.revokeSession(trx, existingToken.session_id);
+        await this.repo.revokeSessionRefreshTokens(trx, existingToken.session_id);
+        return {
+          error: "Refresh token reuse detected"
+        };
       }
 
       if (new Date(existingToken.expires_at) < new Date()) {
         throw AppError.unauthorized("Refresh token expired");
+      }
+
+      if (existingToken.session_revoked_at) {
+        throw AppError.unauthorized("Session revoked");
       }
 
       const user = await this.repo.findUserById(existingToken.user_id, trx);
@@ -401,14 +381,19 @@ export class AuthService {
       // }
 
       if (!user) {
-        await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
-        throw AppError.unauthorized("User not found");
+        await this.repo.revokeSession(trx, existingToken.session_id);
+        await this.repo.revokeSessionRefreshTokens(trx, existingToken.session_id);
+        return {
+          error: "User not found"
+        };
       }
 
       await this.repo.revokeRefreshToken(trx, existingToken.id);
 
       const newAccessToken = this.issueAccessToken(user);
-      const newRefreshToken = await this.issueRefreshToken(trx, user.id, existingToken.id);
+      const newRefreshToken = await this.issueRefreshToken(trx, user.id, existingToken.session_id, existingToken.id);
+
+      await this.repo.updateSessionLastUsedAt(trx, existingToken.session_id);
 
       return {
         user: this.buildAuthUser(user),
@@ -416,6 +401,12 @@ export class AuthService {
         refreshToken: newRefreshToken
       };
     });
+
+    if ("error" in result) {
+      throw AppError.unauthorized(result.error);
+    }
+
+    return result;
   };
 
   logout = async (refreshToken: string): Promise<void> => {
@@ -492,11 +483,9 @@ export class AuthService {
   };
 
   resetPassword = async (
-    input: ResetPasswordInput
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+    input: ResetPasswordInput,
+    metadata: SessionMetadata
+  ): Promise<AuthTokenResult> => {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
@@ -547,6 +536,7 @@ export class AuthService {
       await this.repo.markPendingVerificationUsed(trx, verification.id);
 
       // Revoke ALL existing refresh tokens
+      await this.repo.revokeAllUserSessions(trx, user.id);
       await this.repo.revokeAllUserRefreshTokens(trx, user.id);
 
       // Refetch fresh user (clean & future-proof)
@@ -558,24 +548,16 @@ export class AuthService {
       }
 
       // Issue new tokens (auto-login)
-      const accessToken = this.issueAccessToken(freshUser);
-      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
-
-      return {
-        accessToken,
-        refreshToken
-      };
+      return this.issueAuthTokens(trx, freshUser, metadata);
     });
   };
 
   changePassword = async (
     userId: number,
     currentPassword: string,
-    newPassword: string
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+    newPassword: string,
+    metadata: SessionMetadata
+  ): Promise<AuthTokenResult> => {
     const result = await this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserById(userId, trx);
 
@@ -609,6 +591,7 @@ export class AuthService {
 
       await this.repo.updateUserPassword(trx, user.id, newPasswordHash);
 
+      await this.repo.revokeAllUserSessions(trx, user.id);
       await this.repo.revokeAllUserRefreshTokens(trx, user.id);
 
       const freshUser = await this.repo.findUserById(user.id, trx);
@@ -618,14 +601,11 @@ export class AuthService {
         throw AppError.internal();
       }
 
-      const accessToken = this.issueAccessToken(freshUser);
-      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
+      const tokens = await this.issueAuthTokens(trx, freshUser, metadata);
 
       return {
         email: freshUser.email,
-        user: this.buildAuthUser(freshUser),
-        accessToken,
-        refreshToken
+        ...tokens
       };
     });
 
@@ -640,11 +620,9 @@ export class AuthService {
 
   setPassword = async (
     userId: number,
-    password: string
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+    password: string,
+    metadata: SessionMetadata
+  ): Promise<AuthTokenResult> => {
     const result = await this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserById(userId, trx);
 
@@ -665,6 +643,7 @@ export class AuthService {
 
       await this.repo.updateUserPassword(trx, user.id, passwordHash);
 
+      await this.repo.revokeAllUserSessions(trx, user.id);
       await this.repo.revokeAllUserRefreshTokens(trx, user.id);
 
       const freshUser = await this.repo.findUserById(user.id, trx);
@@ -674,13 +653,11 @@ export class AuthService {
         throw AppError.internal();
       }
 
-      const accessToken = this.issueAccessToken(freshUser);
-      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
+      const tokens = await this.issueAuthTokens(trx, freshUser, metadata);
 
       return {
         email: freshUser.email,
-        accessToken,
-        refreshToken
+        ...tokens
       };
     });
 
@@ -743,11 +720,9 @@ export class AuthService {
   };
 
   confirmEmailChange = async (
-    token: string
-  ): Promise<{
-    accessToken: string;
-    refreshToken: string;
-  }> => {
+    token: string,
+    metadata: SessionMetadata
+  ): Promise<AuthTokenResult> => {
     const tokenHash = hashRefreshToken(token);
 
     const result = await this.tm.transaction(async (trx) => {
@@ -788,6 +763,7 @@ export class AuthService {
       await this.repo.markPendingVerificationUsed(trx, pending.id);
 
       // revoke all sessions
+      await this.repo.revokeAllUserSessions(trx, user.id);
       await this.repo.revokeAllUserRefreshTokens(trx, user.id);
 
       const freshUser = await this.repo.findUserById(user.id, trx);
@@ -796,14 +772,12 @@ export class AuthService {
         throw AppError.internal();
       }
 
-      const accessToken = this.issueAccessToken(freshUser);
-      const refreshToken = await this.issueRefreshToken(trx, freshUser.id);
+      const tokens = await this.issueAuthTokens(trx, freshUser, metadata);
 
       return {
         oldEmail,
         newEmail: pending.email,
-        accessToken,
-        refreshToken
+        ...tokens
       };
     });
 
@@ -856,7 +830,30 @@ export class AuthService {
     });
   }
 
-  private async issueRefreshToken(trx: Knex.Transaction, userId: number, replacedById: number | null = null): Promise<string> {
+  private async issueAuthTokens(trx: Knex.Transaction, user: UserDetailRow, metadata: SessionMetadata): Promise<AuthTokenResult> {
+    const session = await this.repo.insertUserSession(trx, user.id, metadata);
+
+    if (!session) {
+      logger.error("Insert user_sessions returned no rows");
+      throw AppError.internal();
+    }
+
+    const accessToken = this.issueAccessToken(user);
+    const refreshToken = await this.issueRefreshToken(trx, user.id, session.id);
+
+    return {
+      user: this.buildAuthUser(user),
+      accessToken,
+      refreshToken
+    };
+  }
+
+  private async issueRefreshToken(
+    trx: Knex.Transaction,
+    userId: number,
+    sessionId: number,
+    replacedById: number | null = null
+  ): Promise<string> {
     const refreshToken = generateRefreshToken();
 
     const tokenHash = hashRefreshToken(refreshToken);
@@ -864,6 +861,7 @@ export class AuthService {
 
     await this.repo.insertRefreshToken(trx, {
       userId,
+      sessionId,
       tokenHash,
       expiresAt,
       replacedById

@@ -11,3 +11,12 @@ export type UserDetailRow = {
 };
 
 export type VerificationType = "REGISTER" | "RESET_PASSWORD" | "INVITE" | "CHANGE_EMAIL";
+
+export type RefreshTokenRow = {
+  id: number;
+  user_id: number;
+  session_id: number;
+  expires_at: Date;
+  revoked_at: Date | null;
+  session_revoked_at: Date | null;
+};

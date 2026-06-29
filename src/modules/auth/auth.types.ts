@@ -30,3 +30,17 @@ export type PendingVerificationRow = {
 };
 
 export type AuthClient = "admin" | "store";
+
+export type AuthTransport = "web" | "mobile";
+
+export type SessionMetadata = {
+  client: AuthTransport;
+  userAgent: string | null;
+  ipAddress: string | null;
+};
+
+export type AuthTokenResult = {
+  user?: AuthUser;
+  accessToken: string;
+  refreshToken: string;
+};

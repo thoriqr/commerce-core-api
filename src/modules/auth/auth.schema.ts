@@ -44,6 +44,10 @@ export const checkVerificationTokenSchema = z.object({
   type: z.enum(["REGISTER", "RESET_PASSWORD"])
 });
 
+export const refreshTokenSchema = z.object({
+  refreshToken: tokenSchema
+});
+
 export const setPasswordSchema = z.object({
   password: passwordSchema
 });

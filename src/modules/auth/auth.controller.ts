@@ -11,6 +11,7 @@ import {
   loginSchema,
   registerSchema,
   requestPasswordResetSchema,
+  refreshTokenSchema,
   resetPasswordSchema,
   setPasswordSchema,
   validateAdminInviteSchema,
@@ -18,7 +19,7 @@ import {
   verifyEmailSchema
 } from "./auth.schema";
 import { getCookieNames } from "@/utils/auth-cookies";
-import { clearAuth, setAuth } from "@/utils/auth-helpers";
+import { clearAuth, getSessionMetadata, resolveAuthTransport, sendAuth } from "@/utils/auth-helpers";
 
 export class AuthController {
   constructor(private readonly service: AuthService) {}
@@ -45,13 +46,9 @@ export class AuthController {
   acceptAdminInvite = async (req: Request, res: Response) => {
     const payload = verifyAdminInvite.parse(req.body);
 
-    const tokens = await this.service.acceptAdminInvite(payload);
+    const tokens = await this.service.acceptAdminInvite(payload, getSessionMetadata(req));
 
-    setAuth(res, tokens, req, "admin");
-
-    sendSuccess(res, 200, {
-      message: "Admin access granted"
-    });
+    sendAuth(res, req, 200, "Admin access granted", tokens, "admin");
   };
 
   register = async (req: Request, res: Response) => {
@@ -79,32 +76,21 @@ export class AuthController {
   verifyEmail = async (req: Request, res: Response) => {
     const payload = verifyEmailSchema.parse(req.body);
 
-    const tokens = await this.service.verifyEmail(payload);
+    const tokens = await this.service.verifyEmail(payload, getSessionMetadata(req));
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Email verified successfully"
-    });
+    sendAuth(res, req, 200, "Email verified successfully", tokens);
   };
 
   login = async (req: Request, res: Response) => {
     const payload = loginSchema.parse(req.body);
 
-    const tokens = await this.service.login(payload);
+    const tokens = await this.service.login(payload, getSessionMetadata(req));
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Logged in successfully"
-    });
+    sendAuth(res, req, 200, "Logged in successfully", tokens);
   };
 
   refresh = async (req: Request, res: Response) => {
-    const client = req.client ?? "store";
-    const cookies = getCookieNames(client);
-
-    const refreshToken = req.cookies?.[cookies.refresh];
+    const refreshToken = this.getRefreshToken(req);
 
     if (!refreshToken) {
       throw AppError.unauthorized("Refresh token missing");
@@ -112,24 +98,19 @@ export class AuthController {
 
     const tokens = await this.service.refresh(refreshToken);
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Session refreshed"
-    });
+    sendAuth(res, req, 200, "Session refreshed", tokens);
   };
 
   logout = async (req: Request, res: Response) => {
-    const client = req.client ?? "store";
-    const cookies = getCookieNames(client);
-
-    const refreshToken = req.cookies?.[cookies.refresh];
+    const refreshToken = this.getRefreshToken(req, false);
 
     if (refreshToken) {
       await this.service.logout(refreshToken);
     }
 
-    clearAuth(res, req);
+    if (resolveAuthTransport(req) === "web") {
+      clearAuth(res, req);
+    }
 
     sendSuccess(res, 200, {
       message: "Logged out successfully"
@@ -149,13 +130,9 @@ export class AuthController {
   resetPassword = async (req: Request, res: Response) => {
     const payload = resetPasswordSchema.parse(req.body);
 
-    const tokens = await this.service.resetPassword(payload);
+    const tokens = await this.service.resetPassword(payload, getSessionMetadata(req));
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Password reset successfully"
-    });
+    sendAuth(res, req, 200, "Password reset successfully", tokens);
   };
 
   setPassword = async (req: Request, res: Response) => {
@@ -165,13 +142,9 @@ export class AuthController {
 
     const payload = setPasswordSchema.parse(req.body);
 
-    const tokens = await this.service.setPassword(req.user.id, payload.password);
+    const tokens = await this.service.setPassword(req.user.id, payload.password, getSessionMetadata(req));
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Password set successfully"
-    });
+    sendAuth(res, req, 200, "Password set successfully", tokens);
   };
 
   changePassword = async (req: Request, res: Response) => {
@@ -181,13 +154,14 @@ export class AuthController {
 
     const payload = changePasswordSchema.parse(req.body);
 
-    const tokens = await this.service.changePassword(req.user.id, payload.currentPassword, payload.newPassword);
+    const tokens = await this.service.changePassword(
+      req.user.id,
+      payload.currentPassword,
+      payload.newPassword,
+      getSessionMetadata(req)
+    );
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Password changed successfully"
-    });
+    sendAuth(res, req, 200, "Password changed successfully", tokens);
   };
 
   changeEmail = async (req: Request, res: Response) => {
@@ -207,25 +181,17 @@ export class AuthController {
   confirmEmailChange = async (req: Request, res: Response) => {
     const payload = confirmEmailChangeSchema.parse(req.body);
 
-    const tokens = await this.service.confirmEmailChange(payload.token);
+    const tokens = await this.service.confirmEmailChange(payload.token, getSessionMetadata(req));
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Email changed successfully"
-    });
+    sendAuth(res, req, 200, "Email changed successfully", tokens);
   };
 
   googleLogin = async (req: Request, res: Response) => {
     const payload = googleLoginSchema.parse(req.body);
 
-    const tokens = await this.service.googleLogin(payload);
+    const tokens = await this.service.googleLogin(payload, getSessionMetadata(req));
 
-    setAuth(res, tokens, req);
-
-    sendSuccess(res, 200, {
-      message: "Login successful"
-    });
+    sendAuth(res, req, 200, "Login successful", tokens);
   };
 
   me = async (req: Request, res: Response) => {
@@ -239,4 +205,19 @@ export class AuthController {
       data: user
     });
   };
+
+  private getRefreshToken(req: Request, required = true): string | undefined {
+    if (resolveAuthTransport(req) === "mobile") {
+      if (!required && !req.body?.refreshToken) {
+        return undefined;
+      }
+
+      return refreshTokenSchema.parse(req.body).refreshToken;
+    }
+
+    const client = req.client ?? "store";
+    const cookies = getCookieNames(client);
+
+    return req.cookies?.[cookies.refresh];
+  }
 }
