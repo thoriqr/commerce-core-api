@@ -42,7 +42,6 @@ export function sendAuth(res: Response, req: Request, statusCode: number, messag
     return sendSuccess(res, statusCode, {
       message,
       data: {
-        ...(tokens.user ? { user: tokens.user } : {}),
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken
       }
