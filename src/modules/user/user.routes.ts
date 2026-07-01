@@ -26,7 +26,7 @@ const userController = new UserController(userService);
 router.use(requireAuth);
 
 router.get("/profile", userController.getUserProfile);
-router.put("/profile", actionLimiter, requireAuth, userController.updateProfile);
+router.put("/profile", actionLimiter, userController.updateProfile);
 
 router.get("/addresses", userController.getAddresses);
 router.get("/addresses/:addressId", userController.getAddressDetail);
