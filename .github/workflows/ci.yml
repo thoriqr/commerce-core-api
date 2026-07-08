@@ -53,6 +53,7 @@ jobs:
       MIDTRANS_SERVER_KEY: test
       NOTIFICATION_WEBHOOK_URL: http://localhost
       BREVO_API_KEY: test
+      ACCESS_TOKEN_EXPIRY: 15m
 
     steps:
       - uses: actions/checkout@v6

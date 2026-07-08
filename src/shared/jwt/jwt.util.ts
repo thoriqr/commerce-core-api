@@ -2,7 +2,7 @@ import jwt, { JsonWebTokenError, SignOptions } from "jsonwebtoken";
 import { env } from "@/config/env";
 import { AccessTokenPayload } from "@/modules/auth/auth.types";
 
-const ACCESS_TOKEN_EXPIRES_IN = "15m"; // can set from env
+const ACCESS_TOKEN_EXPIRES_IN = env.ACCESS_TOKEN_EXPIRY;
 
 // Sign Access Token
 export function signAccessToken(payload: AccessTokenPayload): string {

@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import fs from "fs";
 import { z } from "zod";
+import type { StringValue } from "ms";
 
 if (!process.env.NODE_ENV) {
   throw new Error("NODE_ENV is required");
@@ -48,7 +49,9 @@ const envSchema = z.object({
   RAJAONGKIR_API_KEY: z.string().min(1),
   MIDTRANS_SERVER_KEY: z.string().min(1),
   NOTIFICATION_WEBHOOK_URL: z.string().min(1),
-  BREVO_API_KEY: z.string().min(1)
+  BREVO_API_KEY: z.string().min(1),
+
+  ACCESS_TOKEN_EXPIRY: z.custom<StringValue>(),
 });
 
 const parsed = envSchema.safeParse(process.env);
