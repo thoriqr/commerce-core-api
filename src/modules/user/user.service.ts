@@ -76,12 +76,12 @@ export class UserService {
       isDefault = true;
     }
 
-    await this.tm.transaction(async (trx) => {
+    return this.tm.transaction(async (trx) => {
       if (isDefault) {
         await this.userRepo.clearDefaultAddress(userId, trx);
       }
 
-      await this.userRepo.createAddress(
+      const addressId = await this.userRepo.createAddress(
         {
           userId,
           label: input.label ?? null,
@@ -99,6 +99,8 @@ export class UserService {
         },
         trx
       );
+
+      return { addressId };
     });
   };
 

@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { CreateAddressRepoInput, UpdateAddressRepoInput, UserAddressRow } from "./user.repo.types";
 import { UpdateProfileInput } from "./user.schema";
 import { UserProfileRow } from "./user.types";
+import { logger } from "@/libs/logger";
+import { AppError } from "@/errors/app-error";
 
 export class UserRepo {
   getUserAddress = async (userId: number) => {
@@ -110,7 +112,7 @@ export class UserRepo {
   };
 
   createAddress = async (data: CreateAddressRepoInput, trx: Knex.Transaction) => {
-    await trx.raw(
+    const { rows } = await trx.raw<{ rows: { id: number }[] }>(
       `
     INSERT INTO user_addresses (
       user_id,
@@ -142,9 +144,18 @@ export class UserRepo {
       :shippingDistrictId,
       :isDefault
     )
+    RETURNING id
     `,
       data
     );
+
+    const row = rows[0];
+    if (!row) {
+      logger.error("INSERT user_addresses no returning row");
+      throw AppError.internal();
+    }
+
+    return row.id;
   };
 
   updateAddress = async (data: UpdateAddressRepoInput, trx: Knex.Transaction) => {

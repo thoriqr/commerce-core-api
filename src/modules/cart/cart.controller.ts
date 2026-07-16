@@ -1,97 +1,65 @@
 import { sendSuccess } from "@/utils/send-success";
-import { CartService } from "./cart.service";
 import { Request, Response } from "express";
+import { CartService } from "./cart.service";
 import { addItemSchema, deleteCartItemSchema, updateCartItemSchema } from "./cart.schema";
-import { baseCookieOptions } from "@/utils/set-auth-cookie";
 
 export class CartController {
   constructor(private readonly service: CartService) {}
 
+  /**
+   * Returns the authenticated user's cart.
+   */
   getCart = async (req: Request, res: Response) => {
-    const cartIdFromCookie = req.cookies?.cart_id ?? null;
-    const userId = req.user?.id ?? null;
-
-    const { cartId, created } = await this.service.resolveCart(cartIdFromCookie, userId);
-
-    if (created) {
-      res.cookie("cart_id", cartId, {
-        ...baseCookieOptions,
-        httpOnly: false
-      });
-    }
-
-    const cart = await this.service.getCart(cartId);
+    const cart = await this.service.getCart(req.user!.id);
 
     return sendSuccess(res, 200, {
       data: cart
     });
   };
 
-  addItem = async (req: Request, res: Response) => {
-    const cartIdFromCookie = req.cookies?.cart_id ?? null;
-    const userId = req.user?.id ?? null;
 
+  addItem = async (req: Request, res: Response) => {
     const payload = addItemSchema.parse(req.body);
 
-    const { cartId, created } = await this.service.resolveCart(cartIdFromCookie, userId);
-
-    if (created) {
-      res.cookie("cart_id", cartId, {
-        ...baseCookieOptions,
-        httpOnly: false
-      });
-    }
-
-    await this.service.addItem(cartId, payload.variantId, payload.quantity);
+    await this.service.addItem(
+      req.user!.id,
+      payload.variantId,
+      payload.quantity
+    );
 
     return sendSuccess(res, 200, {
       message: "Item added to cart"
     });
   };
 
-  updateItem = async (req: Request, res: Response) => {
-    const cartIdFromCookie = req.cookies?.cart_id ?? null;
-    const userId = req.user?.id ?? null;
 
+  updateItem = async (req: Request, res: Response) => {
     const params = updateCartItemSchema.parse({
       variantId: req.params.variantId,
       quantity: req.body.quantity
     });
 
-    const { cartId, created } = await this.service.resolveCart(cartIdFromCookie, userId);
-
-    if (created) {
-      res.cookie("cart_id", cartId, {
-        ...baseCookieOptions,
-        httpOnly: false
-      });
-    }
-
-    await this.service.updateItem(cartId, params.variantId, params.quantity);
+    await this.service.updateItem(
+      req.user!.id,
+      params.variantId,
+      params.quantity
+    );
 
     return sendSuccess(res, 200, {
       message: "Cart updated"
     });
   };
 
-  deleteItem = async (req: Request, res: Response) => {
-    const cartIdFromCookie = req.cookies?.cart_id ?? null;
-    const userId = req.user?.id ?? null;
 
+  deleteItem = async (req: Request, res: Response) => {
     const params = deleteCartItemSchema.parse({
       variantId: req.params.variantId
     });
 
-    const { cartId, created } = await this.service.resolveCart(cartIdFromCookie, userId);
-
-    if (created) {
-      res.cookie("cart_id", cartId, {
-        ...baseCookieOptions,
-        httpOnly: false
-      });
-    }
-
-    await this.service.deleteItem(cartId, params.variantId);
+    await this.service.deleteItem(
+      req.user!.id,
+      params.variantId
+    );
 
     return sendSuccess(res, 200, {
       message: "Item removed from cart"

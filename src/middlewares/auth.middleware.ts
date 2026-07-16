@@ -4,14 +4,14 @@ import { AppError } from "@/errors/app-error";
 import { AuthContext } from "@/modules/auth/auth.types";
 import { TokenExpiredError } from "jsonwebtoken";
 import { getCookieNames } from "@/utils/auth-cookies";
-import { resolveClient } from "@/utils/auth-helpers";
+import { resolveAuthTransport, resolveClient } from "@/utils/auth-helpers";
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const client = resolveClient(req);
     const cookies = getCookieNames(client);
 
-    const accessToken = req.cookies?.[cookies.access];
+    const accessToken = resolveAuthTransport(req) === "mobile" ? getBearerToken(req) : req.cookies?.[cookies.access];
 
     const accessUser = tryVerifyAccessToken(accessToken);
 
@@ -32,7 +32,9 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
     const client = resolveClient(req);
     const cookies = getCookieNames(client);
 
-    const accessUser = tryVerifyAccessToken(req.cookies?.[cookies.access]);
+    const accessToken = resolveAuthTransport(req) === "mobile" ? getBearerToken(req) : req.cookies?.[cookies.access];
+
+    const accessUser = tryVerifyAccessToken(accessToken);
 
     if (accessUser) {
       req.user = accessUser;
@@ -42,6 +44,16 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
   } catch {
     return next();
   }
+}
+
+function getBearerToken(req: Request): string | undefined {
+  const header = req.get("authorization");
+
+  if (!header?.startsWith("Bearer ")) {
+    return undefined;
+  }
+
+  return header.slice("Bearer ".length).trim();
 }
 
 function tryVerifyAccessToken(token?: string): AuthContext | null {

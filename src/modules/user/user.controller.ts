@@ -28,9 +28,9 @@ export class UserController {
     const userId = req.user!.id;
     const payload = upsertAddressSchema.parse(req.body);
 
-    await this.service.createAddress(userId, payload);
+    const result = await this.service.createAddress(userId, payload);
 
-    sendSuccess(res, 201, { message: "Address created" });
+    sendSuccess(res, 200, { data: result });
   };
 
   updateAddress = async (req: Request, res: Response) => {

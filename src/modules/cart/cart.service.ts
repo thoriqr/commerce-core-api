@@ -1,81 +1,51 @@
 import { AppError } from "@/errors/app-error";
-import { CartRepo } from "./cart.repo";
-import { ResolveCartResult } from "./cart.types";
-import { TransactionManager } from "@/infra/db/transaction-manager";
-import { MAX_CART_ITEM_QTY } from "./cart.constants";
-import { mapCartItems } from "./cart.mapper";
 import { ProductImageService } from "@/modules/product/product-image.service";
+import { mapCartItems } from "./cart.mapper";
+import { MAX_CART_ITEM_QTY } from "./cart.constants";
+import { CartRepo } from "./cart.repo";
 
 export class CartService {
   constructor(
-    private tm: TransactionManager,
     private readonly repo: CartRepo,
     private readonly productImageService: ProductImageService
   ) {}
 
-  resolveCart = async (cartIdFromCookie: string | null, userId: number | null): Promise<ResolveCartResult> => {
-    // USER FLOW
-    if (userId) {
-      let userCart = await this.repo.findCartByUserId(userId);
+  /**
+   * Returns the authenticated user's cart.
+   * A new cart is automatically created on first access.
+   */
+  private async resolveUserCart(userId: number): Promise<string> {
+    let cart = await this.repo.findCartByUserId(userId);
 
-      if (!userCart) {
-        userCart = await this.repo.createCart(userId);
-      }
-
-      // merge guest cart
-      if (cartIdFromCookie && cartIdFromCookie !== userCart.id) {
-        const guestCart = await this.repo.findCartById(cartIdFromCookie);
-
-        if (guestCart && guestCart.user_id === null) {
-          await this.mergeGuestCart(guestCart.id, userCart.id);
-        }
-      }
-
-      return {
-        cartId: userCart.id,
-        created: false
-      };
+    if (!cart) {
+      cart = await this.repo.createCart(userId);
     }
 
-    // GUEST FLOW
-    if (cartIdFromCookie) {
-      const guestCart = await this.repo.findCartById(cartIdFromCookie);
+    return cart.id;
+  }
 
-      if (guestCart) {
-        return {
-          cartId: guestCart.id,
-          created: false
-        };
-      }
-    }
+  getCart = async (userId: number) => {
+    const cartId = await this.resolveUserCart(userId);
 
-    const newCart = await this.repo.createCart(null);
-
-    return {
-      cartId: newCart.id,
-      created: true
-    };
-  };
-
-  getCart = async (cartId: string) => {
     const rows = await this.repo.findCartItems(cartId);
 
     if (rows.length === 0) {
       return {
         items: [],
-        summary: { totalItems: 0, subtotal: 0 }
+        summary: {
+          totalItems: 0,
+          subtotal: 0
+        }
       };
     }
 
-    const productIds = [...new Set(rows.map((r) => r.product_id))];
+    const productIds = [...new Set(rows.map((row) => row.product_id))];
 
-    // 2. image map (cache + DB)
-    const imageMap = await this.productImageService.getVariantImagesBulk(productIds);
+    const imageMap =
+      await this.productImageService.getVariantImagesBulk(productIds);
 
-    // 3. map items + resolve image
     const items = mapCartItems(rows, imageMap);
 
-    // 4. summary
     let totalItems = 0;
     let subtotal = 0;
 
@@ -93,7 +63,13 @@ export class CartService {
     };
   };
 
-  addItem = async (cartId: string, variantId: number, quantity: number) => {
+  addItem = async (
+    userId: number,
+    variantId: number,
+    quantity: number
+  ) => {
+    const cartId = await this.resolveUserCart(userId);
+
     const variant = await this.repo.findVariantForCart(variantId);
 
     if (!variant) {
@@ -106,33 +82,41 @@ export class CartService {
 
     const safeQty = this.clampQuantity(quantity);
 
-    await this.repo.upsertCartItem(cartId, variantId, safeQty);
+    await this.repo.upsertCartItem(
+      cartId,
+      variantId,
+      safeQty
+    );
   };
 
-  updateItem = async (cartId: string, variantId: number, quantity: number) => {
-    const updated = await this.repo.updateCartItemQuantity(cartId, variantId, quantity);
+  updateItem = async (
+    userId: number,
+    variantId: number,
+    quantity: number
+  ) => {
+    const cartId = await this.resolveUserCart(userId);
+
+    const updated = await this.repo.updateCartItemQuantity(
+      cartId,
+      variantId,
+      quantity
+    );
 
     if (!updated && quantity > 0) {
       throw AppError.notFound("Cart item not found");
     }
   };
 
-  deleteItem = async (cartId: string, variantId: number) => {
-    await this.repo.deleteCartItem(cartId, variantId);
-  };
+  deleteItem = async (
+    userId: number,
+    variantId: number
+  ) => {
+    const cartId = await this.resolveUserCart(userId);
 
-  private mergeGuestCart = async (guestCartId: string, userCartId: string) => {
-    await this.tm.transaction(async (trx) => {
-      const items = await this.repo.findCartItems(guestCartId, trx);
-
-      for (const item of items) {
-        const safeQty = this.clampQuantity(item.quantity);
-
-        await this.repo.upsertCartItem(userCartId, item.variant_id, safeQty, trx);
-      }
-
-      await this.repo.deleteCart(guestCartId, trx);
-    });
+    await this.repo.deleteCartItem(
+      cartId,
+      variantId
+    );
   };
 
   private clampQuantity(qty: number) {
