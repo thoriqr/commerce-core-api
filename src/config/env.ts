@@ -7,14 +7,12 @@ if (!process.env.NODE_ENV) {
   throw new Error("NODE_ENV is required");
 }
 
-if (process.env.NODE_ENV !== "production") {
-  const envFile = `.env.${process.env.NODE_ENV}`;
+const envFile = `.env.${process.env.NODE_ENV}`;
 
-  if (fs.existsSync(envFile)) {
-    dotenv.config({ path: envFile });
-  } else {
-    console.warn(`Env file ${envFile} not found, using process.env`);
-  }
+if (fs.existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+} else {
+  console.warn(`Env file ${envFile} not found, using process.env`);
 }
 
 const envSchema = z.object({
@@ -51,7 +49,7 @@ const envSchema = z.object({
   NOTIFICATION_WEBHOOK_URL: z.string().min(1),
   BREVO_API_KEY: z.string().min(1),
 
-  ACCESS_TOKEN_EXPIRY: z.custom<StringValue>(),
+  ACCESS_TOKEN_EXPIRY: z.custom<StringValue>()
 });
 
 const parsed = envSchema.safeParse(process.env);
