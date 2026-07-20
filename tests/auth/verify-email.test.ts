@@ -16,13 +16,13 @@ describe("POST /v1/auth/verify-email", () => {
     await db.raw("TRUNCATE users, pending_verifications, user_sessions, refresh_tokens CASCADE");
   });
 
-  it("should verify email, create user, and mark token as used", async () => {
+  it("should verify email, create user, mark token as used, and not create a session", async () => {
     const { rawToken, tokenHash } = createTokenData();
     const email = `verify_${Date.now()}@mail.com`;
 
     await db.raw(
       `INSERT INTO pending_verifications (email, token_hash, type, expires_at)
-       VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes')`,
+     VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes')`,
       { email, tokenHash, type: "REGISTER" }
     );
 
@@ -36,16 +36,16 @@ describe("POST /v1/auth/verify-email", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe("Email verified successfully");
 
-    // cookies should be set
-    const cookies = res.headers["set-cookie"] as unknown as string[];
-
-    expect(cookies).toBeDefined();
-
-    expect(cookies.some((c) => c.includes("access"))).toBe(true);
-    expect(cookies.some((c) => c.includes("refresh"))).toBe(true);
+    // verify-email should NOT create auth cookies
+    expect(res.headers["set-cookie"]).toBeUndefined();
 
     // user should be created
-    const user = await db.raw(`SELECT email, password_hash, display_name FROM users WHERE email = :email`, { email });
+    const user = await db.raw(
+      `SELECT email, password_hash, display_name
+     FROM users
+     WHERE email = :email`,
+      { email }
+    );
 
     expect(user.rows.length).toBe(1);
     expect(user.rows[0].password_hash).toBeDefined();
@@ -53,9 +53,28 @@ describe("POST /v1/auth/verify-email", () => {
     expect(user.rows[0].display_name).toBe("Test User");
 
     // token should be marked as used
-    const pv = await db.raw(`SELECT used_at FROM pending_verifications WHERE token_hash = :tokenHash`, { tokenHash });
+    const pv = await db.raw(
+      `SELECT used_at
+     FROM pending_verifications
+     WHERE token_hash = :tokenHash`,
+      { tokenHash }
+    );
 
     expect(pv.rows[0].used_at).not.toBeNull();
+
+    // verify-email should NOT create sessions or refresh tokens
+    const sessions = await db.raw(`
+    SELECT COUNT(*)::int AS count
+    FROM user_sessions
+  `);
+
+    const refreshTokens = await db.raw(`
+    SELECT COUNT(*)::int AS count
+    FROM refresh_tokens
+  `);
+
+    expect(sessions.rows[0].count).toBe(0);
+    expect(refreshTokens.rows[0].count).toBe(0);
   });
 
   it("should not allow token reuse after successful verification", async () => {
@@ -64,7 +83,7 @@ describe("POST /v1/auth/verify-email", () => {
 
     await db.raw(
       `INSERT INTO pending_verifications (email, token_hash, type, expires_at)
-       VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes')`,
+     VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes')`,
       { email, tokenHash, type: "REGISTER" }
     );
 
@@ -103,7 +122,7 @@ describe("POST /v1/auth/verify-email", () => {
 
     await db.raw(
       `INSERT INTO pending_verifications (email, token_hash, type, expires_at)
-       VALUES (:email, :tokenHash, :type, NOW() - interval '1 minute')`,
+     VALUES (:email, :tokenHash, :type, NOW() - interval '1 minute')`,
       { email, tokenHash, type: "REGISTER" }
     );
 
@@ -123,7 +142,7 @@ describe("POST /v1/auth/verify-email", () => {
 
     await db.raw(
       `INSERT INTO pending_verifications (email, token_hash, type, expires_at, used_at)
-       VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes', NOW())`,
+     VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes', NOW())`,
       { email, tokenHash, type: "REGISTER" }
     );
 
@@ -162,18 +181,28 @@ describe("POST /v1/auth/verify-email", () => {
 
     await db.raw(
       `INSERT INTO pending_verifications (email, token_hash, type, expires_at)
-       VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes')`,
+     VALUES (:email, :tokenHash, :type, NOW() + interval '10 minutes')`,
       { email, tokenHash, type: "REGISTER" }
     );
 
-    await request(app).post("/v1/auth/verify-email").send({
+    const res = await request(app).post("/v1/auth/verify-email").send({
       token: rawToken,
       password: "password123",
       displayName: "   John Doe   "
     });
 
-    const user = await db.raw(`SELECT display_name FROM users WHERE email = :email`, { email });
+    expect(res.status).toBe(200);
+
+    const user = await db.raw(
+      `SELECT display_name
+     FROM users
+     WHERE email = :email`,
+      { email }
+    );
 
     expect(user.rows[0].display_name).toBe("John Doe");
+
+    // optional: ensure verify-email still doesn't create sessions
+    expect(res.headers["set-cookie"]).toBeUndefined();
   });
 });

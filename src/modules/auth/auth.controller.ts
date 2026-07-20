@@ -76,9 +76,11 @@ export class AuthController {
   verifyEmail = async (req: Request, res: Response) => {
     const payload = verifyEmailSchema.parse(req.body);
 
-    const tokens = await this.service.verifyEmail(payload, getSessionMetadata(req));
+    await this.service.verifyEmail(payload);
 
-    sendAuth(res, req, 200, "Email verified successfully", tokens);
+    sendSuccess(res, 200, {
+      message: "Email verified successfully"
+    });
   };
 
   login = async (req: Request, res: Response) => {
@@ -130,9 +132,11 @@ export class AuthController {
   resetPassword = async (req: Request, res: Response) => {
     const payload = resetPasswordSchema.parse(req.body);
 
-    const tokens = await this.service.resetPassword(payload, getSessionMetadata(req));
+    await this.service.resetPassword(payload);
 
-    sendAuth(res, req, 200, "Password reset successfully", tokens);
+    sendSuccess(res, 200, {
+      message: "Password reset successfully"
+    });
   };
 
   setPassword = async (req: Request, res: Response) => {
@@ -154,12 +158,7 @@ export class AuthController {
 
     const payload = changePasswordSchema.parse(req.body);
 
-    const tokens = await this.service.changePassword(
-      req.user.id,
-      payload.currentPassword,
-      payload.newPassword,
-      getSessionMetadata(req)
-    );
+    const tokens = await this.service.changePassword(req.user.id, payload.currentPassword, payload.newPassword, getSessionMetadata(req));
 
     sendAuth(res, req, 200, "Password changed successfully", tokens);
   };

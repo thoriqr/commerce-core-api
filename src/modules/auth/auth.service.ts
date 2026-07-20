@@ -21,6 +21,7 @@ import { logger } from "@/libs/logger";
 import { validatePending } from "./auth-utils";
 import { env } from "@/config/env";
 import { mailer } from "@/libs/mailer";
+import { ERROR_CODE } from "@/constants/error-code";
 
 export class AuthService {
   constructor(
@@ -242,37 +243,29 @@ export class AuthService {
     };
   };
 
-  verifyEmail = async (input: VerifyEmailInput, metadata: SessionMetadata): Promise<AuthTokenResult> => {
+  verifyEmail = async (input: VerifyEmailInput): Promise<void> => {
     const tokenHash = hashRefreshToken(input.token);
 
-    return this.tm.transaction(async (trx) => {
+    await this.tm.transaction(async (trx) => {
       const verification = await this.repo.findPendingVerification(trx, tokenHash, "REGISTER");
 
       const pending = validatePending(verification);
 
-      // REGISTER only
-      const role = "USER";
-
       const passwordHash = await bcrypt.hash(input.password, 10);
 
-      const user = await this.repo.insertUserWithRole(trx, {
+      await this.repo.insertUserWithRole(trx, {
         email: pending.email,
         passwordHash,
         displayName: input.displayName,
-        role,
+        role: "USER",
         status: "ACTIVE"
       });
 
       await this.repo.markPendingVerificationUsed(trx, pending.id);
-
-      return this.issueAuthTokens(trx, user, metadata);
     });
   };
 
-  login = async (
-    input: LoginInput,
-    metadata: SessionMetadata
-  ): Promise<AuthTokenResult> => {
+  login = async (input: LoginInput, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     return this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserByEmailOrNull(input.email, trx);
 
@@ -361,20 +354,21 @@ export class AuthService {
         await this.repo.revokeSession(trx, existingToken.session_id);
         await this.repo.revokeSessionRefreshTokens(trx, existingToken.session_id);
         return {
-          error: "Refresh token reuse detected"
+          error: ERROR_CODE.REFRESH_TOKEN_REUSE
         };
       }
 
       if (new Date(existingToken.expires_at) < new Date()) {
-        throw AppError.unauthorized("Refresh token expired");
+        throw AppError.refreshTokenExpired();
       }
 
       if (existingToken.session_revoked_at) {
-        throw AppError.unauthorized("Session revoked");
+        throw AppError.sessionRevoked();
       }
 
       const user = await this.repo.findUserById(existingToken.user_id, trx);
 
+      // Future
       // if (!user || user.status === "SUSPENDED") {
       //   await this.repo.revokeAllUserRefreshTokens(trx, existingToken.user_id);
       //   throw AppError.forbidden("Account suspended");
@@ -384,7 +378,7 @@ export class AuthService {
         await this.repo.revokeSession(trx, existingToken.session_id);
         await this.repo.revokeSessionRefreshTokens(trx, existingToken.session_id);
         return {
-          error: "User not found"
+          error: ERROR_CODE.UNAUTHORIZED
         };
       }
 
@@ -403,7 +397,16 @@ export class AuthService {
     });
 
     if ("error" in result) {
-      throw AppError.unauthorized(result.error);
+      switch (result.error) {
+        case ERROR_CODE.REFRESH_TOKEN_REUSE:
+          throw AppError.refreshTokenReuse();
+
+        case ERROR_CODE.UNAUTHORIZED:
+          throw AppError.unauthorized("Unauthorized");
+
+        default:
+          throw AppError.unauthorized("Unauthorized");
+      }
     }
 
     return result;
@@ -482,10 +485,7 @@ export class AuthService {
     }
   };
 
-  resetPassword = async (
-    input: ResetPasswordInput,
-    metadata: SessionMetadata
-  ): Promise<AuthTokenResult> => {
+  resetPassword = async (input: ResetPasswordInput): Promise<void> => {
     const tokenHash = hashRefreshToken(input.token);
 
     return this.tm.transaction(async (trx) => {
@@ -538,26 +538,10 @@ export class AuthService {
       // Revoke ALL existing refresh tokens
       await this.repo.revokeAllUserSessions(trx, user.id);
       await this.repo.revokeAllUserRefreshTokens(trx, user.id);
-
-      // Refetch fresh user (clean & future-proof)
-      const freshUser = await this.repo.findUserById(user.id, trx);
-
-      if (!freshUser) {
-        logger.error("User disappeared during reset");
-        throw AppError.internal();
-      }
-
-      // Issue new tokens (auto-login)
-      return this.issueAuthTokens(trx, freshUser, metadata);
     });
   };
 
-  changePassword = async (
-    userId: number,
-    currentPassword: string,
-    newPassword: string,
-    metadata: SessionMetadata
-  ): Promise<AuthTokenResult> => {
+  changePassword = async (userId: number, currentPassword: string, newPassword: string, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     const result = await this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserById(userId, trx);
 
@@ -618,11 +602,7 @@ export class AuthService {
     };
   };
 
-  setPassword = async (
-    userId: number,
-    password: string,
-    metadata: SessionMetadata
-  ): Promise<AuthTokenResult> => {
+  setPassword = async (userId: number, password: string, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     const result = await this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserById(userId, trx);
 
@@ -719,10 +699,7 @@ export class AuthService {
     });
   };
 
-  confirmEmailChange = async (
-    token: string,
-    metadata: SessionMetadata
-  ): Promise<AuthTokenResult> => {
+  confirmEmailChange = async (token: string, metadata: SessionMetadata): Promise<AuthTokenResult> => {
     const tokenHash = hashRefreshToken(token);
 
     const result = await this.tm.transaction(async (trx) => {
@@ -848,12 +825,7 @@ export class AuthService {
     };
   }
 
-  private async issueRefreshToken(
-    trx: Knex.Transaction,
-    userId: number,
-    sessionId: number,
-    replacedById: number | null = null
-  ): Promise<string> {
+  private async issueRefreshToken(trx: Knex.Transaction, userId: number, sessionId: number, replacedById: number | null = null): Promise<string> {
     const refreshToken = generateRefreshToken();
 
     const tokenHash = hashRefreshToken(refreshToken);
