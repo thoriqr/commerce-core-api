@@ -6,7 +6,7 @@ import { KnexTransactionManager } from "@/infra/db/transaction-manager";
 import { db } from "@/infra/db/knex";
 import { requireRole } from "@/middlewares/role.middleware";
 import { requireAuth } from "@/middlewares/auth.middleware";
-import { authLimiter, refreshLimiter } from "@/middlewares/rate-limit.middleware";
+import { authLimiter, loginLimiter, refreshLimiter } from "@/middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -19,7 +19,7 @@ router.post("/register", authLimiter, controller.register);
 router.post("/check-verification-token", authLimiter, controller.checkVerificationToken);
 router.post("/verify-email", authLimiter, controller.verifyEmail);
 
-router.post("/login", authLimiter, controller.login);
+router.post("/login", loginLimiter, controller.login);
 router.post("/refresh", refreshLimiter, controller.refresh);
 router.post("/logout", controller.logout);
 

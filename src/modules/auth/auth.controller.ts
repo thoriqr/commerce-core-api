@@ -134,6 +134,10 @@ export class AuthController {
 
     await this.service.resetPassword(payload);
 
+    if (resolveAuthTransport(req) === "web") {
+      clearAuth(res, req);
+    }
+
     sendSuccess(res, 200, {
       message: "Password reset successfully"
     });
