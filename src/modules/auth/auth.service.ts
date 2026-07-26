@@ -347,7 +347,7 @@ export class AuthService {
       const existingToken = await this.repo.findRefreshTokenByHashForUpdate(trx, tokenHash);
 
       if (!existingToken) {
-        throw AppError.unauthorized("Invalid refresh token");
+        throw AppError.invalidRefreshToken();
       }
 
       if (existingToken.revoked_at) {

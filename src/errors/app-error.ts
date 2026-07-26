@@ -68,6 +68,20 @@ export class AppError extends Error {
     });
   }
 
+  static refreshTokenMissing() {
+    return new AppError("Refresh token missing", {
+      code: ERROR_CODE.REFRESH_TOKEN_MISSING,
+      statusCode: 401
+    });
+  }
+
+  static invalidRefreshToken() {
+    return new AppError("Invalid refresh token", {
+      code: ERROR_CODE.INVALID_REFRESH_TOKEN,
+      statusCode: 401
+    });
+  }
+
   static sessionRevoked() {
     return new AppError("Session revoked", {
       code: ERROR_CODE.SESSION_REVOKED,
