@@ -44,3 +44,7 @@ export type AuthTokenResult = {
   accessToken: string;
   refreshToken: string;
 };
+
+export type AuthLoginResult = AuthTokenResult & {
+  user: AuthUser;
+};

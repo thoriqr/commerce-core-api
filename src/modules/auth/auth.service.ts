@@ -9,7 +9,7 @@ import {
   VerifyAdminInvite,
   VerifyEmailInput
 } from "./auth.schema";
-import { AuthContext, AuthTokenResult, AuthUser, SessionMetadata } from "./auth.types";
+import { AuthContext, AuthLoginResult, AuthTokenResult, AuthUser, SessionMetadata } from "./auth.types";
 import { AppError } from "@/errors/app-error";
 import { TransactionManager } from "@/infra/db/transaction-manager";
 import bcrypt from "bcrypt";
@@ -265,7 +265,7 @@ export class AuthService {
     });
   };
 
-  login = async (input: LoginInput, metadata: SessionMetadata): Promise<AuthTokenResult> => {
+  login = async (input: LoginInput, metadata: SessionMetadata): Promise<AuthLoginResult> => {
     return this.tm.transaction(async (trx) => {
       const user = await this.repo.findUserByEmailOrNull(input.email, trx);
 
@@ -289,7 +289,7 @@ export class AuthService {
     });
   };
 
-  googleLogin = async (input: GoogleLoginInput, metadata: SessionMetadata): Promise<AuthTokenResult> => {
+  googleLogin = async (input: GoogleLoginInput, metadata: SessionMetadata): Promise<AuthLoginResult> => {
     const google = await verifyGoogleIdToken(input.idToken);
 
     if (!google.email_verified) {
@@ -807,7 +807,7 @@ export class AuthService {
     });
   }
 
-  private async issueAuthTokens(trx: Knex.Transaction, user: UserDetailRow, metadata: SessionMetadata): Promise<AuthTokenResult> {
+  private async issueAuthTokens(trx: Knex.Transaction, user: UserDetailRow, metadata: SessionMetadata): Promise<AuthLoginResult> {
     const session = await this.repo.insertUserSession(trx, user.id, metadata);
 
     if (!session) {

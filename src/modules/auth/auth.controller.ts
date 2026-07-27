@@ -19,7 +19,7 @@ import {
   verifyEmailSchema
 } from "./auth.schema";
 import { getCookieNames } from "@/utils/auth-cookies";
-import { clearAuth, getSessionMetadata, resolveAuthTransport, sendAuth } from "@/utils/auth-helpers";
+import { clearAuth, getSessionMetadata, resolveAuthTransport, sendAuth, sendLoginAuth } from "@/utils/auth-helpers";
 
 export class AuthController {
   constructor(private readonly service: AuthService) {}
@@ -86,9 +86,17 @@ export class AuthController {
   login = async (req: Request, res: Response) => {
     const payload = loginSchema.parse(req.body);
 
-    const tokens = await this.service.login(payload, getSessionMetadata(req));
+    const result = await this.service.login(payload, getSessionMetadata(req));
 
-    sendAuth(res, req, 200, "Logged in successfully", tokens);
+    sendLoginAuth(res, req, 200, "Logged in successfully", result);
+  };
+
+  googleLogin = async (req: Request, res: Response) => {
+    const payload = googleLoginSchema.parse(req.body);
+
+    const result = await this.service.googleLogin(payload, getSessionMetadata(req));
+
+    sendLoginAuth(res, req, 200, "Login successful", result);
   };
 
   refresh = async (req: Request, res: Response) => {
@@ -187,14 +195,6 @@ export class AuthController {
     const tokens = await this.service.confirmEmailChange(payload.token, getSessionMetadata(req));
 
     sendAuth(res, req, 200, "Email changed successfully", tokens);
-  };
-
-  googleLogin = async (req: Request, res: Response) => {
-    const payload = googleLoginSchema.parse(req.body);
-
-    const tokens = await this.service.googleLogin(payload, getSessionMetadata(req));
-
-    sendAuth(res, req, 200, "Login successful", tokens);
   };
 
   me = async (req: Request, res: Response) => {
