@@ -270,13 +270,13 @@ export class AuthService {
       const user = await this.repo.findUserByEmailOrNull(input.email, trx);
 
       if (!user || !user.password_hash) {
-        throw AppError.unauthorized("Invalid email or password");
+        throw AppError.invalidCredentials();
       }
 
       const isMatch = await bcrypt.compare(input.password, user.password_hash);
 
       if (!isMatch) {
-        throw AppError.unauthorized("Invalid email or password");
+        throw AppError.invalidCredentials();
       }
 
       // if (user.status === "SUSPENDED") {

@@ -5,7 +5,6 @@ import bcrypt from "bcrypt";
 import app from "../../src/app";
 import { db } from "../../src/infra/db/knex";
 import { generateRefreshToken, hashRefreshToken } from "../../src/shared/jwt/refresh-token.util";
-import { ERROR_CODE } from "../../src/constants/error-code";
 
 describe("POST /v1/auth/refresh", () => {
   const createUserWithToken = async () => {

@@ -54,6 +54,13 @@ export class AppError extends Error {
     });
   }
 
+  static invalidCredentials(message = "Invalid email or password") {
+    return new AppError(message, {
+      code: ERROR_CODE.INVALID_CREDENTIALS,
+      statusCode: 401
+    });
+  }
+
   static refreshTokenExpired() {
     return new AppError("Refresh token expired", {
       code: ERROR_CODE.REFRESH_TOKEN_EXPIRED,
