@@ -6,18 +6,21 @@ import app from "../../src/app";
 import { db } from "../../src/infra/db/knex";
 
 describe("POST /v1/auth/login", () => {
-  const createUser = async (email: string, password: string, status = "ACTIVE") => {
+  const createUser = async (email: string, password: string, status = "ACTIVE"): Promise<number> => {
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await db.raw(
+    const result = await db.raw(
       `INSERT INTO users (email, password_hash, status)
-       VALUES (:email, :passwordHash, :status)`,
+     VALUES (:email, :passwordHash, :status)
+     RETURNING id`,
       {
         email,
         passwordHash,
         status
       }
     );
+
+    return result.rows[0].id;
   };
 
   beforeEach(async () => {
@@ -28,7 +31,7 @@ describe("POST /v1/auth/login", () => {
     const email = `login_${Date.now()}@mail.com`;
     const password = "password123";
 
-    await createUser(email, password);
+    const userId = await createUser(email, password);
 
     const res = await request(app).post("/v1/auth/login").send({
       email,
@@ -37,6 +40,9 @@ describe("POST /v1/auth/login", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+
+    // Login response should belong to the authenticated user.
+    expect(res.body.data.userId).toBe(userId);
 
     const cookies = res.headers["set-cookie"] as unknown as string[];
 
@@ -62,11 +68,11 @@ describe("POST /v1/auth/login", () => {
     expect(user.rows[0].last_login_at).not.toBeNull();
   });
 
-  it("should return tokens in response body for mobile login", async () => {
+  it("should return user id and tokens in response body for mobile login", async () => {
     const email = `mobile_login_${Date.now()}@mail.com`;
     const password = "password123";
 
-    await createUser(email, password);
+    const userId = await createUser(email, password);
 
     const res = await request(app).post("/v1/auth/login").set("x-auth-client", "mobile").send({
       email,
@@ -75,8 +81,11 @@ describe("POST /v1/auth/login", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+
+    expect(res.body.data.userId).toBe(userId);
     expect(res.body.data.accessToken).toBeDefined();
     expect(res.body.data.refreshToken).toBeDefined();
+
     expect(res.headers["set-cookie"]).toBeUndefined();
   });
 

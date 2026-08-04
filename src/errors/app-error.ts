@@ -54,6 +54,62 @@ export class AppError extends Error {
     });
   }
 
+  static invalidCredentials(message = "Invalid email or password") {
+    return new AppError(message, {
+      code: ERROR_CODE.INVALID_CREDENTIALS,
+      statusCode: 401
+    });
+  }
+
+  static refreshTokenExpired() {
+    return new AppError("Refresh token expired", {
+      code: ERROR_CODE.REFRESH_TOKEN_EXPIRED,
+      statusCode: 401
+    });
+  }
+
+  static refreshTokenReuse() {
+    return new AppError("Refresh token reuse detected", {
+      code: ERROR_CODE.REFRESH_TOKEN_REUSE,
+      statusCode: 401
+    });
+  }
+
+  static refreshTokenMissing() {
+    return new AppError("Refresh token missing", {
+      code: ERROR_CODE.REFRESH_TOKEN_MISSING,
+      statusCode: 401
+    });
+  }
+
+  static invalidRefreshToken() {
+    return new AppError("Invalid refresh token", {
+      code: ERROR_CODE.INVALID_REFRESH_TOKEN,
+      statusCode: 401
+    });
+  }
+
+  static sessionRevoked() {
+    return new AppError("Session revoked", {
+      code: ERROR_CODE.SESSION_REVOKED,
+      statusCode: 401
+    });
+  }
+
+  static accessTokenExpired() {
+    return new AppError("Access token expired", {
+      code: ERROR_CODE.ACCESS_TOKEN_EXPIRED,
+      statusCode: 401
+    });
+  }
+
+  static invalidAccessToken() {
+    return new AppError("Invalid access token", {
+      code: ERROR_CODE.INVALID_ACCESS_TOKEN,
+      statusCode: 401
+    });
+  }
+
   // 403
   static forbidden(message = "Forbidden") {
     return new AppError(message, {

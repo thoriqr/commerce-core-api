@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { clearAuthCookies, setAuthCookies } from "./set-auth-cookie";
 import { AppClient } from "@/types/app-client";
-import { AuthTokenResult, AuthTransport, SessionMetadata } from "@/modules/auth/auth.types";
+import { AuthLoginResult, AuthTokenResult, AuthTransport, SessionMetadata } from "@/modules/auth/auth.types";
 import { sendSuccess } from "./send-success";
 
 type Tokens = {
@@ -52,5 +52,27 @@ export function sendAuth(res: Response, req: Request, statusCode: number, messag
 
   return sendSuccess(res, statusCode, {
     message
+  });
+}
+
+export function sendLoginAuth(res: Response, req: Request, statusCode: number, message: string, result: AuthLoginResult, override?: AppClient) {
+  if (resolveAuthTransport(req) === "mobile") {
+    return sendSuccess(res, statusCode, {
+      message,
+      data: {
+        userId: result.user.id,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
+      }
+    });
+  }
+
+  setAuth(res, result, req, override);
+
+  return sendSuccess(res, statusCode, {
+    message,
+    data: {
+      userId: result.user.id
+    }
   });
 }

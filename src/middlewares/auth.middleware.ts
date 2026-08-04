@@ -65,7 +65,7 @@ function tryVerifyAccessToken(token?: string): AuthContext | null {
     const id = Number(payload.sub);
 
     if (!Number.isInteger(id)) {
-      throw AppError.unauthorized("Invalid token payload");
+      throw AppError.invalidAccessToken();
     }
 
     return {
@@ -75,10 +75,10 @@ function tryVerifyAccessToken(token?: string): AuthContext | null {
     };
   } catch (err: any) {
     if (err instanceof TokenExpiredError) {
-      return null;
+      throw AppError.accessTokenExpired();
     }
 
-    throw AppError.unauthorized("Invalid access token");
+    throw AppError.invalidAccessToken();
   }
 }
 

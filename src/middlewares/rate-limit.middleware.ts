@@ -21,6 +21,15 @@ export const authLimiter = rateLimit({
   skip: () => env.NODE_ENV === "test"
 });
 
+export const loginLimiter = rateLimit({
+  windowMs: 15 * MINUTE,
+  max: 20,
+  handler: (_req, _res, next) => {
+    next(AppError.tooManyRequests());
+  },
+  skip: () => env.NODE_ENV === "test"
+});
+
 export const actionLimiter = rateLimit({
   windowMs: 1 * MINUTE,
   max: 30,
