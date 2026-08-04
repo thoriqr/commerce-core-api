@@ -33,30 +33,12 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/commerce_test
-      JWT_ACCESS_SECRET: test
-      API_URL: http://localhost:3000
-      CLIENT_ORIGINS: http://localhost:3000
-      ADMIN_ORIGIN: http://localhost:3000
-      STOREFRONT_ORIGIN: http://localhost:3000
-      REDIS_URL: redis://localhost:6379
-      R2_ACCOUNT_ID: test
-      R2_ACCESS_KEY_ID: test
-      R2_SECRET_ACCESS_KEY: test
-      R2_BUCKET_NAME: test
-      GOOGLE_CLIENT_ID: test
-      SUPER_EMAIL: admin@test.local
-      SUPER_PASSWORD: test
-      DEMO_EMAIL: demo@test.local
-      DEMO_PASSWORD: test
-      RAJAONGKIR_API_KEY: test
-      MIDTRANS_SERVER_KEY: test
-      NOTIFICATION_WEBHOOK_URL: http://localhost
-      BREVO_API_KEY: test
-      ACCESS_TOKEN_EXPIRY: 15m
 
     steps:
       - uses: actions/checkout@v6
+
+      - name: Prepare test environment
+        run: cp .env.test.example .env.test
 
       - uses: actions/setup-node@v6
         with:
@@ -74,4 +56,5 @@ jobs:
           exit 1
 
       - run: npm run migrate:test
+
       - run: npm test
