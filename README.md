@@ -18,7 +18,7 @@ Backend API for an e-commerce system including authentication, product managemen
 ### Authentication
 
 - JWT authentication
-- Access token and refresh token flow
+- Rotating refresh token sessions
 - HttpOnly cookie authentication
 - Role-based authorization
 - Google OAuth login
@@ -76,6 +76,7 @@ Midtrans integration with:
 | CI                | GitHub Actions   |
 | Payment Gateway   | Midtrans         |
 | Object Storage    | Cloudflare R2    |
+| Containerization  | Docker           |
 
 ---
 
@@ -93,14 +94,21 @@ Checkout confirmation uses database transactions for stock validation, order cre
 
 Payment webhooks include signature verification, duplicate prevention, and payment status validation.
 
-### Scheduled Jobs
+### Background Workers
 
-Background jobs are used for:
+Background maintenance is exposed through internal HTTP worker endpoints,
+allowing schedulers such as Google Cloud Scheduler to trigger jobs without
+requiring a dedicated worker process.
+
+Development mode still provides an optional cron-based worker for local testing.
+
+Current maintenance jobs include:
 
 - Expiring unpaid orders
-- Cleaning expired refresh tokens
-- Cleaning abandoned guest carts
-- Cleaning unused product images
+- Cleaning expired user sessions
+- Cleaning checkout sessions
+- Cleaning pending verifications
+- Cleaning orphan product images
 
 ### Nested Categories
 
@@ -154,18 +162,24 @@ on every push and pull request.
 
 ## Deployment
 
-Services used in deployment:
+Designed for containerized deployment.
 
-- Railway (API hosting)
-- Neon PostgreSQL (database)
-- Upstash Redis (caching)
-- Cloudflare R2 (object storage)
+Example infrastructure:
+
+- Google Cloud Run (API hosting)
+- Google Cloud Scheduler (background workers)
+- Neon PostgreSQL
+- Upstash Redis
+- Cloudflare R2
 
 ---
 
 ## Running Locally
 
-1. Create a `.env` file based on `.env.example`.
+1. Create the required environment files:
+
+- `.env.development` from `.env.development.example`
+- `.env.test` from `.env.test.example`
 
 2. Install dependencies:
 
@@ -185,7 +199,7 @@ npm run knex migrate:latest
 npm run dev
 ```
 
-5. Start the worker:
+5. Start the development worker (optional):
 
 ```bash
 npm run worker:dev

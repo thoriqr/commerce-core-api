@@ -49,7 +49,8 @@ const envSchema = z.object({
   NOTIFICATION_WEBHOOK_URL: z.string().min(1),
   BREVO_API_KEY: z.string().min(1),
 
-  ACCESS_TOKEN_EXPIRY: z.custom<StringValue>()
+  ACCESS_TOKEN_EXPIRY: z.custom<StringValue>(),
+  WORKER_SECRET: z.string().min(1)
 });
 
 const parsed = envSchema.safeParse(process.env);

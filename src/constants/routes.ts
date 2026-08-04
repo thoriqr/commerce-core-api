@@ -10,6 +10,7 @@ export const PREFIX = {
   PAYMENT: "/payments",
   CART: "/cart",
   WAREHOUSE: "/warehouse",
+  WORKERS: "/internal/workers",
   DOCS: "/docs"
 } as const;
 
@@ -23,5 +24,6 @@ export const ROUTES = {
   PAYMENT: `${API_PREFIX}${PREFIX.PAYMENT}`,
   CART: `${API_PREFIX}${PREFIX.CART}`,
   WAREHOUSE: `${API_PREFIX}${PREFIX.WAREHOUSE}`,
+  WORKERS: `${API_PREFIX}${PREFIX.WORKERS}`,
   DOCS: `${API_PREFIX}${PREFIX.DOCS}`
 } as const;
