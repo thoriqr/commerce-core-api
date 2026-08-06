@@ -1,5 +1,5 @@
 import { TransactionManager } from "@/infra/db/transaction-manager";
-import { mapOrder, mapOrdersByUser, mapSessionToCreateOrderInput } from "./order.user.mapper";
+import { mapOrder, mapOrdersByUser } from "./order.user.mapper";
 import { OrderUserRepo } from "./order.user.repo";
 import { GetOrdersByUserParams } from "./order.user.schema";
 import { AppError } from "@/errors/app-error";

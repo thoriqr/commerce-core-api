@@ -63,12 +63,12 @@ export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItem
 
   // REMAINING TIME
   const now = new Date();
-  const expiresAt = new Date(order.expires_at);
-
-  const remainingMs = expiresAt.getTime() - now.getTime();
+  const remainingMs = order.expires_at.getTime() - now.getTime();
 
   const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
   const duration = Math.max(remainingMinutes, 1);
+
+  const customerName = order.display_name ?? order.email;
 
   return {
     transaction_details: {
@@ -77,12 +77,12 @@ export function buildMidtransPayload(order: OrderForPaymentRow, items: OrderItem
     },
     item_details: itemDetails,
     customer_details: {
-      first_name: order.recipient_name,
+      first_name: customerName,
       email: order.email,
       phone: order.phone,
 
       billing_address: {
-        first_name: order.recipient_name,
+        first_name: customerName,
         phone: order.phone,
         address: order.address_line,
         city: order.city_name,

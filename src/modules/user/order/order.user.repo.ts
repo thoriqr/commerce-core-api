@@ -210,25 +210,29 @@ export class OrderUserRepo {
     const { rows } = await trx.raw<{ rows: OrderForPaymentRow[] }>(
       `
       SELECT
-        id,
-        email,
-        recipient_name,
-        city_name,
-        address_line,
-        postal_code,
-        order_code,
-        total,
-        shipping_cost,
-        payment_status,
-        expires_at,
-        status,
-        phone,
-        snap_token,
-        snap_redirect_url
-      FROM orders
-      WHERE order_code = :orderCode
-      AND user_id = :userId
-      FOR UPDATE
+        o.id,
+        o.email,
+        o.recipient_name,
+        o.city_name,
+        o.address_line,
+        o.postal_code,
+        o.order_code,
+        o.total,
+        o.shipping_cost,
+        o.payment_status,
+        o.expires_at,
+        o.status,
+        o.phone,
+        o.snap_token,
+        o.snap_redirect_url,
+
+        u.display_name
+    FROM orders o
+    JOIN users u
+        ON u.id = o.user_id
+    WHERE o.order_code = :orderCode
+    AND o.user_id = :userId
+    FOR UPDATE
       `,
       { orderCode, userId }
     );
