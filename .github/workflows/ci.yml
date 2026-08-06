@@ -3,9 +3,13 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
 
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
 
 jobs:
   test:
@@ -54,7 +58,5 @@ jobs:
             sleep 2
           done
           exit 1
-
-      - run: npm run migrate:test
 
       - run: npm test

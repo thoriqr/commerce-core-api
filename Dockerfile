@@ -2,23 +2,20 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
 # Install dependencies
+COPY package*.json ./
 RUN npm ci
 
 # Copy source
 COPY . .
 
-# Build TypeScript
+# Build application
 RUN npm run build
 
-# Production env
+# Production environment
 ENV NODE_ENV=production
 
-# Cloud Run port
+# Cloud Run
 EXPOSE 8080
 
-# Start app
-CMD ["npm", "start"]
+CMD ["node", "dist/src/server.js"]
