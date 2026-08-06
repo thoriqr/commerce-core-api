@@ -115,6 +115,7 @@ export type InsertOrderItemInput = CheckoutSessionItemRow & {
 export type OrderForPaymentRow = {
   id: number;
   email: string;
+  display_name: string | null;
   recipient_name: string;
   city_name: string;
   address_line: string;

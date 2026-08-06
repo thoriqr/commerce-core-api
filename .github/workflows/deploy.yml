@@ -1,0 +1,63 @@
+name: Deploy Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  REGION: ${{ vars.REGION }}
+  SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+  REPOSITORY: ${{ vars.ARTIFACT_REGISTRY }}
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+  REGISTRY_HOST: asia-southeast2-docker.pkg.dev
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker $REGISTRY_HOST --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t $REGISTRY_HOST/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push \
+            $REGISTRY_HOST/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
+
+      - name: Deploy Cloud Run
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image $REGISTRY_HOST/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --quiet

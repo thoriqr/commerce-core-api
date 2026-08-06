@@ -4,11 +4,14 @@ import { runWorkerSchema } from "./worker.schema";
 import { WorkerService } from "./worker.service";
 import { Request, Response } from "express";
 import { AppError } from "@/errors/app-error";
+import { logger } from "@/libs/logger";
 
 export class WorkerController {
   constructor(private readonly service: WorkerService) {}
 
   run = async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+
     const { job } = runWorkerSchema.parse(req.body);
 
     let result;
@@ -30,8 +33,16 @@ export class WorkerController {
         throw AppError.internal("Unknown worker job");
     }
 
+    const message = WORKER_SUCCESS_MESSAGE[job];
+
+    logger.info(message, {
+      workerJob: job,
+      result,
+      durationMs: Date.now() - startedAt
+    });
+
     return sendSuccess(res, 200, {
-      message: WORKER_SUCCESS_MESSAGE[job],
+      message,
       data: result
     });
   };
