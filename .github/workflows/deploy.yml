@@ -20,7 +20,7 @@ env:
   SERVICE_NAME: ${{ vars.SERVICE_NAME }}
   REPOSITORY: ${{ vars.ARTIFACT_REGISTRY }}
   IMAGE_NAME: ${{ vars.IMAGE_NAME }}
-  REGISTRY_HOST: asia-southeast2-docker.pkg.dev
+  REGISTRY_HOST: asia-southeast1-docker.pkg.dev
 
 jobs:
   deploy:
