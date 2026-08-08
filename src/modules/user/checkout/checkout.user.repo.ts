@@ -83,6 +83,25 @@ export class CheckoutUserRepo {
     return rows;
   };
 
+  clearShippingSelection = async (sessionId: number, trx: Knex.Transaction) => {
+    await trx.raw(
+      `
+      UPDATE checkout_sessions
+      SET
+        courier_code = NULL,
+        courier_name = NULL,
+        courier_service = NULL,
+        courier_description = NULL,
+        shipping_cost = NULL,
+        shipping_etd = NULL,
+        total = NULL,
+	      subtotal = NULL
+      WHERE id = :sessionId
+    `,
+      { sessionId }
+    );
+  };
+
   getCheckoutSessionForUpdate = async (sessionId: number, userId: number, trx: Knex.Transaction) => {
     const { rows } = await trx.raw<{ rows: CheckoutSessionRow[] }>(
       `

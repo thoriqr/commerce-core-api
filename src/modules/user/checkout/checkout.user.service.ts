@@ -57,6 +57,8 @@ export class CheckoutUserService {
           await this.checkoutUserRepo.setCheckoutSessionAddressSnapshot(existing.id, snapshot, trx);
         }
 
+        await this.checkoutUserRepo.clearShippingSelection(existing.id, trx);
+
         return { sessionId: existing.id };
       }
 
@@ -111,6 +113,8 @@ export class CheckoutUserService {
 
     await this.tm.transaction(async (trx) => {
       await this.checkoutUserRepo.updateCheckoutSessionAddress(sessionId, address, trx);
+
+      await this.checkoutUserRepo.clearShippingSelection(sessionId, trx);
     });
   };
 
