@@ -15,7 +15,8 @@ export class OrderController {
 
   getOrder = async (req: Request, res: Response) => {
     const { orderId } = orderIdParams.parse(req.params);
-    const data = await this.service.getOrder(orderId);
+
+    const data = await this.service.getOrder(orderId, req.user!.isDemo);
 
     sendSuccess(res, 200, { data });
   };

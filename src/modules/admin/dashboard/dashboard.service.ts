@@ -1,3 +1,4 @@
+import { maskName } from "@/utils/masking";
 import { mapAdminOrderStatus } from "../order/order.mapper";
 import { DashboardRepo } from "./dashboard.repo";
 import { GetDashboardInput } from "./dashboard.schema";
@@ -6,7 +7,7 @@ import { fillMissingDays, fillMissingMonths } from "./dashboard.uitl";
 export class DashboardService {
   constructor(private readonly repo: DashboardRepo) {}
 
-  getDashboard = async (input: GetDashboardInput) => {
+  getDashboard = async (input: GetDashboardInput, isDemo: boolean) => {
     const now = new Date();
 
     const from = input.from ?? new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -63,7 +64,7 @@ export class DashboardService {
         paymentStatus: r.payment_status,
         shipmentStatus: r.shipment_status,
         createdAt: r.created_at,
-        recipientName: r.recipient_name
+        recipientName: isDemo ? maskName(r.recipient_name) : r.recipient_name
       }))
     };
   };
