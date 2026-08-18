@@ -29,7 +29,7 @@ export class OrderService {
     };
   };
 
-  getOrder = async (orderId: number) => {
+  getOrder = async (orderId: number, isDemo: boolean) => {
     const order = await this.orderAdminRepo.getOrderDetail(orderId);
 
     if (!order) {
@@ -38,7 +38,7 @@ export class OrderService {
 
     const items = await this.orderAdminRepo.getOrderItems(orderId);
 
-    return mapAdminOrderDetail(order, items);
+    return mapAdminOrderDetail(order, items, isDemo);
   };
 
   markAsShipped = async (orderId: number, trackingNumber: string) => {

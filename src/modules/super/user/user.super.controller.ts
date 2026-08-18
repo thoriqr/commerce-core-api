@@ -8,7 +8,8 @@ export class UserSuperController {
 
   getUsers = async (req: Request, res: Response) => {
     const qParams = userSuperQuerySchema.parse(req.query);
-    const { data, meta } = await this.userSuperService.getUsers(qParams);
+
+    const { data, meta } = await this.userSuperService.getUsers(qParams, req.user!.isDemo);
 
     sendSuccess(res, 200, { data, meta });
   };

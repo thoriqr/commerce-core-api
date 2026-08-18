@@ -1,3 +1,4 @@
+import { maskAddress, maskEmail, maskName, maskPhone, maskPostalCode } from "@/utils/masking";
 import { OrderDetailRow, OrderItemRow, OrderListingRow, OrderStateBase } from "./order.types";
 
 type AdminOrderStatus = "WAITING_PAYMENT" | "READY_TO_SHIP" | "SHIPPED" | "COMPLETED" | "CANCELLED" | "FAILED" | "EXPIRED";
@@ -83,7 +84,7 @@ export function mapAdminOrder(row: OrderListingRow) {
   };
 }
 
-export function mapAdminOrderDetail(order: OrderDetailRow, items: OrderItemRow[]) {
+export function mapAdminOrderDetail(order: OrderDetailRow, items: OrderItemRow[], isDemo: boolean) {
   const status = mapAdminOrderStatus(order);
   const actions = getOrderActions(order);
 
@@ -104,7 +105,7 @@ export function mapAdminOrderDetail(order: OrderDetailRow, items: OrderItemRow[]
 
     status,
 
-    email: order.email,
+    email: isDemo ? maskEmail(order.email) : order.email,
 
     pricing: {
       subtotal: order.subtotal,
@@ -113,13 +114,16 @@ export function mapAdminOrderDetail(order: OrderDetailRow, items: OrderItemRow[]
     },
 
     address: {
-      recipientName: order.recipient_name,
-      phone: order.phone,
-      addressLine: order.address_line,
+      recipientName: isDemo ? maskName(order.recipient_name) : order.recipient_name,
+      phone: isDemo ? maskPhone(order.phone) : order.phone,
+
+      addressLine: isDemo ? maskAddress(order.address_line) : order.address_line,
+
       provinceName: order.province_name,
       cityName: order.city_name,
       districtName: order.district_name,
-      postalCode: order.postal_code ?? ""
+
+      postalCode: isDemo ? maskPostalCode(order.postal_code ?? "") : (order.postal_code ?? "")
     },
 
     shipment: {

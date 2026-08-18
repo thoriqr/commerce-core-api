@@ -10,7 +10,7 @@ export class DashboardController {
   getDashboard = async (req: Request, res: Response) => {
     const query = getDashboardSchema.parse(req.query);
 
-    const data = await this.service.getDashboard(query);
+    const data = await this.service.getDashboard(query, req.user?.isDemo ?? false);
 
     sendSuccess(res, 200, { data });
   };
